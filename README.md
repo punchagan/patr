@@ -4,6 +4,8 @@ A local web UI for writing and sending Hugo-based newsletters via Gmail.
 
 The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/document").
 
+> **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
+
 ## What it does
 
 - Browse and preview newsletter editions (email and web views)
