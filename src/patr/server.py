@@ -117,6 +117,24 @@ def api_editions():
     return jsonify(get_editions())
 
 
+@app.route("/api/new-edition", methods=["POST"])
+def new_edition():
+    from datetime import date
+    data = request.json or {}
+    title = data.get("title", "").strip()
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    edition_dir = state.CONTENT_DIR / slug
+    if edition_dir.exists():
+        return jsonify({"error": f"Edition '{slug}' already exists"}), 400
+    edition_dir.mkdir(parents=True)
+    (edition_dir / "index.md").write_text(
+        f'---\ntitle: "{title}"\ndate: {date.today()}\ndraft: true\n---\n\n'
+    )
+    return jsonify({"slug": slug, "path": str((edition_dir / "index.md").resolve())})
+
+
 @app.route("/newsletter/<slug>/<path:filename>")
 def edition_resource(slug, filename):
     return send_from_directory(state.CONTENT_DIR / slug, filename)

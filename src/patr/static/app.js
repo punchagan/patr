@@ -49,37 +49,47 @@ function toggleTheme() {
 applyTheme(localStorage.getItem('theme') === 'dark');
 
 // Load editions on startup
-fetch('/api/editions')
-  .then(r => r.json())
-  .then(editions => {
-    const list = document.getElementById('edition-list');
-    if (!editions.length) {
-      list.innerHTML = '<div style="padding:16px;color:#aaa;font-size:13px;">No editions found.</div>';
-      return;
-    }
-    list.innerHTML = editions.map(e => `
-      <div class="edition-item" id="item-${e.slug}" onclick="selectEdition(${JSON.stringify(e).replace(/"/g, '&quot;')})">
-        <div class="edition-title">${e.title}</div>
-        <div class="edition-meta">
-          <span>${e.date}</span>
-          <span class="badge ${e.draft ? 'badge-draft' : 'badge-live'}" id="badge-${e.slug}">
-            ${e.draft ? 'Draft' : 'Live'}
-          </span>
-        </div>
+function renderEditionList(editions, selectSlug) {
+  const list = document.getElementById('edition-list');
+  if (!editions.length) {
+    list.innerHTML = '<div style="padding:16px;color:#aaa;font-size:13px;">No editions found.</div>';
+    return;
+  }
+  list.innerHTML = editions.map(e => `
+    <div class="edition-item" id="item-${e.slug}" onclick="selectEdition(${JSON.stringify(e).replace(/"/g, '&quot;')})">
+      <div class="edition-title">${e.title}</div>
+      <div class="edition-meta">
+        <span>${e.date}</span>
+        <span class="badge ${e.draft ? 'badge-draft' : 'badge-live'}" id="badge-${e.slug}">
+          ${e.draft ? 'Draft' : 'Live'}
+        </span>
       </div>
-    `).join('');
-    // Pre-fetch contact count once
-    fetch('/api/contacts/count')
-      .then(r => r.json())
-      .then(d => { contactCount = d.count; });
+    </div>
+  `).join('');
+  if (selectSlug) {
+    const match = editions.find(e => e.slug === selectSlug);
+    if (match) selectEdition(match);
+  }
+}
 
-    // Restore state from URL hash
-    const [hashSlug, hashView] = location.hash.slice(1).split('/');
-    if (hashSlug) {
-      const match = editions.find(e => e.slug === hashSlug);
-      if (match) selectEdition(match, hashView || 'email');
-    }
+function loadEditions(selectSlug) {
+  return fetch('/api/editions').then(r => r.json()).then(editions => {
+    renderEditionList(editions, selectSlug);
+    return editions;
   });
+}
+
+loadEditions().then(editions => {
+  // Pre-fetch contact count once
+  fetch('/api/contacts/count').then(r => r.json()).then(d => { contactCount = d.count; });
+
+  // Restore state from URL hash
+  const [hashSlug, hashView] = location.hash.slice(1).split('/');
+  if (hashSlug) {
+    const match = editions.find(e => e.slug === hashSlug);
+    if (match) selectEdition(match, hashView || 'email');
+  }
+});
 
 function updateHash() {
   const hash = viewMode === 'email' ? currentSlug : `${currentSlug}/web`;
@@ -335,3 +345,40 @@ document.getElementById('settings-modal').addEventListener('click', e => {
 });
 
 if (document.body.dataset.unconfigured) openSettings();
+
+// New edition
+function openNewEdition() {
+  document.getElementById('new-edition-title').value = '';
+  document.getElementById('new-edition-error').style.display = 'none';
+  document.getElementById('new-edition-modal').classList.add('visible');
+  setTimeout(() => document.getElementById('new-edition-title').focus(), 50);
+}
+function closeNewEdition() {
+  document.getElementById('new-edition-modal').classList.remove('visible');
+}
+function doNewEdition() {
+  const title = document.getElementById('new-edition-title').value.trim();
+  if (!title) return;
+  const errEl = document.getElementById('new-edition-error');
+  errEl.style.display = 'none';
+  fetch('/api/new-edition', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ title }),
+  }).then(r => r.json()).then(d => {
+    if (d.error) {
+      errEl.textContent = d.error;
+      errEl.style.display = '';
+      return;
+    }
+    closeNewEdition();
+    loadEditions(d.slug);
+  });
+}
+document.getElementById('new-edition-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeNewEdition();
+});
+document.getElementById('new-edition-title').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doNewEdition();
+  if (e.key === 'Escape') closeNewEdition();
+});

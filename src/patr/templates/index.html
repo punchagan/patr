@@ -16,7 +16,12 @@
       <a class="btn" id="auth-btn" href="/oauth/start" style="font-size:11px;padding:3px 8px;display:none">Connect</a>
       <button class="btn" id="auth-disconnect" onclick="disconnect()" style="font-size:11px;padding:3px 8px;display:none">Disconnect</button>
     </div>
-    <div class="sidebar-header">Editions <button class="btn" onclick="openSettings()" style="font-size:11px;padding:2px 7px;float:right">⚙</button></div>
+    <div class="sidebar-header">Editions
+      <span style="float:right;display:flex;gap:4px">
+        <button class="btn" onclick="openNewEdition()" style="font-size:11px;padding:2px 7px">+</button>
+        <button class="btn" onclick="openSettings()" style="font-size:11px;padding:2px 7px">⚙</button>
+      </span>
+    </div>
     <div class="edition-list" id="edition-list">
       <div style="padding:16px; color:var(--text-placeholder); font-size:13px;">Loading…</div>
     </div>
@@ -96,6 +101,24 @@
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="doSend()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- New edition modal -->
+<div class="modal-overlay" id="new-edition-modal">
+  <div class="modal">
+    <h3>New Edition</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+      <label style="font-size:13px">
+        Title
+        <input id="new-edition-title" type="text" placeholder="e.g. Spring Edition" style="display:block;width:100%;margin-top:4px;padding:6px 8px;font-size:13px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);box-sizing:border-box">
+      </label>
+      <span id="new-edition-error" style="font-size:12px;color:#f08080;display:none"></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeNewEdition()">Cancel</button>
+      <button class="btn btn-primary" onclick="doNewEdition()">Create</button>
     </div>
   </div>
 </div>
