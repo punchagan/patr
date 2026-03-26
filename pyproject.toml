@@ -3,6 +3,7 @@ name = "patr"
 version = "0.1.0"
 description = "Patr — Hugo newsletter tool (पत्र)"
 readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.0",
