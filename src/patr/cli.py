@@ -30,23 +30,34 @@ def cmd_install(args):
     shutil.copy(src_css, dst_css)
     print(f"✓ Newsletter CSS installed → {dst_css}")
 
-    # Create content stubs (don't overwrite)
+    # Check for flat .md editions — patr requires page bundles
     content_dst = repo / "content" / "newsletter"
-    content_dst.mkdir(parents=True, exist_ok=True)
+    if content_dst.exists():
+        flat_editions = [
+            f for f in content_dst.glob("*.md")
+            if f.name not in ("_index.md", "footer.md")
+        ]
+        if flat_editions:
+            print(f"Error: flat edition files found in {content_dst}:")
+            for f in flat_editions:
+                print(f"  {f.name}")
+            print("Patr uses page bundles (content/newsletter/slug/index.md).")
+            print("Migrate each edition to its own directory before reinstalling.")
+            return
+        print(f"  Content directory exists and uses page bundles, skipping stub creation.")
+    else:
+        content_dst.mkdir(parents=True)
 
-    index_md = content_dst / "_index.md"
-    if not index_md.exists():
+        index_md = content_dst / "_index.md"
         index_md.write_text('---\ntitle: "Newsletter"\ndescription: ""\n---\n')
         print(f"✓ Created {index_md}")
-    else:
-        print(f"  Skipped {index_md} (already exists)")
 
-    footer_md = content_dst / "footer.md"
-    if not footer_md.exists():
-        footer_md.write_text('---\ntitle: "Footer"\n_build:\n  render: never\n  list: never\n---\n')
-        print(f"✓ Created {footer_md}")
-    else:
-        print(f"  Skipped {footer_md} (already exists)")
+        footer_dir = content_dst / "footer"
+        footer_dir.mkdir()
+        (footer_dir / "index.md").write_text(
+            '---\ntitle: "Footer"\n_build:\n  render: never\n  list: never\n---\n'
+        )
+        print(f"✓ Created {footer_dir / 'index.md'}")
 
     # Ask about menu entry
     add_menu = input("\nAdd newsletter to site menu? [y/N] ").strip().lower()

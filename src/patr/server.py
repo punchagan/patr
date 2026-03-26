@@ -32,7 +32,7 @@ from patr.config import (
     save_hugo_patr_params,
 )
 from patr.contacts import fetch_contacts, get_already_sent, log_sent
-from patr.content import build_email_html, load_edition, load_footer, get_editions
+from patr.content import build_email_html, build_web_html, load_edition, load_footer, get_editions
 from patr.gmail import send_email
 
 app = Flask(__name__)
@@ -117,15 +117,17 @@ def api_editions():
     return jsonify(get_editions())
 
 
+@app.route("/newsletter/<slug>/<path:filename>")
+def edition_resource(slug, filename):
+    return send_from_directory(state.CONTENT_DIR / slug, filename)
+
+
 @app.route("/preview/<slug>/email")
 def preview_email(slug):
     _, post = load_edition(slug)
     if post is None:
         return "Not found", 404
-    hugo_config = load_hugo_config()
-    return build_email_html(
-        slug, post, load_footer(), hugo_config, recipient_name="Friend"
-    )
+    return build_web_html(slug, post, load_footer())
 
 
 @app.route("/preview/<slug>/web")

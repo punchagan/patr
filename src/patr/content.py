@@ -9,16 +9,19 @@ from patr import state
 
 def get_editions():
     posts = []
-    for f in sorted(state.CONTENT_DIR.glob("*.md")):
-        if f.name in ("_index.md", "footer.md"):
+    for d in sorted(state.CONTENT_DIR.iterdir()):
+        if not d.is_dir() or d.name == "footer":
+            continue
+        f = d / "index.md"
+        if not f.exists():
             continue
         try:
             post = frontmatter.load(f)
         except Exception as e:
             posts.append(
                 {
-                    "slug": f.stem,
-                    "title": f"⚠ {f.stem} (frontmatter error)",
+                    "slug": d.name,
+                    "title": f"⚠ {d.name} (frontmatter error)",
                     "date": "",
                     "draft": True,
                     "path": str(f.resolve()),
@@ -28,8 +31,8 @@ def get_editions():
             continue
         posts.append(
             {
-                "slug": f.stem,
-                "title": post.get("title", f.stem),
+                "slug": d.name,
+                "title": post.get("title", d.name),
                 "date": str(post.get("date", ""))[:10],
                 "draft": post.get("draft", False),
                 "path": str(f.resolve()),
@@ -40,17 +43,17 @@ def get_editions():
 
 
 def load_edition(slug):
-    f = state.CONTENT_DIR / f"{slug}.md"
+    f = state.CONTENT_DIR / slug / "index.md"
     if not f.exists():
         return None, None
     try:
         return f, frontmatter.load(f)
     except Exception as e:
-        raise ValueError(f"Frontmatter parse error in {f.name}: {e}") from e
+        raise ValueError(f"Frontmatter parse error in {slug}/index.md: {e}") from e
 
 
 def load_footer():
-    footer_file = state.CONTENT_DIR / "footer.md"
+    footer_file = state.CONTENT_DIR / "footer" / "index.md"
     if not footer_file.exists():
         return ""
     return frontmatter.load(footer_file).content
@@ -70,7 +73,26 @@ def render_md(text):
     return re.sub(r"<img[^>]+>", img_to_figure, html)
 
 
-def build_web_html(post, footer_md):
+def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
+    """Rewrite image src to absolute URLs for email sending.
+
+    Handles root-relative (/images/foo.png → base_url/images/foo.png)
+    and relative (photo.jpg → page_url/photo.jpg) paths.
+    """
+    html = re.sub(
+        r'(<img\b[^>]*\bsrc=")(/[^"]+)',
+        lambda m: m.group(1) + base_url + m.group(2),
+        html,
+    )
+    html = re.sub(
+        r'(<img\b[^>]*\bsrc=")(?!https?://|/)([^"]+)',
+        lambda m: m.group(1) + page_url + m.group(2),
+        html,
+    )
+    return html
+
+
+def build_web_html(slug, post, footer_md):
     date = str(post.get("date", ""))[:10]
     intro_html = render_md(post.get("intro", ""))
     body_html = render_md(post.content)
@@ -80,6 +102,7 @@ def build_web_html(post, footer_md):
 <html>
 <head>
 <meta charset="utf-8">
+<base href="/newsletter/{slug}/">
 <title>{post["title"]}</title>
 <style>
   body {{ font-family: Georgia, serif; max-width: 640px; margin: 2rem auto; padding: 0 1.5rem; color: #333; line-height: 1.7; }}
@@ -104,7 +127,7 @@ def build_web_html(post, footer_md):
 
 def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
     base_url = hugo_config.get("baseURL", "").rstrip("/")
-    web_url = f"{base_url}/newsletter/{slug}/"
+    page_url = f"{base_url}/newsletter/{slug}/"
     greeting = f"Hi {recipient_name}," if recipient_name else "Hi,"
     intro_html = render_md(post.get("intro", ""))
     body_html = render_md(post.content)
@@ -115,7 +138,7 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
 <head><meta charset="utf-8"><style>img {{ max-width: 500px; height: auto; display: block; margin: 1rem auto; }}</style></head>
 <body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #333; background: #fff; line-height: 1.7;">
   <p style="font-size: 0.8em; color: #aaa; margin-bottom: 2em;">
-    <a href="{web_url}" style="color: #aaa;">View in browser</a>
+    <a href="{page_url}" style="color: #aaa;">View in browser</a>
   </p>
   <p>{greeting}</p>
   {"<div style='font-style:italic;color:#555;border-bottom:1px solid #eee;padding-bottom:1em;margin-bottom:1.5em;font-size:1.05em;'>" + intro_html + "</div>" if intro_html else ""}
@@ -123,4 +146,4 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
   {"<div style='border-top:1px solid #eee;margin-top:2em;padding-top:1em;font-size:0.9em;color:#666;'>" + footer_html + "</div>" if footer_html else ""}
 </body>
 </html>"""
-    return transform(html)
+    return transform(absolutify_urls(html, base_url, page_url))
