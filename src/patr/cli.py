@@ -84,9 +84,11 @@ def cmd_install(args):
 
 
 def cmd_migrate(args):
+    import re
     import shutil
     repo = Path(args.repo).resolve()
     content_dir = repo / "content" / "newsletter"
+    static_images_dir = repo / "static" / "images" / "newsletter"
     dry_run = not args.apply
 
     if not content_dir.exists():
@@ -96,7 +98,7 @@ def cmd_migrate(args):
     if dry_run:
         print("Dry run — pass --apply to move files.\n")
 
-    moved = 0
+    editions_moved = 0
     skipped = 0
     for f in sorted(content_dir.glob("*.md")):
         if f.name == "_index.md":
@@ -107,14 +109,35 @@ def cmd_migrate(args):
             print(f"  skip  {f.name} (bundle already exists)")
             skipped += 1
             continue
-        print(f"  {'move' if not dry_run else 'would move'}  {f.name} → {slug}/index.md")
+
+        text = f.read_text()
+
+        # Find /images/newsletter/foo.jpg references (not footer images)
+        image_refs = re.findall(r'/images/newsletter/([^\s)"\']+)', text)
+        images_to_move = []
+        for img in image_refs:
+            src = static_images_dir / img
+            if src.exists():
+                images_to_move.append(img)
+
+        verb = "move" if not dry_run else "would move"
+        print(f"  {verb}  {f.name} → {slug}/index.md")
+        for img in images_to_move:
+            print(f"          static/images/newsletter/{img} → {slug}/{img}")
+
         if not dry_run:
             bundle_dir.mkdir()
-            shutil.move(str(f), str(bundle_dir / "index.md"))
-        moved += 1
+            # Rewrite image paths before writing index.md
+            new_text = re.sub(r'/images/newsletter/([^\s)"\']+)', r'\1', text)
+            (bundle_dir / "index.md").write_text(new_text)
+            f.unlink()
+            for img in images_to_move:
+                shutil.move(str(static_images_dir / img), str(bundle_dir / img))
 
-    print(f"\n{'Would move' if dry_run else 'Moved'} {moved} edition(s), skipped {skipped}.")
-    if dry_run and moved:
+        editions_moved += 1
+
+    print(f"\n{'Would move' if dry_run else 'Moved'} {editions_moved} edition(s), skipped {skipped}.")
+    if dry_run and editions_moved:
         print("Run with --apply to move files.")
 
 
