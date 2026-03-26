@@ -81,7 +81,12 @@ def cmd_install(args):
 
     # Create a launcher on the Desktop on Windows
     if os.name == "nt":
-        desktop = Path.home() / "Desktop"
+        import winreg
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+            desktop = Path(winreg.QueryValueEx(key, "Desktop")[0])
+        except Exception:
+            desktop = Path.home()
         bat = desktop / f"start-patr-{repo.name}.bat"
         bat.write_text(f'@echo off\npatr serve --repo "{repo}"\npause\n')
         print(f"✓ Created launcher on Desktop → {bat}")
