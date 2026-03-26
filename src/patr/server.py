@@ -320,6 +320,7 @@ def test_send(slug):
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
     newsletter_name = newsletter_config.get("name", "Newsletter")
+    sheet_id = newsletter_config.get("sheet_id")
     data = request.json or {}
     recipients = data.get("recipients")  # list of {name, email} or None = just self
     try:
@@ -340,6 +341,8 @@ def test_send(slug):
                 slug, post, footer_md, hugo_config, recipient_name=r["name"]
             )
             send_email(gmail, sender, r["email"], subject, html)
+            log_sent(sheet_id, creds, r["email"], f"test-{slug}")
+
         return jsonify({"ok": True, "sent": len(recipients)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
