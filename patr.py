@@ -1525,6 +1525,16 @@ if __name__ == "__main__":
         debug_arg = getattr(args, "debug", False)
 
         REPO_ROOT = Path(repo_arg).resolve()
+
+        if not (REPO_ROOT / "hugo.toml").exists() and not (REPO_ROOT / "config.toml").exists():
+            print(f"Error: {REPO_ROOT} doesn't look like a Hugo site (no hugo.toml found).")
+            raise SystemExit(1)
+
+        if not (REPO_ROOT / "layouts" / "newsletter").exists():
+            print(f"Error: Patr layouts not found in {REPO_ROOT}.")
+            print(f"Run first: patr.py install --repo {REPO_ROOT}")
+            raise SystemExit(1)
+
         CONTENT_DIR = REPO_ROOT / "content" / "newsletter"
 
         # Patch module-level names used by Flask routes
