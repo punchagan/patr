@@ -16,8 +16,9 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 ## Prerequisites
 
-- A Hugo site
-- Python 3.11+
+- [Hugo](https://gohugo.io/installation/) — to build and preview the site
+- [Git](https://git-scm.com/downloads) — to publish editions
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — to install Patr (manages Python automatically)
 - A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials (see below)
 
 ### GCP credentials setup
@@ -39,9 +40,7 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 ## Installation
 
 ```bash
-pip install -e .
-# or
-uv pip install -e .
+uv tool install git+https://github.com/punchagan/patr
 ```
 
 Then install Patr's layouts and assets into your Hugo site:
@@ -84,6 +83,22 @@ patr serve --repo /path/to/hugo-site --debug    # fixed port 5000, Flask reloade
 Columns: `Name`, `Email`, `Send` (leave blank or set to `y` to include; `n`/`no` to opt out).
 
 A "Sent Log" tab is created automatically on first send.
+
+## Development
+
+Clone the repo and install in editable mode:
+
+```bash
+git clone https://github.com/punchagan/patr
+cd patr
+uv pip install -e .
+```
+
+Run in debug mode (fixed port 5000, Flask reloader enabled, no browser auto-open):
+
+```bash
+patr serve --repo /path/to/hugo-site --debug
+```
 
 ## Content format
 
