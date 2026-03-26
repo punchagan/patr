@@ -1,4 +1,5 @@
 {{ define "main" }}
+{{ with resources.Get "newsletter.css" }}<style>{{ .Content | safeCSS }}</style>{{ end }}
 <div class="newsletter-archive">
   <div class="newsletter-header">
     <h1>{{ .Title }}</h1>

@@ -1458,22 +1458,11 @@ def cmd_install(args):
     shutil.copytree(src_layouts, dst_layouts)
     print(f"✓ Layouts installed → {dst_layouts}")
 
-    # Copy/append CSS
+    # Copy newsletter CSS (loaded inline by templates via resources.Get)
     src_css = PATR_ROOT / "assets" / "newsletter.css"
-    dst_styles = repo / "assets" / "styles.css"
     dst_css = repo / "assets" / "newsletter.css"
-    sentinel = "/* patr:newsletter */"
-    if dst_styles.exists():
-        existing = dst_styles.read_text()
-        if sentinel not in existing:
-            dst_styles.write_text(existing + f"\n{sentinel}\n" + src_css.read_text())
-            print(f"✓ Newsletter CSS appended → {dst_styles}")
-        else:
-            print(f"✓ Newsletter CSS already in {dst_styles} (skipped)")
-    else:
-        shutil.copy(src_css, dst_css)
-        print(f"✓ Newsletter CSS installed → {dst_css}")
-        print(f"  Add it to your baseof.html: <link rel=\"stylesheet\" href=\"{{{{ $newsletter | relURL }}}}\">")
+    shutil.copy(src_css, dst_css)
+    print(f"✓ Newsletter CSS installed → {dst_css}")
 
     # Create content stubs (don't overwrite)
     content_dst = repo / "content" / "newsletter"

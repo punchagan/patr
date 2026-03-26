@@ -1,4 +1,5 @@
 {{ define "main" }}
+{{ with resources.Get "newsletter.css" }}<style>{{ .Content | safeCSS }}</style>{{ end }}
 <article class="newsletter-post">
   <header class="newsletter-post-header">
     <p class="newsletter-post-date">{{ .Date.Format "2 January 2006" }}</p>
