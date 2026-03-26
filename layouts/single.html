@@ -1,0 +1,20 @@
+{{ define "main" }}
+<article class="newsletter-post">
+  <header class="newsletter-post-header">
+    <p class="newsletter-post-date">{{ .Date.Format "2 January 2006" }}</p>
+    <h1 class="newsletter-post-title">{{ .Title }}</h1>
+  </header>
+  {{ with .Params.intro }}
+  <div class="newsletter-intro">{{ . | markdownify }}</div>
+  {{ end }}
+  <div class="newsletter-post-content">
+    {{ .Content }}
+  </div>
+  {{ with .Site.GetPage "/newsletter/footer" }}
+  <div class="newsletter-footer-content">{{ .Content }}</div>
+  {{ end }}
+  <footer class="newsletter-post-footer">
+    <a href="{{ "/newsletter" | relURL }}" class="newsletter-back">← All editions</a>
+  </footer>
+</article>
+{{ end }}

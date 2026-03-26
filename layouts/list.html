@@ -1,0 +1,18 @@
+{{ define "main" }}
+<div class="newsletter-archive">
+  <div class="newsletter-header">
+    <h1>{{ .Title }}</h1>
+    {{ with .Description }}<p class="newsletter-description">{{ . }}</p>{{ end }}
+  </div>
+  <ol class="newsletter-list">
+    {{ range .Pages.ByDate.Reverse }}
+    <li class="newsletter-list-item">
+      <a href="{{ .RelPermalink }}">
+        <span class="newsletter-list-title">{{ .Title }}</span>
+        <span class="newsletter-list-date">{{ .Date.Format "2 January 2006" }}</span>
+      </a>
+    </li>
+    {{ end }}
+  </ol>
+</div>
+{{ end }}
