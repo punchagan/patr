@@ -184,6 +184,30 @@ def toggle_draft(slug):
     return jsonify({"draft": new_draft})
 
 
+@app.route("/api/publish/<slug>", methods=["POST"])
+def publish_edition(slug):
+    import subprocess
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    if post.get("draft", True):
+        return jsonify({"error": "Edition is still a draft"}), 400
+
+    edition_dir = state.CONTENT_DIR / slug
+    for cmd in [
+        ["git", "add", str(edition_dir)],
+        ["git", "commit", "-m", f"Publish: {post['title']}"],
+        ["git", "push"],
+    ]:
+        result = subprocess.run(cmd, cwd=state.REPO_ROOT, capture_output=True, text=True)
+        if result.returncode != 0:
+            # "nothing to commit" is not an error
+            if "nothing to commit" in result.stdout + result.stderr:
+                break
+            return jsonify({"error": result.stderr or result.stdout}), 500
+    return jsonify({"ok": True})
+
+
 @app.route("/api/check-deployment/<slug>")
 def check_deployment(slug):
     hugo_config = load_hugo_config()

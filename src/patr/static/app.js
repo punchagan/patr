@@ -186,8 +186,30 @@ function checkDeployment() {
 
 function updateSendButtons() {
   const canSend = !currentDraft && deploymentLive;
+  document.getElementById('btn-publish').disabled = currentDraft;
   document.getElementById('btn-test').disabled = false;
   document.getElementById('btn-send').disabled = !canSend;
+}
+
+function doPublish() {
+  const btn = document.getElementById('btn-publish');
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+  fetch(`/api/publish/${currentSlug}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      btn.textContent = 'Publish';
+      updateSendButtons();
+      const statusEl = document.getElementById('deploy-status');
+      statusEl.style.display = '';
+      if (d.ok) {
+        statusEl.className = 'status-msg ok';
+        statusEl.textContent = 'Published ✓';
+      } else {
+        statusEl.className = 'status-msg err';
+        statusEl.textContent = `Publish failed: ${d.error}`;
+      }
+    });
 }
 
 function testSend() {

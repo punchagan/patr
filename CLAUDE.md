@@ -167,7 +167,3 @@ Body content here. Reference images relatively: ![alt](photo.jpg)
 ### Web Preview
 
 Runs `hugo -D --baseURL=http://127.0.0.1:{PORT}/` and redirects iframe to the built output. Serves `public/` via catch-all Flask route. Serves `static/images/` at `/images/`.
-
-## Pending Work
-
-- [ ] Publish button — git commit + push (invisible to author; just "Published ✓")
