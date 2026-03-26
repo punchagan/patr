@@ -14,5 +14,8 @@ dependencies = [
     "premailer>=3.10",
 ]
 
+[tool.setuptools.package-data]
+patr = ["data/**/*"]
+
 [project.scripts]
 patr = "patr.cli:main"
