@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [tool.setuptools.package-data]
-patr = ["data/**/*"]
+patr = ["data/**/*", "templates/*", "static/**/*"]
 
 [project.scripts]
 patr = "patr.cli:main"
