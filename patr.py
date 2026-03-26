@@ -1482,7 +1482,25 @@ def cmd_install(args):
     else:
         print(f"  Skipped {footer_md} (already exists)")
 
+    # Ask about menu entry
+    add_menu = input("\nAdd newsletter to site menu? [y/N] ").strip().lower()
+    if add_menu == "y":
+        weight = input("Menu weight (default 10): ").strip() or "10"
+        try:
+            weight = int(weight)
+        except ValueError:
+            weight = 10
+        hugo_toml = repo / "hugo.toml"
+        text = hugo_toml.read_text()
+        menu_entry = f'\n[[menus.main]]\n  name = "Newsletter"\n  url = "/newsletter/"\n  weight = {weight}\n'
+        if "[[menus.main]]" in text and "/newsletter/" in text:
+            print("  Menu entry already exists (skipped)")
+        else:
+            hugo_toml.write_text(text + menu_entry)
+            print(f"✓ Menu entry added (weight={weight})")
+
     print("\nPatr installed. Run: patr.py serve --repo", repo)
+    print("Open the ⚙ settings panel to set your newsletter name and contacts sheet.")
 
 
 # --- Entry point ---
