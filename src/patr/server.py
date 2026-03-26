@@ -40,7 +40,7 @@ app = Flask(__name__)
 
 @app.route("/images/<path:filename>")
 def static_images(filename):
-    return send_from_directory(state.REPO_ROOT / "static", filename)
+    return send_from_directory(state.REPO_ROOT / "static" / "images", filename)
 
 
 @app.route("/")
