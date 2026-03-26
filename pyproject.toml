@@ -1,0 +1,17 @@
+[project]
+name = "patr"
+version = "0.1.0"
+description = "Patr — Hugo newsletter tool (पत्र)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "python-frontmatter>=1.1",
+    "markdown>=3.6",
+    "google-auth-oauthlib>=1.2",
+    "google-api-python-client>=2.120",
+    "premailer>=3.10",
+]
+
+[project.scripts]
+patr = "patr.cli:main"
