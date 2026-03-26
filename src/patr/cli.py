@@ -79,6 +79,13 @@ def cmd_install(args):
             hugo_toml.write_text(text + menu_entry)
             print(f"✓ Menu entry added (weight={weight})")
 
+    # Create a launcher on the Desktop on Windows
+    if os.name == "nt":
+        desktop = Path.home() / "Desktop"
+        bat = desktop / f"start-patr-{repo.name}.bat"
+        bat.write_text(f'@echo off\npatr serve --repo "{repo}"\npause\n')
+        print(f"✓ Created launcher on Desktop → {bat}")
+
     print("\nPatr installed. Run: patr serve --repo", repo)
     print("Open the ⚙ settings panel to set your newsletter name and contacts sheet.")
 
