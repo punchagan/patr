@@ -18,8 +18,23 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 - A Hugo site
 - Python 3.11+
-- A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials
-- `credentials.json` saved to `~/.config/patr/credentials.json`
+- A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials (see below)
+
+### GCP credentials setup
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project.
+2. Enable the **Gmail API** and **Google Sheets API**:
+   - Navigate to **APIs & Services → Library**
+   - Search for and enable each API.
+3. Configure the OAuth consent screen:
+   - Go to **APIs & Services → OAuth consent screen**
+   - Choose **External**, fill in an app name and your email, and save.
+   - Under **Test users**, add the Gmail address(es) that will use Patr.
+4. Create OAuth 2.0 credentials:
+   - Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   - Choose **Desktop app**, give it a name, and click Create.
+   - Download the JSON file.
+5. Save the downloaded file as `~/.config/patr/credentials.json` (Linux/macOS) or `%USERPROFILE%\.config\patr\credentials.json` (Windows).
 
 ## Installation
 
