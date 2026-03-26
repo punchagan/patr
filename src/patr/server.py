@@ -32,7 +32,13 @@ from patr.config import (
     save_hugo_patr_params,
 )
 from patr.contacts import fetch_contacts, get_already_sent, log_sent
-from patr.content import build_email_html, build_web_html, load_edition, load_footer, get_editions
+from patr.content import (
+    build_email_html,
+    build_web_html,
+    load_edition,
+    load_footer,
+    get_editions,
+)
 from patr.gmail import send_email
 
 app = Flask(__name__)
@@ -65,7 +71,9 @@ def oauth_start():
             400,
         )
     flow = Flow.from_client_secrets_file(
-        state.CREDENTIALS_FILE, scopes=state.SCOPES, redirect_uri=oauth_redirect_uri(app.config["PORT"])
+        state.CREDENTIALS_FILE,
+        scopes=state.SCOPES,
+        redirect_uri=oauth_redirect_uri(app.config["PORT"]),
     )
     code_verifier = secrets.token_urlsafe(64)
     code_challenge = (
@@ -120,6 +128,7 @@ def api_editions():
 @app.route("/api/new-edition", methods=["POST"])
 def new_edition():
     from datetime import date
+
     data = request.json or {}
     title = data.get("title", "").strip()
     if not title:
@@ -179,7 +188,7 @@ def toggle_draft(slug):
         else:
             # Insert draft before the closing ---
             new_fm = fm[:-4] + f"draft: {new_value}\n---\n"
-        text = new_fm + text[m.end():]
+        text = new_fm + text[m.end() :]
     f.write_text(text)
     return jsonify({"draft": new_draft})
 
@@ -187,6 +196,7 @@ def toggle_draft(slug):
 @app.route("/api/publish/<slug>", methods=["POST"])
 def publish_edition(slug):
     import subprocess
+
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -199,7 +209,9 @@ def publish_edition(slug):
         ["git", "commit", "-m", f"Publish: {post['title']}"],
         ["git", "push"],
     ]:
-        result = subprocess.run(cmd, cwd=state.REPO_ROOT, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, cwd=state.REPO_ROOT, capture_output=True, text=True
+        )
         if result.returncode != 0:
             # "nothing to commit" is not an error
             if "nothing to commit" in result.stdout + result.stderr:
