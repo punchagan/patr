@@ -41,8 +41,11 @@ def cmd_install(args):
             print(f"Error: flat edition files found in {content_dst}:")
             for f in flat_editions:
                 print(f"  {f.name}")
-            print("Patr uses page bundles (content/newsletter/slug/index.md).")
-            print("Migrate each edition to its own directory before reinstalling.")
+            print("\nPatr uses page bundles (content/newsletter/slug/index.md).")
+            print("Preview what will change:")
+            print(f"  patr migrate --repo {repo}")
+            print("Then apply the migration:")
+            print(f"  patr migrate --repo {repo} --apply")
             return
         print(f"  Content directory exists and uses page bundles, skipping stub creation.")
     else:
@@ -78,6 +81,41 @@ def cmd_install(args):
 
     print("\nPatr installed. Run: patr serve --repo", repo)
     print("Open the ⚙ settings panel to set your newsletter name and contacts sheet.")
+
+
+def cmd_migrate(args):
+    import shutil
+    repo = Path(args.repo).resolve()
+    content_dir = repo / "content" / "newsletter"
+    dry_run = not args.apply
+
+    if not content_dir.exists():
+        print(f"Error: {content_dir} does not exist.")
+        return
+
+    if dry_run:
+        print("Dry run — pass --apply to move files.\n")
+
+    moved = 0
+    skipped = 0
+    for f in sorted(content_dir.glob("*.md")):
+        if f.name == "_index.md":
+            continue
+        slug = f.stem
+        bundle_dir = content_dir / slug
+        if bundle_dir.exists():
+            print(f"  skip  {f.name} (bundle already exists)")
+            skipped += 1
+            continue
+        print(f"  {'move' if not dry_run else 'would move'}  {f.name} → {slug}/index.md")
+        if not dry_run:
+            bundle_dir.mkdir()
+            shutil.move(str(f), str(bundle_dir / "index.md"))
+        moved += 1
+
+    print(f"\n{'Would move' if dry_run else 'Moved'} {moved} edition(s), skipped {skipped}.")
+    if dry_run and moved:
+        print("Run with --apply to move files.")
 
 
 def cmd_serve(args):
@@ -132,10 +170,17 @@ def main():
     install_parser = sub.add_parser("install", help="Install Patr layouts/CSS into a Hugo site")
     install_parser.add_argument("--repo", required=True, help="Path to Hugo site root")
 
+    # migrate
+    migrate_parser = sub.add_parser("migrate", help="Convert flat .md editions to page bundles")
+    migrate_parser.add_argument("--repo", required=True, help="Path to Hugo site root")
+    migrate_parser.add_argument("--apply", action="store_true", help="Actually move files (default: dry run)")
+
     args = parser.parse_args()
 
     if args.command == "install":
         cmd_install(args)
+    elif args.command == "migrate":
+        cmd_migrate(args)
     else:
         # Default to serve (also handles no subcommand for backwards compat)
         cmd_serve(args)
