@@ -29,7 +29,7 @@ def save_hugo_patr_params(updates: dict):
         quoted = f'"{value}"'
         # Update existing key inside [params.patr] block
         pattern = (
-            r"(\[params\.newsletter\][^\[]*?)(" + re.escape(key) + r'\s*=\s*"[^"]*")'
+            r"(\[params\.patr\][^\[]*?)(" + re.escape(key) + r'\s*=\s*"[^"]*")'
         )
         if re.search(pattern, text, re.DOTALL):
             text = re.sub(
@@ -42,7 +42,7 @@ def save_hugo_patr_params(updates: dict):
             # Key doesn't exist — append to section or create section
             if "[params.patr]" in text:
                 text = re.sub(
-                    r"(\[params\.newsletter\])", f"\\1\n  {key} = {quoted}", text
+                    r"(\[params\.patr\])", f"\\1\n  {key} = {quoted}", text
                 )
             else:
                 text += f"\n[params.patr]\n  {key} = {quoted}\n"
