@@ -409,7 +409,9 @@ def static_images(filename):
 
 @app.route("/")
 def index():
-    return render_template_string(MAIN_HTML)
+    cfg = load_newsletter_config()
+    unconfigured = not cfg.get("name", "").strip()
+    return render_template_string(MAIN_HTML, unconfigured=unconfigured)
 
 
 @app.route("/api/auth-status")
@@ -1050,6 +1052,7 @@ MAIN_HTML = """<!DOCTYPE html>
 <div class="modal-overlay" id="settings-modal">
   <div class="modal">
     <h3>Settings</h3>
+    {% if unconfigured %}<p style="font-size:13px;color:var(--text-secondary);margin:0 0 12px">Configure your newsletter to get started.</p>{% endif %}
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
       <label style="font-size:13px">
         Newsletter name
@@ -1436,6 +1439,7 @@ function saveSettings() {
 document.getElementById('settings-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeSettings();
 });
+{% if unconfigured %}openSettings();{% endif %}
 </script>
 </body>
 </html>"""
