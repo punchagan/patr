@@ -11,17 +11,21 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 ## Running Patr
 
 ```bash
-# Point at a Hugo site and start the UI
-./patr.py serve --repo /path/to/hugo-site
+# Install into a Hugo site (one-time setup)
+patr install --repo /path/to/hugo-site
+
+# Start the UI
+patr serve --repo /path/to/hugo-site
 
 # Debug mode: fixed port 5000, Flask reloader enabled, no browser auto-open
-./patr.py serve --repo /path/to/hugo-site --debug
+patr serve --repo /path/to/hugo-site --debug
 
-# Install layouts/CSS into a Hugo site (one-time setup)
-./patr.py install --repo /path/to/hugo-site
+# Migrate existing flat .md editions to page bundles (dry run first)
+patr migrate --repo /path/to/hugo-site
+patr migrate --repo /path/to/hugo-site --apply
 ```
 
-Patr uses `uv` inline script dependencies (PEP 723) — no separate install step needed. Run directly with `./patr.py` or `uv run patr.py`.
+Install with `uv pip install -e .` or `pip install -e .`. Requires Python 3.11+.
 
 ## Architecture
 
@@ -29,37 +33,60 @@ Patr uses `uv` inline script dependencies (PEP 723) — no separate install step
 
 ```
 patr/
-  patr.py                          # Main Flask app + CLI entry point
-  layouts/                           # Hugo layout templates (copied to {repo}/layouts/newsletter/ by install)
-    list.html                        # Archive list page
-    single.html                      # Single post (includes footer via GetPage)
-    _markup/render-image.html        # Newsletter-scoped render hook (figure/figcaption)
-  assets/
-    newsletter.css                   # Newsletter styles (appended to site's styles.css by install)
-  # content/newsletter/ does not exist — stubs created programmatically by install
+  pyproject.toml
+  src/patr/
+    __main__.py          # python -m patr entry point
+    cli.py               # argparse, cmd_serve, cmd_install, cmd_migrate
+    server.py            # Flask app + all routes
+    config.py            # load/save hugo config, find_hugo, build_hugo
+    auth.py              # OAuth flow, PKCE, get_auth, auth_status
+    content.py           # editions, markdown rendering, email/web HTML builders
+    contacts.py          # Google Sheets fetch, sent log
+    gmail.py             # send_email
+    state.py             # mutable globals: PATR_ROOT, REPO_ROOT, CONTENT_DIR, etc.
+    templates/
+      index.html         # Jinja2 template for the UI
+    static/
+      app.css            # UI styles
+      app.js             # UI logic
+    data/
+      layouts/           # Hugo templates (copied to {repo}/layouts/newsletter/ by install)
+      assets/
+        newsletter.css   # Newsletter styles (copied to {repo}/assets/ by install)
 ```
 
 ### Key Design Decisions
 
-- **Single script** — `patr.py` is self-contained with uv inline deps; no package install needed
-- **`PATR_ROOT`** — path to patr's own repo (layouts, assets, stubs)
-- **`REPO_ROOT`** — path to the target Hugo site, set from `--repo` arg (defaults to cwd)
+- **`state.py`** — mutable globals set at startup by `cli.py`. All modules import `from patr import state` and use `state.REPO_ROOT` etc.
+- **`REPO_ROOT`** — path to the target Hugo site, set from `--repo` arg
 - **`CONTENT_DIR`** — `REPO_ROOT / "content" / "newsletter"`
 - **`CONFIG_DIR`** — `~/.config/patr/` — credentials and local config, never in any repo
+- **`DATA_DIR`** — `src/patr/data/` — layouts and assets bundled with the package
 - Hugo auto-detected via `shutil.which()`: checks `hugo.sh` in repo root first, then `hugo` in PATH
+- Server imports deferred in `cmd_serve` so `state` is configured before Flask routes load
 
 ### Install Command
 
-`patr.py install --repo <path>` does:
-1. Copies `layouts/newsletter/` → `{repo}/layouts/newsletter/`
-2. Appends `assets/newsletter.css` to `{repo}/assets/styles.css` (idempotent via `/* patr:newsletter */` sentinel)
-3. Creates `content/newsletter/_index.md` and `footer.md` if not present
+`patr install --repo <path>` does:
+1. Copies `data/layouts/` → `{repo}/layouts/newsletter/`
+2. Copies `data/assets/newsletter.css` → `{repo}/assets/newsletter.css`
+3. Creates `content/newsletter/_index.md` and `content/newsletter/footer/index.md`
+4. Optionally adds a `[[menus.main]]` entry to `hugo.toml`
+
+Fails if flat `.md` edition files exist in `content/newsletter/` — run `patr migrate` first.
+
+### Migrate Command
+
+`patr migrate --repo <path>` (dry run) / `--apply` (execute):
+- Moves each `slug.md` → `slug/index.md` (page bundle)
+- Finds `/images/newsletter/foo.jpg` references in each edition, moves those image files into the bundle, rewrites paths to relative (`foo.jpg`)
+- Footer images in `static/images/newsletter/` are left alone (shared, referenced via absolute path)
 
 ### Flask App
 
 - Normal mode: random free port via `socket.bind(("127.0.0.1", 0))`; auto-opens browser
 - Debug mode: fixed port 5000, Flask reloader enabled, no browser open
-- Port stored in `app.config['PORT']` (not a global)
+- Port stored in `app.config['PORT']`
 - `OAUTHLIB_INSECURE_TRANSPORT=1` and `OAUTHLIB_RELAX_TOKEN_SCOPE=1` set at startup (localhost OAuth)
 
 ### OAuth / Auth
@@ -68,24 +95,36 @@ patr/
 - PKCE implemented manually (`secrets.token_urlsafe` + SHA256 challenge)
 - State + verifier stored in `_oauth_state_store` dict (not Flask session) — works from both `localhost` and `127.0.0.1`
 - After callback, redirects back to originating host (preserves localhost vs 127.0.0.1)
-- Credentials: `~/.config/newsletter/credentials.json` (GCP Desktop app JSON)
-- Token: `~/.config/newsletter/token.json` (auto-written on connect)
+- Credentials: `~/.config/patr/credentials.json` (GCP Desktop app JSON)
+- Token: `~/.config/patr/token.json` (auto-written on connect)
 - Scopes: `gmail.send`, `userinfo.email`, `spreadsheets`
 
 ### Config Split
 
 | Location | Contents |
 |---|---|
-| `{hugo-site}/hugo.toml` → `[params.newsletter]` | `name` and other non-sensitive settings |
-| `~/.config/newsletter/config.toml` | `sheet_id` (sensitive — contacts exposure risk) |
-| `~/.config/newsletter/credentials.json` | GCP OAuth client credentials |
-| `~/.config/newsletter/token.json` | OAuth access/refresh token |
+| `{hugo-site}/hugo.toml` → `[params.patr]` | `name` and other non-sensitive settings |
+| `~/.config/patr/config.toml` | `sheet_id` (sensitive — contacts exposure risk) |
+| `~/.config/patr/credentials.json` | GCP OAuth client credentials |
+| `~/.config/patr/token.json` | OAuth access/refresh token |
 
-`load_newsletter_config()` merges both sources. `save_hugo_newsletter_params()` surgically patches `hugo.toml` without round-tripping through a TOML serializer (preserves key order, block scalars, comments).
+`load_newsletter_config()` merges both sources. `save_hugo_patr_params()` surgically patches `hugo.toml` without round-tripping through a TOML serializer (preserves key order, block scalars, comments).
 
 ### Content Format
 
-Editions are regular `.md` files in `content/newsletter/` (NOT page bundles). Frontmatter:
+Editions are **page bundles** — directories in `content/newsletter/` containing `index.md` plus any images:
+
+```
+content/newsletter/
+  _index.md                    # section index
+  footer/
+    index.md                   # footer included in every edition (_build: render/list: never)
+  my-edition/
+    index.md                   # edition content
+    photo.jpg                  # images live alongside content
+```
+
+Frontmatter:
 
 ```yaml
 ---
@@ -93,26 +132,28 @@ title: "Edition title"
 date: 2024-03-15
 draft: true
 intro: |
-  Optional intro paragraph shown separately in italic/bordered style.
+  Optional intro paragraph shown in italic/bordered style.
 ---
 
-Body content here.
+Body content here. Reference images relatively: ![alt](photo.jpg)
 ```
 
-- `_index.md` and `footer.md` are excluded from the editions list
 - Draft toggle uses surgical regex on the frontmatter block only (preserves block scalars, key order)
-- `footer.md` has `_build: render:never, list:never` so Hugo doesn't give it its own URL
+- `footer/index.md` has `_build: render:never, list:never` so Hugo doesn't give it its own URL
 
 ### Hugo Templates
 
-- `layouts/newsletter/single.html` — includes footer via `.Site.GetPage "/newsletter/footer"`
+- `layouts/newsletter/single.html` — includes footer via `.Site.GetPage "/newsletter/footer"`; inlines `newsletter.css` via `resources.Get`
+- `layouts/newsletter/list.html` — archive page; inlines `newsletter.css`
 - `layouts/newsletter/_markup/render-image.html` — **newsletter-scoped render hook**, wraps images in `<figure>/<figcaption>`. Lives in `layouts/newsletter/_markup/` intentionally — do NOT move to `layouts/_default/_markup/` as it would affect all pages.
 
 ### Email Rendering
 
 - Python `markdown` library with `extra` and `smarty` extensions
 - `render_md()` mirrors Hugo's render hook: post-processes `<img>` → `<figure>/<figcaption>` when alt text is non-empty
+- `absolutify_urls()` rewrites relative and root-relative image src paths to absolute URLs before sending
 - CSS inlined via `premailer` before sending
+- Flask email preview uses `build_web_html()` with `<base href="/newsletter/{slug}/">` so relative image paths resolve; served by `/newsletter/<slug>/<filename>` route
 - Sender address fetched from OAuth2 userinfo API (not hardcoded)
 
 ### Contacts (Google Sheets)
@@ -129,7 +170,4 @@ Runs `hugo -D --baseURL=http://127.0.0.1:{PORT}/` and redirects iframe to the bu
 
 ## Pending Work
 
-- [ ] New edition button — create `.md` with pre-filled frontmatter, open in editor
-- [ ] Edit in Obsidian link (already in UI as placeholder)
 - [ ] Publish button — git commit + push (invisible to author; just "Published ✓")
-- [ ] Extract into proper installable package (currently a single script)
