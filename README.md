@@ -7,16 +7,34 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 > **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
 
 <!-- help-start -->
+## How to use Patr
+
+### Create an edition
+
+Click **+** in the sidebar. Give it a title and you're ready to write.
+
+### Write
+
+The editor supports basic formatting — bold, italic, headings, lists, links, and images. You can paste or drag images directly into the editor.
+
+The **Intro** field is optional — it appears in a highlighted style above the body in both the email and web versions. Good for a short summary or personal note.
+
+Your writing is saved automatically.
+
+### Preview
+
+Switch to **Split** to write and see the email preview side by side. Use **Preview Email** or **Preview Web** for a full-screen read before sending.
+
+### Publish to the web
+
+When your edition is ready, click **Mark as Live**, then **Publish**. This pushes the edition to your website.
+
+### Send
+
+Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web.
+<!-- help-end -->
+
 ## What it does
-
-- Write and edit editions in a built-in rich markdown editor
-- Preview editions as email or web (side-by-side with the editor, or full-screen)
-- Toggle draft/live status
-- Send test emails to selected contacts
-- Send to your full mailing list (Google Sheets)
-- Create new editions from the UI
-
-## Prerequisites
 
 - [Hugo](https://gohugo.io/installation/) — to build and preview the site
 - [Git](https://git-scm.com/downloads) — to publish editions
