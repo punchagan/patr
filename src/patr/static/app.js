@@ -404,3 +404,27 @@ document.getElementById('new-edition-title').addEventListener('keydown', e => {
   if (e.key === 'Enter') doNewEdition();
   if (e.key === 'Escape') closeNewEdition();
 });
+
+// Expose functions used by inline HTML event handlers
+Object.assign(window, {
+  selectEdition,
+  setView,
+  toggleDraft,
+  toggleTheme,
+  disconnect,
+  openSettings,
+  closeSettings,
+  saveSettings,
+  testContacts,
+  checkSentLog,
+  testSend,
+  closeTestModal,
+  doTestSend,
+  confirmSend,
+  closeModal,
+  doSend,
+  doPublish,
+  openNewEdition,
+  closeNewEdition,
+  doNewEdition,
+});
