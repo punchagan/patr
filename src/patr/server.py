@@ -18,6 +18,7 @@ from flask import (
 )
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from weasyprint import HTML
 
 from patr import state
 from patr.auth import (
@@ -160,20 +161,24 @@ def get_edition_content(slug):
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
-    return jsonify({
-        "title": post.get("title", ""),
-        "intro": post.get("intro", ""),
-        "body": post.content,
-    })
+    return jsonify(
+        {
+            "title": post.get("title", ""),
+            "intro": post.get("intro", ""),
+            "body": post.content,
+        }
+    )
 
 
 class _PatrYamlDumper(yaml.SafeDumper):
     pass
 
+
 def _str_representer(dumper, data):
     if "\n" in data:
         return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
 
 _PatrYamlDumper.add_representer(str, _str_representer)
 
@@ -193,7 +198,9 @@ def save_edition_content(slug):
         else:
             post.metadata.pop("intro", None)
     body = data.get("body", post.content)
-    fm_yaml = yaml.dump(post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True)
+    fm_yaml = yaml.dump(
+        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
+    )
     f.write_text(f"---\n{fm_yaml}---\n\n{body.strip()}\n")
     return jsonify({"ok": True})
 
@@ -204,6 +211,7 @@ ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 @app.route("/api/edition/<slug>/upload-image", methods=["POST"])
 def upload_image(slug):
     import secrets as _secrets
+
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -231,6 +239,36 @@ def preview_email(slug):
     return build_web_html(slug, post, load_footer())
 
 
+@app.route("/preview/<slug>/email.pdf")
+def preview_email_pdf(slug):
+    import re as _re
+    _, post = load_edition(slug)
+    if post is None:
+        return "Not found", 404
+    html = build_web_html(slug, post, load_footer())
+    # Strip <base> tag — WeasyPrint uses base_url directly instead
+    html = _re.sub(r'<base\b[^>]*>', '', html)
+    # Rewrite root-relative image paths (/images/...) to file:// paths so
+    # WeasyPrint can load them from disk (static/) without HTTP round-trips
+    static_dir = state.REPO_ROOT / "static"
+    html = _re.sub(
+        r'(<img\b[^>]*\bsrc=")(/[^"]+)',
+        lambda m: m.group(1) + (static_dir / m.group(2).lstrip("/")).as_uri(),
+        html,
+    )
+    # Convert width="Npx" HTML attributes to inline CSS — WeasyPrint ignores
+    # the px suffix on HTML width attributes (not valid HTML), so without this
+    # images with e.g. width="180px" render at full natural size in the PDF.
+    html = _re.sub(r'\bwidth="(\d+)px"', r'style="width:\1px"', html)
+    # Load page-bundle images from disk via file:// base URL
+    base_url = (state.CONTENT_DIR / slug).as_uri() + "/"
+    pdf_bytes = HTML(string=html, base_url=base_url).write_pdf()
+    return pdf_bytes, 200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": f'attachment; filename="{slug}.pdf"',
+    }
+
+
 @app.route("/preview/<slug>/web")
 def preview_web(slug):
     _, post = load_edition(slug)
@@ -249,7 +287,9 @@ def toggle_draft(slug):
         return jsonify({"error": "Not found"}), 404
     new_draft = not post.get("draft", False)
     post.metadata["draft"] = new_draft
-    fm_yaml = yaml.dump(post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True)
+    fm_yaml = yaml.dump(
+        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
+    )
     f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
     return jsonify({"draft": new_draft})
 
@@ -309,7 +349,7 @@ def get_help():
     start = text.find("<!-- help-start -->")
     end = text.find("<!-- help-end -->")
     if start != -1 and end != -1:
-        text = text[start + len("<!-- help-start -->"):end].strip()
+        text = text[start + len("<!-- help-start -->") : end].strip()
     html = md_lib.markdown(text, extensions=["extra", "tables"])
     return jsonify({"html": html})
 

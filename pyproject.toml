@@ -12,6 +12,7 @@ dependencies = [
     "google-auth-oauthlib>=1.2",
     "google-api-python-client>=2.120",
     "premailer>=3.10",
+    "weasyprint>=68.1",
 ]
 
 [project.optional-dependencies]

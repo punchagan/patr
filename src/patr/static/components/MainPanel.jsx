@@ -137,6 +137,11 @@ export default function MainPanel({ edition, theme, contactCount, onToggleTheme,
                   <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setPreviewKey(k => k + 1)}>↺ Refresh</button>
                 </div>
               )}
+              {editorMode === 'preview' && viewMode === 'email' && (
+                <div className="split-preview-bar">
+                  <a className="btn" href={`/preview/${edition.slug}/email.pdf`} download>⬇ Download PDF</a>
+                </div>
+              )}
               <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
             </div>
           )}
