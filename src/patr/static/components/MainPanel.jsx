@@ -96,33 +96,8 @@ export default function MainPanel({ edition, theme, contactCount, onToggleTheme,
 
   const canSend = !draft && deploymentLive
 
-  const renderContent = () => {
-    if (!edition) return <div className="empty-state">← Select an edition to preview</div>
-
-    if (editorMode === 'write') {
-      return <EditorPanel key={edition.slug} slug={edition.slug} />
-    }
-
-    if (editorMode === 'split') {
-      return (
-        <div className="split-view">
-          <div className="split-editor">
-            <EditorPanel key={edition.slug} slug={edition.slug} onSaved={() => setPreviewKey(k => k + 1)} />
-          </div>
-          <div className="split-preview">
-            <div className="split-preview-bar">
-              <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-              <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setPreviewKey(k => k + 1)}>↺ Refresh</button>
-            </div>
-            <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
-          </div>
-        </div>
-      )
-    }
-
-    // preview mode
-    return <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
-  }
+  const showEditor = editorMode === 'write' || editorMode === 'split'
+  const showPreview = editorMode === 'split' || editorMode === 'preview'
 
   return (
     <main className="main">
@@ -144,7 +119,29 @@ export default function MainPanel({ edition, theme, contactCount, onToggleTheme,
         </button>
       </div>
 
-      {renderContent()}
+      {!edition ? (
+        <div className="empty-state">← Select an edition to preview</div>
+      ) : (
+        <div className="content-area">
+          <div
+            className={`editor-pane${editorMode === 'split' ? ' bordered' : ''}`}
+            style={{ display: showEditor ? undefined : 'none' }}
+          >
+            <EditorPanel key={edition.slug} slug={edition.slug} onSaved={() => setPreviewKey(k => k + 1)} />
+          </div>
+          {showPreview && (
+            <div className={editorMode === 'split' ? 'split-preview' : 'full-preview'}>
+              {editorMode === 'split' && (
+                <div className="split-preview-bar">
+                  <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                  <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setPreviewKey(k => k + 1)}>↺ Refresh</button>
+                </div>
+              )}
+              <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
+            </div>
+          )}
+        </div>
+      )}
 
       {edition && (
         <div className="action-bar">
