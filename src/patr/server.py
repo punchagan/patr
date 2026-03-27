@@ -6,6 +6,7 @@ import tomllib
 import time
 import urllib.request
 import yaml
+from pathlib import Path
 
 from flask import (
     Flask,
@@ -183,10 +184,10 @@ def save_edition_content(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     data = request.json or {}
-    if "title" in data:
-        post.metadata["title"] = data["title"]
+    if "title" in data and data["title"].strip():
+        post.metadata["title"] = data["title"].strip()
     if "intro" in data:
-        intro = data["intro"].strip()
+        intro = (data["intro"] or "").strip()
         if intro:
             post.metadata["intro"] = intro
         else:
@@ -209,13 +210,14 @@ def upload_image(slug):
     file = request.files.get("file")
     if not file or not file.filename:
         return jsonify({"error": "No file provided"}), 400
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    filename = Path(file.filename).name  # strip any directory components
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         return jsonify({"error": f"File type .{ext} not allowed"}), 400
     dest_dir = state.CONTENT_DIR / slug
-    dest = dest_dir / file.filename
+    dest = dest_dir / filename
     if dest.exists():
-        stem = file.filename.rsplit(".", 1)[0]
+        stem = filename.rsplit(".", 1)[0]
         dest = dest_dir / f"{stem}-{_secrets.token_hex(4)}.{ext}"
     file.save(dest)
     return jsonify({"path": dest.name})

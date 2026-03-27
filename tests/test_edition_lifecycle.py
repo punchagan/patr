@@ -118,6 +118,38 @@ def test_save_body_with_yaml_fence_survives(client, edition):
     assert post["title"] == "Original Title"
 
 
+# Content save: dangerous inputs
+
+def test_save_empty_title_does_not_wipe_title(client, edition):
+    client.post("/api/edition/test-ed/content", json={"title": ""})
+    post = fm.load(edition / "index.md")
+    assert post["title"] == "Original Title"
+
+
+def test_save_null_intro_does_not_crash(client, edition):
+    r = client.post("/api/edition/test-ed/content", json={"intro": None})
+    assert r.status_code == 200
+    post = fm.load(edition / "index.md")
+    assert "intro" not in post.metadata  # null clears the intro
+
+
+def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition):
+    import io
+    data = {"file": (io.BytesIO(b"data"), "../escape.jpg")}
+    r = client.post(
+        "/api/edition/test-ed/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    # Must NOT have overwritten the newsletter section index
+    section_index = repo / "content" / "newsletter" / "index.md"
+    assert not section_index.exists()
+    # File must land inside the edition directory
+    saved_name = r.get_json()["path"]
+    assert (edition / saved_name).exists()
+
+
 # Toggle draft edge cases
 
 def test_toggle_draft_when_no_draft_field(client, repo):
