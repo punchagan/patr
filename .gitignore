@@ -3,4 +3,3 @@ __pycache__/
 .env
 *.egg-info/
 node_modules/
-src/patr/static/dist/
