@@ -444,6 +444,8 @@ def send_all(slug):
     _, post = load_edition(slug)
     if post is None:
         return jsonify({"error": "Not found"}), 404
+    if post.get("draft", True):
+        return jsonify({"error": "Cannot send a draft edition"}), 400
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
     sheet_id = newsletter_config.get("sheet_id")
