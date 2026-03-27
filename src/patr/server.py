@@ -139,9 +139,13 @@ def new_edition():
     if edition_dir.exists():
         return jsonify({"error": f"Edition '{slug}' already exists"}), 400
     edition_dir.mkdir(parents=True)
-    (edition_dir / "index.md").write_text(
-        f'---\ntitle: "{title}"\ndate: {date.today()}\ndraft: true\n---\n\n'
+    fm = yaml.dump(
+        {"title": title, "date": date.today(), "draft": True},
+        Dumper=_PatrYamlDumper,
+        sort_keys=False,
+        allow_unicode=True,
     )
+    (edition_dir / "index.md").write_text(f"---\n{fm}---\n\n")
     return jsonify({"slug": slug, "path": str((edition_dir / "index.md").resolve())})
 
 
