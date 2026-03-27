@@ -295,7 +295,11 @@ def get_help():
     from importlib.metadata import metadata as pkg_metadata
     import markdown as md_lib
 
-    text = pkg_metadata("patr").get_payload() or ""
+    readme = state.PATR_ROOT.parent.parent / "README.md"
+    if readme.exists():
+        text = readme.read_text()
+    else:
+        text = pkg_metadata("patr").get_payload() or ""
     start = text.find("<!-- help-start -->")
     end = text.find("<!-- help-end -->")
     if start != -1 and end != -1:
