@@ -276,7 +276,7 @@ def publish_edition(slug):
         if result.returncode != 0:
             # "nothing to commit" is not an error
             if "nothing to commit" in result.stdout + result.stderr:
-                break
+                continue
             return jsonify({"error": result.stderr or result.stdout}), 500
     return jsonify({"ok": True})
 
