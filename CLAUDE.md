@@ -8,6 +8,11 @@ This file provides guidance to Claude Code when working with the Patr repository
 
 The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/document"). Spiritual successor to Inkling (which used Google Docs + GAS + Netlify).
 
+## Working style
+
+- **Use red/green TDD wherever possible.** Write a failing test first, confirm it fails for the right reason, then fix the code, then confirm it passes. If you're about to skip this (e.g. a change seems obvious, or it's hard to test), explicitly say so and ask for confirmation before proceeding.
+- Run tests with `uv run pytest`.
+
 ## Running Patr
 
 ```bash
