@@ -150,6 +150,28 @@ def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition):
     assert (edition / saved_name).exists()
 
 
+# Unicode round-trips
+
+def test_unicode_title_round_trips(client, repo):
+    client.post("/api/new-edition", json={"title": "पत्र — Issue 1 🎉"})
+    post = fm.load(edition_file(repo, "issue-1"))
+    assert post["title"] == "पत्र — Issue 1 🎉"
+
+
+def test_unicode_body_round_trips(client, edition):
+    body = "Héllo wörld. 你好。🌍"
+    client.post("/api/edition/test-ed/content", json={"body": body})
+    post = fm.load(edition / "index.md")
+    assert body in post.content
+
+
+def test_unicode_intro_round_trips(client, edition):
+    intro = "Bonjour à tous. Это тест. 🙏"
+    client.post("/api/edition/test-ed/content", json={"intro": intro})
+    r = client.get("/api/edition/test-ed/content")
+    assert r.get_json()["intro"].strip() == intro
+
+
 # Toggle draft edge cases
 
 def test_toggle_draft_when_no_draft_field(client, repo):

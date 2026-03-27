@@ -163,6 +163,17 @@ def test_email_html_multiple_images_all_absolutified():
     assert "https://example.com/images/c.jpg" in html
 
 
+# build_email_html — empty baseURL produces non-absolute image paths
+# (documents known behaviour: send is blocked at the UI layer if not deployed,
+# but callers should be aware that images will be broken without a baseURL)
+
+def test_email_html_empty_base_url_image_paths_are_not_absolute():
+    post = make_post(body="![Cat](cat.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, {"baseURL": ""})
+    # Without a baseURL, relative images become root-relative — broken in email
+    assert "https://" not in html.split("cat.jpg")[0].split("<img")[-1]
+
+
 # build_web_html — end-to-end
 
 def test_web_html_contains_title():

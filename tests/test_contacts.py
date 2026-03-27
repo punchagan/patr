@@ -34,6 +34,13 @@ def test_fetch_contacts_excludes_send_no():
     assert contacts == []
 
 
+def test_fetch_contacts_excludes_send_with_whitespace():
+    rows = [["Name", "Email", "Send"], ["Bob", "bob@example.com", " n "]]
+    with patch("patr.contacts.build", return_value=make_sheets_mock(rows)):
+        contacts = fetch_contacts("sheet_id", None)
+    assert contacts == []
+
+
 def test_fetch_contacts_excludes_case_insensitive():
     rows = [
         ["Name", "Email", "Send"],

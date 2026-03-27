@@ -479,6 +479,8 @@ def send_all(slug):
                     slug, post, footer_md, hugo_config, recipient_name=contact["name"]
                 )
                 send_email(gmail, sender, contact["email"], subject, html)
+                # log_sent is called after send_email. If log_sent fails here,
+                # the email was sent but not recorded — re-running would send again.
                 log_sent(sheet_id, creds, contact["email"], slug)
                 sent += 1
                 time.sleep(0.9)
