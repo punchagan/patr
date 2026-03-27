@@ -1,4 +1,4 @@
-"""Tests for edition content read/write and image upload endpoints."""
+"""Tests for edition content read/write, toggle-draft, and image upload endpoints."""
 import io
 import textwrap
 import pytest
@@ -99,6 +99,53 @@ def test_save_content_clears_intro(client, repo):
 def test_save_content_404(client):
     r = client.post("/api/edition/missing/content", json={"body": "x"})
     assert r.status_code == 404
+
+
+# POST /api/toggle-draft/<slug>
+
+def test_toggle_draft_false_to_true(client, repo):
+    # edition starts as draft: true, toggling should make it false
+    r = client.post("/api/toggle-draft/test-edition")
+    assert r.status_code == 200
+    assert r.get_json()["draft"] is False
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "draft: false" in text
+
+
+def test_toggle_draft_true_to_false(client, repo):
+    # toggle twice — should end up back at draft: true
+    client.post("/api/toggle-draft/test-edition")
+    r = client.post("/api/toggle-draft/test-edition")
+    assert r.get_json()["draft"] is True
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "draft: true" in text
+
+
+def test_toggle_draft_preserves_other_frontmatter(client, repo):
+    client.post("/api/toggle-draft/test-edition")
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "title: Test Edition" in text
+    assert "date: 2024-01-01" in text
+
+
+def test_toggle_draft_preserves_body(client, repo):
+    client.post("/api/toggle-draft/test-edition")
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "Body content here." in text
+
+
+def test_toggle_draft_404(client):
+    r = client.post("/api/toggle-draft/no-such-edition")
+    assert r.status_code == 404
+
+
+# Content round-trip
+
+def test_intro_with_blank_lines_round_trips(client, repo):
+    intro = "First paragraph.\n\nSecond paragraph."
+    client.post("/api/edition/test-edition/content", json={"intro": intro})
+    r = client.get("/api/edition/test-edition/content")
+    assert r.get_json()["intro"].strip() == intro
 
 
 # POST /api/edition/<slug>/upload-image
