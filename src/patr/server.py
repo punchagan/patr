@@ -149,6 +149,75 @@ def edition_resource(slug, filename):
     return send_from_directory(state.CONTENT_DIR / slug, filename)
 
 
+@app.route("/api/edition/<slug>/content", methods=["GET"])
+def get_edition_content(slug):
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify({
+        "title": post.get("title", ""),
+        "intro": post.get("intro", ""),
+        "body": post.content,
+    })
+
+
+@app.route("/api/edition/<slug>/content", methods=["POST"])
+def save_edition_content(slug):
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    data = request.json or {}
+    text = f.read_text()
+    fm_pattern = re.compile(r"^(---\n.*?^---\n)", re.DOTALL | re.MULTILINE)
+    m = fm_pattern.match(text)
+    if not m:
+        return jsonify({"error": "Could not parse frontmatter"}), 400
+    fm = m.group(1)
+    if "title" in data:
+        escaped = data["title"].replace('"', '\\"')
+        if re.search(r'^title:', fm, re.MULTILINE):
+            fm = re.sub(r'^title:.*$', f'title: "{escaped}"', fm, flags=re.MULTILINE)
+        else:
+            fm = fm[:-4] + f'title: "{escaped}"\n---\n'
+    if "intro" in data:
+        intro = data["intro"]
+        if re.search(r'^intro:', fm, re.MULTILINE):
+            if intro:
+                # Replace existing intro block scalar
+                fm = re.sub(r'^intro:.*?(?=\n\S|\n---)', f'intro: |\n  {intro.strip()}', fm, flags=re.MULTILINE | re.DOTALL)
+            else:
+                fm = re.sub(r'^intro:.*?(?=\n\S|\n---)', '', fm, flags=re.MULTILINE | re.DOTALL)
+        elif intro:
+            fm = fm[:-4] + f'intro: |\n  {intro.strip()}\n---\n'
+    body = data.get("body", post.content)
+    f.write_text(fm + "\n" + body.strip() + "\n")
+    return jsonify({"ok": True})
+
+
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+
+
+@app.route("/api/edition/<slug>/upload-image", methods=["POST"])
+def upload_image(slug):
+    import secrets as _secrets
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"error": "No file provided"}), 400
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({"error": f"File type .{ext} not allowed"}), 400
+    dest_dir = state.CONTENT_DIR / slug
+    dest = dest_dir / file.filename
+    if dest.exists():
+        stem = file.filename.rsplit(".", 1)[0]
+        dest = dest_dir / f"{stem}-{_secrets.token_hex(4)}.{ext}"
+    file.save(dest)
+    return jsonify({"path": dest.name})
+
+
 @app.route("/preview/<slug>/email")
 def preview_email(slug):
     _, post = load_edition(slug)
