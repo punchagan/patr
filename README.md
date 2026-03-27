@@ -32,6 +32,14 @@ When your edition is ready, click **Mark as Live**, then **Publish**. This pushe
 ### Send
 
 Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web.
+
+### Not yet supported
+
+These things currently require editing files directly outside the app:
+
+- **Editing the footer** — edit `content/newsletter/footer/index.md` in your Hugo site
+- **Deleting an edition** — delete the edition's folder from `content/newsletter/`
+- **Changing an edition's date** — edit the `date:` field in the edition's `index.md`
 <!-- help-end -->
 
 ## What it does
