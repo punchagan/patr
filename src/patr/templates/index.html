@@ -13,12 +13,12 @@
       <span class="auth-dot" id="auth-dot"></span>
       <span class="auth-label" id="auth-label">Checking…</span>
       <a class="btn" id="auth-btn" href="/oauth/start" style="font-size:11px;padding:3px 8px;display:none">Connect</a>
-      <button class="btn" id="auth-disconnect" onclick="disconnect()" style="font-size:11px;padding:3px 8px;display:none">Disconnect</button>
+      <button class="btn" id="auth-disconnect" style="font-size:11px;padding:3px 8px;display:none">Disconnect</button>
     </div>
     <div class="sidebar-header">Editions
       <span style="float:right;display:flex;gap:4px">
-        <button class="btn" onclick="openNewEdition()" style="font-size:11px;padding:2px 7px">+</button>
-        <button class="btn" onclick="openSettings()" style="font-size:11px;padding:2px 7px">⚙</button>
+        <button class="btn" id="btn-new" style="font-size:11px;padding:2px 7px">+</button>
+        <button class="btn" id="btn-settings" style="font-size:11px;padding:2px 7px">⚙</button>
       </span>
     </div>
     <div class="edition-list" id="edition-list">
@@ -30,10 +30,10 @@
   <main class="main" id="main">
     <div class="toolbar">
       <span class="toolbar-title empty" id="toolbar-title">Select an edition</span>
-      <button class="btn btn-toggle active" id="btn-email" onclick="setView('email')" style="display:none">Email</button>
-      <button class="btn btn-toggle" id="btn-web" onclick="setView('web')" style="display:none">Web</button>
-      <button class="btn btn-draft-toggle" id="btn-draft" onclick="toggleDraft()" style="display:none"></button>
-      <button class="btn btn-theme" id="btn-theme" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+      <button class="btn btn-toggle active" id="btn-email" style="display:none">Email</button>
+      <button class="btn btn-toggle" id="btn-web" style="display:none">Web</button>
+      <button class="btn btn-draft-toggle" id="btn-draft" style="display:none"></button>
+      <button class="btn btn-theme" id="btn-theme" title="Toggle dark mode">🌙</button>
     </div>
 
     <div class="empty-state" id="empty-state">← Select an edition to preview</div>
@@ -43,9 +43,9 @@
       <a class="btn" id="btn-obsidian" href="#" target="_blank">Edit in Obsidian</a>
       <div class="spacer"></div>
       <span class="status-msg" id="deploy-status" style="display:none"></span>
-      <button class="btn" id="btn-publish" onclick="doPublish()" disabled>Publish</button>
-      <button class="btn" id="btn-test" onclick="testSend()" disabled>Test Send</button>
-      <button class="btn btn-danger" id="btn-send" onclick="confirmSend()" disabled>Send All</button>
+      <button class="btn" id="btn-publish" disabled>Publish</button>
+      <button class="btn" id="btn-test" disabled>Test Send</button>
+      <button class="btn btn-danger" id="btn-send" disabled>Send All</button>
     </div>
   </main>
 </div>
@@ -64,18 +64,18 @@
         Contacts sheet ID <span style="color:var(--text-placeholder);font-size:11px">(stored locally, never in repo)</span>
         <div style="display:flex;gap:6px;margin-top:4px">
           <input id="settings-sheet" type="text" style="flex:1;padding:6px 8px;font-size:13px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);box-sizing:border-box">
-          <button class="btn" onclick="testContacts()" style="font-size:12px;white-space:nowrap">Test</button>
+          <button class="btn" id="btn-test-contacts" style="font-size:12px;white-space:nowrap">Test</button>
         </div>
         <span id="contacts-test-result" style="font-size:12px;color:var(--text-secondary);margin-top:4px;display:block"></span>
       </label>
       <div>
-        <button class="btn" onclick="checkSentLog()" style="font-size:12px">Check Sent Log</button>
+        <button class="btn" id="btn-check-sent-log" style="font-size:12px">Check Sent Log</button>
         <pre id="sent-log-result" style="display:none;margin-top:8px;font-size:11px;max-height:160px;overflow-y:auto;background:var(--bg-secondary);padding:8px;border-radius:4px;white-space:pre-wrap"></pre>
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      <button class="btn" id="btn-settings-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-settings-save">Save</button>
     </div>
   </div>
 </div>
@@ -87,8 +87,8 @@
     <p style="margin-bottom:10px;font-size:13px;color:var(--text-secondary)">Select recipients: <span id="test-selection-count" style="font-weight:600;color:var(--text-primary)"></span></p>
     <div id="test-contact-list" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px;font-size:13px"></div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeTestModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="doTestSend()">Send</button>
+      <button class="btn" id="btn-test-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-test-send">Send</button>
     </div>
   </div>
 </div>
@@ -99,8 +99,8 @@
     <h3>Send to everyone?</h3>
     <p id="modal-body">This will send the email to all recipients. This cannot be undone.</p>
     <div class="modal-actions">
-      <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="doSend()">Send</button>
+      <button class="btn" id="btn-confirm-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-send">Send</button>
     </div>
   </div>
 </div>
@@ -117,8 +117,8 @@
       <span id="new-edition-error" style="font-size:12px;color:#f08080;display:none"></span>
     </div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeNewEdition()">Cancel</button>
-      <button class="btn btn-primary" onclick="doNewEdition()">Create</button>
+      <button class="btn" id="btn-new-edition-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-new-edition-create">Create</button>
     </div>
   </div>
 </div>

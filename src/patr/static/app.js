@@ -3,6 +3,7 @@ let currentDraft = false;
 let viewMode = 'email';
 let contactCount = null;
 let deploymentLive = false;
+let editions = [];
 
 // Auth status
 function refreshAuthStatus() {
@@ -30,9 +31,9 @@ function refreshAuthStatus() {
   });
 }
 
-function disconnect() {
+document.getElementById('auth-disconnect').addEventListener('click', () => {
   fetch('/oauth/disconnect', { method: 'POST' }).then(() => refreshAuthStatus());
-}
+});
 
 refreshAuthStatus();
 
@@ -41,22 +42,24 @@ function applyTheme(dark) {
   document.body.classList.toggle('dark', dark);
   document.getElementById('btn-theme').textContent = dark ? '☀️' : '🌙';
 }
-function toggleTheme() {
+
+document.getElementById('btn-theme').addEventListener('click', () => {
   const dark = !document.body.classList.contains('dark');
   localStorage.setItem('theme', dark ? 'dark' : 'light');
   applyTheme(dark);
-}
+});
+
 applyTheme(localStorage.getItem('theme') === 'dark');
 
-// Load editions on startup
-function renderEditionList(editions, selectSlug) {
-  const list = document.getElementById('edition-list');
-  if (!editions.length) {
-    list.innerHTML = '<div style="padding:16px;color:#aaa;font-size:13px;">No editions found.</div>';
+// Edition list
+function renderEditionList(list, selectSlug) {
+  const el = document.getElementById('edition-list');
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:16px;color:#aaa;font-size:13px;">No editions found.</div>';
     return;
   }
-  list.innerHTML = editions.map(e => `
-    <div class="edition-item" id="item-${e.slug}" onclick="selectEdition(${JSON.stringify(e).replace(/"/g, '&quot;')})">
+  el.innerHTML = list.map(e => `
+    <div class="edition-item" id="item-${e.slug}" data-slug="${e.slug}">
       <div class="edition-title">${e.title}</div>
       <div class="edition-meta">
         <span>${e.date}</span>
@@ -67,26 +70,32 @@ function renderEditionList(editions, selectSlug) {
     </div>
   `).join('');
   if (selectSlug) {
-    const match = editions.find(e => e.slug === selectSlug);
+    const match = list.find(e => e.slug === selectSlug);
     if (match) selectEdition(match);
   }
 }
 
+document.getElementById('edition-list').addEventListener('click', e => {
+  const item = e.target.closest('.edition-item');
+  if (!item) return;
+  const edition = editions.find(ed => ed.slug === item.dataset.slug);
+  if (edition) selectEdition(edition);
+});
+
 function loadEditions(selectSlug) {
-  return fetch('/api/editions').then(r => r.json()).then(editions => {
-    renderEditionList(editions, selectSlug);
-    return editions;
+  return fetch('/api/editions').then(r => r.json()).then(list => {
+    editions = list;
+    renderEditionList(list, selectSlug);
+    return list;
   });
 }
 
-loadEditions().then(editions => {
-  // Pre-fetch contact count once
+loadEditions().then(list => {
   fetch('/api/contacts/count').then(r => r.json()).then(d => { contactCount = d.count; });
 
-  // Restore state from URL hash
   const [hashSlug, hashView] = location.hash.slice(1).split('/');
   if (hashSlug) {
-    const match = editions.find(e => e.slug === hashSlug);
+    const match = list.find(e => e.slug === hashSlug);
     if (match) selectEdition(match, hashView || 'email');
   }
 });
@@ -97,7 +106,6 @@ function updateHash() {
 }
 
 function selectEdition(e, view = 'email') {
-  // Deselect previous
   if (currentSlug) {
     document.getElementById(`item-${currentSlug}`)?.classList.remove('active');
   }
@@ -109,8 +117,7 @@ function selectEdition(e, view = 'email') {
   document.getElementById('toolbar-title').textContent = e.title;
   document.getElementById('toolbar-title').classList.remove('empty');
 
-  // Show controls
-  ['btn-email','btn-web','btn-draft'].forEach(id => {
+  ['btn-email', 'btn-web', 'btn-draft'].forEach(id => {
     document.getElementById(id).style.display = '';
   });
   document.getElementById('btn-email').classList.toggle('active', view === 'email');
@@ -119,48 +126,49 @@ function selectEdition(e, view = 'email') {
   document.getElementById('preview-frame').style.display = '';
   document.getElementById('action-bar').style.display = '';
 
-  // Draft toggle button label
   updateDraftButton();
-
-  // Obsidian link
   document.getElementById('btn-obsidian').href = `obsidian://open?path=${encodeURIComponent(e.path)}`;
-
   updateHash();
   loadPreview();
   checkDeployment();
 }
 
-function setView(mode) {
-  viewMode = mode;
-  document.getElementById('btn-email').classList.toggle('active', mode === 'email');
-  document.getElementById('btn-web').classList.toggle('active', mode === 'web');
+document.getElementById('btn-email').addEventListener('click', () => {
+  viewMode = 'email';
+  document.getElementById('btn-email').classList.add('active');
+  document.getElementById('btn-web').classList.remove('active');
   updateHash();
   loadPreview();
-}
+});
+
+document.getElementById('btn-web').addEventListener('click', () => {
+  viewMode = 'web';
+  document.getElementById('btn-web').classList.add('active');
+  document.getElementById('btn-email').classList.remove('active');
+  updateHash();
+  loadPreview();
+});
 
 function loadPreview() {
-  const frame = document.getElementById('preview-frame');
-  frame.src = `/preview/${currentSlug}/${viewMode}`;
+  document.getElementById('preview-frame').src = `/preview/${currentSlug}/${viewMode}`;
 }
 
 function updateDraftButton() {
-  const btn = document.getElementById('btn-draft');
-  btn.textContent = currentDraft ? 'Mark as Live' : 'Mark as Draft';
+  document.getElementById('btn-draft').textContent = currentDraft ? 'Mark as Live' : 'Mark as Draft';
 }
 
-function toggleDraft() {
+document.getElementById('btn-draft').addEventListener('click', () => {
   fetch(`/api/toggle-draft/${currentSlug}`, { method: 'POST' })
     .then(r => r.json())
     .then(d => {
       currentDraft = d.draft;
       updateDraftButton();
-      // Update badge in sidebar
       const badge = document.getElementById(`badge-${currentSlug}`);
       badge.textContent = d.draft ? 'Draft' : 'Live';
       badge.className = `badge ${d.draft ? 'badge-draft' : 'badge-live'}`;
       updateSendButtons();
     });
-}
+});
 
 function checkDeployment() {
   const statusEl = document.getElementById('deploy-status');
@@ -191,7 +199,7 @@ function updateSendButtons() {
   document.getElementById('btn-send').disabled = !canSend;
 }
 
-function doPublish() {
+document.getElementById('btn-publish').addEventListener('click', () => {
   const btn = document.getElementById('btn-publish');
   btn.disabled = true;
   btn.textContent = 'Publishing…';
@@ -210,9 +218,10 @@ function doPublish() {
         statusEl.textContent = `Publish failed: ${d.error}`;
       }
     });
-}
+});
 
-function testSend() {
+// Test send
+function openTestModal() {
   const listEl = document.getElementById('test-contact-list');
   listEl.innerHTML = '<span style="color:var(--text-secondary)">Loading…</span>';
   document.getElementById('test-modal').classList.add('visible');
@@ -232,7 +241,6 @@ function testSend() {
       label.querySelector('input').addEventListener('change', updateCount);
       listEl.appendChild(label);
     };
-    // "myself" option always first
     addRow('<input type="checkbox" data-self="1"> <span>Myself</span>', true);
     contacts.forEach(c => {
       addRow(`<input type="checkbox" data-name="${c.name}" data-email="${c.email}"> <span>${c.name || c.email} <span style="color:var(--text-secondary);font-size:11px">${c.name ? '&lt;' + c.email + '&gt;' : ''}</span></span>`, false);
@@ -245,14 +253,19 @@ function closeTestModal() {
   document.getElementById('test-modal').classList.remove('visible');
 }
 
-function doTestSend() {
+document.getElementById('btn-test').addEventListener('click', openTestModal);
+document.getElementById('btn-test-cancel').addEventListener('click', closeTestModal);
+document.getElementById('test-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeTestModal();
+});
+
+document.getElementById('btn-test-send').addEventListener('click', () => {
   const checkboxes = document.querySelectorAll('#test-contact-list input[type=checkbox]:checked');
   const recipients = [];
   checkboxes.forEach(cb => {
     if (cb.dataset.self) return;
     recipients.push({ name: cb.dataset.name, email: cb.dataset.email });
   });
-  // Check if "myself" is checked
   const selfCb = document.querySelector('#test-contact-list input[data-self]');
   if (selfCb && selfCb.checked) recipients.unshift({ name: 'You', email: '__self__' });
 
@@ -262,8 +275,8 @@ function doTestSend() {
   btn.textContent = 'Sending…';
   fetch(`/api/test-send/${currentSlug}`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ recipients })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipients }),
   }).then(r => r.json()).then(d => {
     btn.textContent = 'Test Send';
     updateSendButtons();
@@ -277,21 +290,28 @@ function doTestSend() {
       statusEl.textContent = `Error: ${d.error}`;
     }
   });
-}
+});
 
-function confirmSend() {
+// Send all
+function openConfirmModal() {
   const count = contactCount !== null ? contactCount : '?';
   document.getElementById('modal-body').textContent =
     `This will send "${document.getElementById('toolbar-title').textContent}" to ${count} recipient${count !== 1 ? 's' : ''}. This cannot be undone.`;
   document.getElementById('modal').classList.add('visible');
 }
 
-function closeModal() {
+function closeConfirmModal() {
   document.getElementById('modal').classList.remove('visible');
 }
 
-function doSend() {
-  closeModal();
+document.getElementById('btn-send').addEventListener('click', openConfirmModal);
+document.getElementById('btn-confirm-cancel').addEventListener('click', closeConfirmModal);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeConfirmModal();
+});
+
+document.getElementById('btn-confirm-send').addEventListener('click', () => {
+  closeConfirmModal();
   const btn = document.getElementById('btn-send');
   btn.disabled = true;
   btn.textContent = 'Sending…';
@@ -313,14 +333,6 @@ function doSend() {
         statusEl.textContent = `Error: ${d.error}`;
       }
     });
-}
-
-// Close modal on overlay click
-document.getElementById('modal').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeModal();
-});
-document.getElementById('test-modal').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeTestModal();
 });
 
 // Settings
@@ -331,10 +343,33 @@ function openSettings() {
     document.getElementById('settings-modal').classList.add('visible');
   });
 }
+
 function closeSettings() {
   document.getElementById('settings-modal').classList.remove('visible');
 }
-function checkSentLog() {
+
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+document.getElementById('btn-settings-cancel').addEventListener('click', closeSettings);
+document.getElementById('btn-settings-save').addEventListener('click', () => {
+  const name = document.getElementById('settings-name').value.trim();
+  const sheet = document.getElementById('settings-sheet').value.trim();
+  const payload = {};
+  if (name) payload.newsletter_name = name;
+  if (sheet && sheet !== '(saved)') payload.sheet_id = sheet;
+  fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    .then(r => r.json()).then(() => closeSettings());
+});
+document.getElementById('settings-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+document.getElementById('btn-test-contacts').addEventListener('click', () => {
+  const el = document.getElementById('contacts-test-result');
+  el.textContent = 'Checking…';
+  fetch('/api/contacts/count').then(r => r.json()).then(d => {
+    el.textContent = d.error ? `Error: ${d.error}` : `✓ ${d.count} contact${d.count !== 1 ? 's' : ''} with Send=y`;
+  });
+});
+document.getElementById('btn-check-sent-log').addEventListener('click', () => {
   const el = document.getElementById('sent-log-result');
   el.style.display = 'block';
   el.textContent = 'Loading…';
@@ -345,25 +380,6 @@ function checkSentLog() {
     el.textContent = [header.join(' | '), ...rows.slice(-10).map(r => r.join(' | '))].join('\n');
     if (rows.length > 10) el.textContent = `(showing last 10 of ${rows.length})\n` + el.textContent;
   });
-}
-function testContacts() {
-  const el = document.getElementById('contacts-test-result');
-  el.textContent = 'Checking…';
-  fetch('/api/contacts/count').then(r => r.json()).then(d => {
-    el.textContent = d.error ? `Error: ${d.error}` : `✓ ${d.count} contact${d.count !== 1 ? 's' : ''} with Send=y`;
-  });
-}
-function saveSettings() {
-  const name = document.getElementById('settings-name').value.trim();
-  const sheet = document.getElementById('settings-sheet').value.trim();
-  const payload = {};
-  if (name) payload.newsletter_name = name;
-  if (sheet && sheet !== '(saved)') payload.sheet_id = sheet;
-  fetch('/api/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
-    .then(r => r.json()).then(() => closeSettings());
-}
-document.getElementById('settings-modal').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeSettings();
 });
 
 if (document.body.dataset.unconfigured) openSettings();
@@ -375,9 +391,11 @@ function openNewEdition() {
   document.getElementById('new-edition-modal').classList.add('visible');
   setTimeout(() => document.getElementById('new-edition-title').focus(), 50);
 }
+
 function closeNewEdition() {
   document.getElementById('new-edition-modal').classList.remove('visible');
 }
+
 function doNewEdition() {
   const title = document.getElementById('new-edition-title').value.trim();
   if (!title) return;
@@ -385,7 +403,7 @@ function doNewEdition() {
   errEl.style.display = 'none';
   fetch('/api/new-edition', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title }),
   }).then(r => r.json()).then(d => {
     if (d.error) {
@@ -397,34 +415,14 @@ function doNewEdition() {
     loadEditions(d.slug);
   });
 }
+
+document.getElementById('btn-new').addEventListener('click', openNewEdition);
+document.getElementById('btn-new-edition-cancel').addEventListener('click', closeNewEdition);
+document.getElementById('btn-new-edition-create').addEventListener('click', doNewEdition);
 document.getElementById('new-edition-modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeNewEdition();
 });
 document.getElementById('new-edition-title').addEventListener('keydown', e => {
   if (e.key === 'Enter') doNewEdition();
   if (e.key === 'Escape') closeNewEdition();
-});
-
-// Expose functions used by inline HTML event handlers
-Object.assign(window, {
-  selectEdition,
-  setView,
-  toggleDraft,
-  toggleTheme,
-  disconnect,
-  openSettings,
-  closeSettings,
-  saveSettings,
-  testContacts,
-  checkSentLog,
-  testSend,
-  closeTestModal,
-  doTestSend,
-  confirmSend,
-  closeModal,
-  doSend,
-  doPublish,
-  openNewEdition,
-  closeNewEdition,
-  doNewEdition,
 });
