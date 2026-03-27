@@ -86,6 +86,7 @@ export default function EditorPanel({ slug, onTitleChange, onSaved }) {
   const [saveStatus, setSaveStatus] = useState('')
   const loading = useRef(false)
   const saveTimer = useRef(null)
+  const slugRef = useRef(slug)
 
   // Use refs to avoid stale closures in debounced save
   const titleRef = useRef(title)
@@ -136,6 +137,21 @@ export default function EditorPanel({ slug, onTitleChange, onSaved }) {
   // Load content when slug changes
   useEffect(() => {
     if (!editor || !slug) return
+
+    // Flush any pending debounced save for the previous slug before switching
+    const prevSlug = slugRef.current
+    slugRef.current = slug
+    if (prevSlug && prevSlug !== slug && saveTimer.current !== null) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+      const body = relativifyImages(editor.storage.markdown.getMarkdown(), prevSlug)
+      fetch(`/api/edition/${prevSlug}/content`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: titleRef.current, intro: introRef.current, body }),
+      })
+    }
+
     loading.current = true
     setSaveStatus('')
     fetch(`/api/edition/${slug}/content`)
