@@ -133,6 +133,36 @@ def test_email_html_image_with_alt_becomes_figure():
     assert "<figcaption>A sunset</figcaption>" in html
 
 
+# build_email_html — edge cases
+
+def test_email_html_empty_body():
+    post = make_post(body="")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "Hi," in html  # renders without crashing
+
+
+def test_email_html_no_intro():
+    post = make_post(intro="")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "font-style:italic" not in html
+
+
+def test_email_html_base_url_trailing_slash_not_doubled():
+    config = {"baseURL": "https://example.com/"}
+    post = make_post(body="![img](photo.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, config)
+    assert "example.com//newsletter" not in html
+    assert "https://example.com/newsletter/test-ed/photo.jpg" in html
+
+
+def test_email_html_multiple_images_all_absolutified():
+    post = make_post(body="![A](a.jpg)\n\n![B](b.jpg)\n\n![C](/images/c.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "https://example.com/newsletter/test-ed/a.jpg" in html
+    assert "https://example.com/newsletter/test-ed/b.jpg" in html
+    assert "https://example.com/images/c.jpg" in html
+
+
 # build_web_html — end-to-end
 
 def test_web_html_contains_title():
