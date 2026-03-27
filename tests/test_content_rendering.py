@@ -174,6 +174,15 @@ def test_email_html_empty_base_url_image_paths_are_not_absolute():
     assert "https://" not in html.split("cat.jpg")[0].split("<img")[-1]
 
 
+# build_email_html — recipient name edge cases
+
+def test_email_html_whitespace_only_name_falls_back_to_generic_greeting():
+    post = make_post()
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="   ")
+    assert "Hi   ," not in html
+    assert "Hi," in html
+
+
 # build_web_html — end-to-end
 
 def test_web_html_contains_title():
@@ -204,3 +213,12 @@ def test_web_html_renders_footer():
     post = make_post()
     html = build_web_html("test-ed", post, FOOTER_MD)
     assert "Unsubscribe" in html
+
+
+def test_web_html_title_is_html_escaped():
+    post = make_post(title="AT&T <b>News</b>")
+    html = build_web_html("test-ed", post, FOOTER_MD)
+    # Raw tags must not appear in the rendered title or h1
+    assert "<b>" not in html
+    assert "&lt;b&gt;" in html
+    assert "&amp;" in html

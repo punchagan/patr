@@ -1,3 +1,4 @@
+import html as _html
 import re
 
 import frontmatter
@@ -94,6 +95,7 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
 
 def build_web_html(slug, post, footer_md):
     date = str(post.get("date", ""))[:10]
+    title_escaped = _html.escape(post.get("title", ""))
     intro_html = render_md(post.get("intro", ""))
     body_html = render_md(post.content)
     footer_html = render_md(footer_md)
@@ -103,7 +105,7 @@ def build_web_html(slug, post, footer_md):
 <head>
 <meta charset="utf-8">
 <base href="/newsletter/{slug}/">
-<title>{post["title"]}</title>
+<title>{title_escaped}</title>
 <style>
   body {{ font-family: Georgia, serif; max-width: 640px; margin: 2rem auto; padding: 0 1.5rem; color: #333; line-height: 1.7; }}
   h1 {{ font-size: 1.8rem; margin-bottom: 0.25rem; }}
@@ -117,7 +119,7 @@ def build_web_html(slug, post, footer_md):
 </head>
 <body>
   <p class="date">{date}</p>
-  <h1>{post["title"]}</h1>
+  <h1>{title_escaped}</h1>
   {"<div class='intro'>" + intro_html + "</div>" if intro_html else ""}
   <div class="content">{body_html}</div>
   {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
@@ -128,7 +130,8 @@ def build_web_html(slug, post, footer_md):
 def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
-    greeting = f"Hi {recipient_name}," if recipient_name else "Hi,"
+    name = (recipient_name or "").strip()
+    greeting = f"Hi {name}," if name else "Hi,"
     intro_html = render_md(post.get("intro", ""))
     body_html = render_md(post.content)
     footer_html = render_md(footer_md)
