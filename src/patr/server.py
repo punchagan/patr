@@ -290,6 +290,20 @@ def check_deployment(slug):
         return jsonify({"live": False, "reason": str(e), "url": url})
 
 
+@app.route("/api/help")
+def get_help():
+    from importlib.metadata import metadata as pkg_metadata
+    import markdown as md_lib
+
+    text = pkg_metadata("patr").get_payload() or ""
+    start = text.find("<!-- help-start -->")
+    end = text.find("<!-- help-end -->")
+    if start != -1 and end != -1:
+        text = text[start + len("<!-- help-start -->"):end].strip()
+    html = md_lib.markdown(text, extensions=["extra", "tables"])
+    return jsonify({"html": html})
+
+
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
     newsletter_config = load_newsletter_config()

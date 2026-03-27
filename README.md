@@ -6,6 +6,7 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 > **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
 
+<!-- help-start -->
 ## What it does
 
 - Write and edit editions in a built-in rich markdown editor
@@ -84,6 +85,8 @@ patr serve --repo /path/to/hugo-site --debug    # fixed port 5000, Flask reloade
 Columns: `Name`, `Email`, `Send` (leave blank or set to `y` to include; `n`/`no` to opt out).
 
 A "Sent Log" tab is created automatically on first send.
+
+<!-- help-end -->
 
 ## Development
 

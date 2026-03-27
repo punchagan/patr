@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import MainPanel from './components/MainPanel'
 import SettingsModal from './components/modals/SettingsModal'
 import NewEditionModal from './components/modals/NewEditionModal'
+import HelpModal from './components/modals/HelpModal'
 
 export default function App() {
   const [editions, setEditions] = useState([])
@@ -11,6 +12,7 @@ export default function App() {
   const [contactCount, setContactCount] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showNewEdition, setShowNewEdition] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     document.body.classList.toggle('dark', theme === 'dark')
@@ -61,6 +63,7 @@ export default function App() {
         onSelect={setSelectedEdition}
         onNewEdition={() => setShowNewEdition(true)}
         onSettings={() => setShowSettings(true)}
+        onHelp={() => setShowHelp(true)}
       />
       <MainPanel
         edition={selectedEdition}
@@ -75,6 +78,7 @@ export default function App() {
           onClose={() => setShowSettings(false)}
         />
       )}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {showNewEdition && (
         <NewEditionModal
           onClose={() => setShowNewEdition(false)}

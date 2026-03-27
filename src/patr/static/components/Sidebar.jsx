@@ -27,7 +27,7 @@ function AuthBar() {
   )
 }
 
-export default function Sidebar({ editions, selectedSlug, onSelect, onNewEdition, onSettings }) {
+export default function Sidebar({ editions, selectedSlug, onSelect, onNewEdition, onSettings, onHelp }) {
   return (
     <aside className="sidebar">
       <AuthBar />
@@ -36,6 +36,7 @@ export default function Sidebar({ editions, selectedSlug, onSelect, onNewEdition
         <span style={{ float: 'right', display: 'flex', gap: 4 }}>
           <button className="btn" onClick={onNewEdition} style={{ fontSize: 11, padding: '2px 7px' }}>+</button>
           <button className="btn" onClick={onSettings} style={{ fontSize: 11, padding: '2px 7px' }}>⚙</button>
+          <button className="btn" onClick={onHelp} style={{ fontSize: 11, padding: '2px 7px' }}>?</button>
         </span>
       </div>
       <div className="edition-list">
