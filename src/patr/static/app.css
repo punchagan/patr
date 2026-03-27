@@ -34,6 +34,12 @@ body.dark {
   --modal-overlay: rgba(0,0,0,0.6);
 }
 
+body, #root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
