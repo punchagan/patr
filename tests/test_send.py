@@ -1,5 +1,6 @@
-"""Tests for send_all draft guard."""
+"""Tests for send_all draft guard and test_send behaviour."""
 import textwrap
+from unittest.mock import MagicMock, patch
 import pytest
 from patr import state, server
 
@@ -48,3 +49,25 @@ def test_send_all_non_draft_passes_draft_check(client, repo):
     # Will fail further in (no sheet_id configured), but must not fail on draft check
     r = client.post("/api/send/my-ed")
     assert "draft" not in (r.get_json().get("error") or "").lower()
+
+
+# test_send — no sheet_id configured
+
+def test_test_send_succeeds_without_sheet_id(client, repo):
+    """Test send must return ok=True even when sheet_id is not configured.
+
+    Previously: log_sent(None, ...) raised, the outer except caught it,
+    and the route returned 500 — even though the email was delivered.
+    """
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    with patch("patr.server.get_auth", return_value=MagicMock()), \
+         patch("patr.server.build") as mock_build, \
+         patch("patr.server.send_email"), \
+         patch("patr.server.load_newsletter_config", return_value={"name": "My Letter"}):
+        mock_build.return_value.userinfo().get().execute.return_value = {"email": "me@example.com"}
+        r = client.post("/api/test-send/my-ed", json={})
+
+    assert r.status_code == 200, r.get_json()
+    assert r.get_json()["ok"] is True
