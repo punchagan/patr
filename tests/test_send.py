@@ -1,4 +1,5 @@
 """Tests for send_all draft guard and test_send behaviour."""
+
 import textwrap
 from unittest.mock import MagicMock, patch
 import pytest
@@ -45,13 +46,24 @@ def test_send_all_draft_returns_400(client, repo):
 
 def test_send_all_non_draft_passes_draft_check(client, repo):
     make_edition(repo, "my-ed", draft=False)
-    (repo / "hugo.toml").write_text("[params]\n")  # minimal config so load_hugo_config doesn't crash
+    (repo / "hugo.toml").write_text(
+        "[params]\n"
+    )  # minimal config so load_hugo_config doesn't crash
     # Will fail further in (no sheet_id configured), but must not fail on draft check
     r = client.post("/api/send/my-ed")
     assert "draft" not in (r.get_json().get("error") or "").lower()
 
 
+def test_send_all_without_base_url_returns_400(client, repo):
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text("[params]\n")  # no baseURL
+    r = client.post("/api/send/my-ed")
+    assert r.status_code == 400
+    assert "baseurl" in r.get_json()["error"].lower()
+
+
 # test_send — no sheet_id configured
+
 
 def test_test_send_succeeds_without_sheet_id(client, repo):
     """Test send must return ok=True even when sheet_id is not configured.

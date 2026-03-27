@@ -448,6 +448,9 @@ def send_all(slug):
     if post.get("draft", True):
         return jsonify({"error": "Cannot send a draft edition"}), 400
     hugo_config = load_hugo_config()
+    base_url = hugo_config.get("baseURL", "").rstrip("/")
+    if not base_url or "example.com" in base_url:
+        return jsonify({"error": "baseURL not configured in hugo.toml"}), 400
     newsletter_config = load_newsletter_config()
     sheet_id = newsletter_config.get("sheet_id")
     newsletter_name = newsletter_config.get("name", "Newsletter")
