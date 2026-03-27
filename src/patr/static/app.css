@@ -202,6 +202,38 @@ body.dark .btn-danger:hover:not(:disabled) { background: #2a0a0a; }
   background: #fff;
 }
 
+.split-view {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.split-editor {
+  flex: 1;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.split-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.split-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--toolbar-bg);
+  flex-shrink: 0;
+}
+
 .empty-state {
   flex: 1;
   display: flex;

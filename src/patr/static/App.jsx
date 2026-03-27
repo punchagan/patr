@@ -7,7 +7,6 @@ import NewEditionModal from './components/modals/NewEditionModal'
 export default function App() {
   const [editions, setEditions] = useState([])
   const [selectedEdition, setSelectedEdition] = useState(null)
-  const [viewMode, setViewMode] = useState('email')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [contactCount, setContactCount] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -32,22 +31,14 @@ export default function App() {
     fetch('/api/contacts/count').then(r => r.json()).then(d => setContactCount(d.count))
     if (document.body.dataset.unconfigured) setShowSettings(true)
 
-    const [hashSlug, hashView] = location.hash.slice(1).split('/')
+    const hashSlug = location.hash.slice(1).split('/')[0]
     loadEditions().then(list => {
       if (hashSlug) {
         const match = list.find(e => e.slug === hashSlug)
-        if (match) {
-          setSelectedEdition(match)
-          if (hashView) setViewMode(hashView)
-        }
+        if (match) setSelectedEdition(match)
       }
     })
   }, [])
-
-  const selectEdition = (edition) => {
-    setSelectedEdition(edition)
-    setViewMode('email')
-  }
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -67,16 +58,14 @@ export default function App() {
       <Sidebar
         editions={editions}
         selectedSlug={selectedEdition?.slug}
-        onSelect={selectEdition}
+        onSelect={setSelectedEdition}
         onNewEdition={() => setShowNewEdition(true)}
         onSettings={() => setShowSettings(true)}
       />
       <MainPanel
         edition={selectedEdition}
-        viewMode={viewMode}
         theme={theme}
         contactCount={contactCount}
-        onViewModeChange={setViewMode}
         onToggleTheme={toggleTheme}
         onEditionUpdated={onEditionUpdated}
       />

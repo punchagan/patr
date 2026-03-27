@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import TestSendModal from './modals/TestSendModal'
 import ConfirmModal from './modals/ConfirmModal'
+import EditorPanel from './EditorPanel'
 
 function useDeployStatus(edition) {
   const [deploymentLive, setDeploymentLive] = useState(false)
@@ -21,20 +22,44 @@ function useDeployStatus(edition) {
   return { deploymentLive, status, setStatus, setDeploymentLive }
 }
 
-export default function MainPanel({ edition, viewMode, theme, contactCount, onViewModeChange, onToggleTheme, onEditionUpdated }) {
+function PreviewFrame({ slug, viewMode, previewKey }) {
+  return (
+    <iframe
+      key={`${slug}-${viewMode}-${previewKey}`}
+      className="preview-frame"
+      src={`/preview/${slug}/${viewMode}`}
+    />
+  )
+}
+
+function ViewToggle({ viewMode, onViewModeChange }) {
+  return (
+    <>
+      <button className={`btn btn-toggle${viewMode === 'email' ? ' active' : ''}`} onClick={() => onViewModeChange('email')}>Email</button>
+      <button className={`btn btn-toggle${viewMode === 'web' ? ' active' : ''}`} onClick={() => onViewModeChange('web')}>Web</button>
+    </>
+  )
+}
+
+export default function MainPanel({ edition, theme, contactCount, onToggleTheme, onEditionUpdated }) {
   const [draft, setDraft] = useState(edition?.draft ?? true)
+  const [editorMode, setEditorMode] = useState('write')  // 'write' | 'split' | 'preview'
+  const [viewMode, setViewMode] = useState('email')
+  const [previewKey, setPreviewKey] = useState(0)
   const [showTestSend, setShowTestSend] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const { deploymentLive, status, setStatus, setDeploymentLive } = useDeployStatus(edition)
 
-  useEffect(() => { setDraft(edition?.draft ?? true) }, [edition])
+  useEffect(() => {
+    setDraft(edition?.draft ?? true)
+    setEditorMode('write')
+    setViewMode('email')
+  }, [edition?.slug])
 
-  // Update URL hash
   useEffect(() => {
     if (!edition) return
-    const hash = viewMode === 'email' ? edition.slug : `${edition.slug}/${viewMode}`
-    history.replaceState(null, '', `#${hash}`)
-  }, [edition?.slug, viewMode])
+    history.replaceState(null, '', `#${edition.slug}`)
+  }, [edition?.slug])
 
   const toggleDraft = () => {
     fetch(`/api/toggle-draft/${edition.slug}`, { method: 'POST' })
@@ -71,6 +96,34 @@ export default function MainPanel({ edition, viewMode, theme, contactCount, onVi
 
   const canSend = !draft && deploymentLive
 
+  const renderContent = () => {
+    if (!edition) return <div className="empty-state">← Select an edition to preview</div>
+
+    if (editorMode === 'write') {
+      return <EditorPanel key={edition.slug} slug={edition.slug} />
+    }
+
+    if (editorMode === 'split') {
+      return (
+        <div className="split-view">
+          <div className="split-editor">
+            <EditorPanel key={edition.slug} slug={edition.slug} onSaved={() => setPreviewKey(k => k + 1)} />
+          </div>
+          <div className="split-preview">
+            <div className="split-preview-bar">
+              <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setPreviewKey(k => k + 1)}>↺ Refresh</button>
+            </div>
+            <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
+          </div>
+        </div>
+      )
+    }
+
+    // preview mode
+    return <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
+  }
+
   return (
     <main className="main">
       <div className="toolbar">
@@ -78,14 +131,10 @@ export default function MainPanel({ edition, viewMode, theme, contactCount, onVi
           {edition ? edition.title : 'Select an edition'}
         </span>
         {edition && <>
-          <button
-            className={`btn btn-toggle${viewMode === 'email' ? ' active' : ''}`}
-            onClick={() => onViewModeChange('email')}
-          >Email</button>
-          <button
-            className={`btn btn-toggle${viewMode === 'web' ? ' active' : ''}`}
-            onClick={() => onViewModeChange('web')}
-          >Web</button>
+          <button className={`btn btn-toggle${editorMode === 'write' ? ' active' : ''}`} onClick={() => setEditorMode('write')}>Write</button>
+          <button className={`btn btn-toggle${editorMode === 'split' ? ' active' : ''}`} onClick={() => setEditorMode('split')}>Split</button>
+          <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'email' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('email') }}>Preview Email</button>
+          <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'web' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('web') }}>Preview Web</button>
           <button className="btn btn-draft-toggle" onClick={toggleDraft}>
             {draft ? 'Mark as Live' : 'Mark as Draft'}
           </button>
@@ -95,21 +144,10 @@ export default function MainPanel({ edition, viewMode, theme, contactCount, onVi
         </button>
       </div>
 
-      {!edition ? (
-        <div className="empty-state">← Select an edition to preview</div>
-      ) : (
-        <iframe
-          key={`${edition.slug}-${viewMode}`}
-          className="preview-frame"
-          src={`/preview/${edition.slug}/${viewMode}`}
-        />
-      )}
+      {renderContent()}
 
       {edition && (
         <div className="action-bar">
-          <a className="btn" href={`obsidian://open?path=${encodeURIComponent(edition.path)}`} target="_blank">
-            Edit in Obsidian
-          </a>
           <div className="spacer" />
           {status && <span className={`status-msg ${status.cls}`}>{status.text}</span>}
           <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>
