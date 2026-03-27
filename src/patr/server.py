@@ -181,14 +181,19 @@ def save_edition_content(slug):
             fm = fm[:-4] + f'title: "{escaped}"\n---\n'
     if "intro" in data:
         intro = data["intro"]
+        # Encode as YAML block scalar: indent every line with 2 spaces
+        def intro_block(text):
+            indented = "\n".join("  " + line for line in text.rstrip("\n").splitlines())
+            return f"intro: |\n{indented}\n"
+        # Match existing intro block scalar (| or plain value) including all indented continuation lines
+        intro_re = re.compile(r'^intro:[ \t]*\|[^\n]*\n(?:[ \t]+[^\n]*\n)*', re.MULTILINE)
         if re.search(r'^intro:', fm, re.MULTILINE):
             if intro:
-                # Replace existing intro block scalar
-                fm = re.sub(r'^intro:.*?(?=\n\S|\n---)', f'intro: |\n  {intro.strip()}', fm, flags=re.MULTILINE | re.DOTALL)
+                fm = intro_re.sub(intro_block(intro), fm)
             else:
-                fm = re.sub(r'^intro:.*?(?=\n\S|\n---)', '', fm, flags=re.MULTILINE | re.DOTALL)
+                fm = intro_re.sub('', fm)
         elif intro:
-            fm = fm[:-4] + f'intro: |\n  {intro.strip()}\n---\n'
+            fm = fm[:-4] + intro_block(intro) + "---\n"
     body = data.get("body", post.content)
     f.write_text(fm + "\n" + body.strip() + "\n")
     return jsonify({"ok": True})

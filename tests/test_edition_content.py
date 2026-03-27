@@ -80,6 +80,22 @@ def test_save_content_preserves_other_frontmatter(client, repo):
     assert "draft: true" in text
 
 
+def test_save_content_multiline_intro(client, repo):
+    intro = "Line one.\nLine two.\n  Indented line."
+    client.post("/api/edition/test-edition/content", json={"intro": intro})
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "intro: |" in text
+    assert "  Line one." in text
+    assert "  Line two." in text
+    assert "    Indented line." in text  # original 2-space indent + 2-space yaml indent
+
+
+def test_save_content_clears_intro(client, repo):
+    client.post("/api/edition/test-edition/content", json={"intro": ""})
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "intro:" not in text
+
+
 def test_save_content_404(client):
     r = client.post("/api/edition/missing/content", json={"body": "x"})
     assert r.status_code == 404
