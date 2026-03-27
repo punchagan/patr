@@ -8,7 +8,8 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 ## What it does
 
-- Browse and preview newsletter editions (email and web views)
+- Write and edit editions in a built-in rich markdown editor
+- Preview editions as email or web (side-by-side with the editor, or full-screen)
 - Toggle draft/live status
 - Send test emails to selected contacts
 - Send to your full mailing list (Google Sheets)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with the Patr repository
 
 ## Overview
 
-**Patr** is a local Flask web app for managing and sending Hugo-based newsletters. It runs on the author's machine, points at a Hugo site repo, and provides a browser UI for previewing, toggling draft/live status, and sending editions via Gmail.
+**Patr** is a local Flask web app for writing and sending Hugo-based newsletters. It runs on the author's machine, points at a Hugo site repo, and provides a browser UI for editing editions, previewing them as email or web, toggling draft/live status, and sending via Gmail.
 
 The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/document"). Spiritual successor to Inkling (which used Google Docs + GAS + Netlify).
 
@@ -48,7 +48,15 @@ patr/
       index.html         # Jinja2 template for the UI
     static/
       app.css            # UI styles
-      app.js             # UI logic
+      editor.css         # Editor-specific styles
+      main.jsx           # React entry point
+      App.jsx            # Root component: edition list, theme, modals
+      components/
+        Sidebar.jsx      # Edition list + auth bar
+        MainPanel.jsx    # Write/Split/Preview modes, action bar
+        EditorPanel.jsx  # TipTap rich markdown editor, auto-save, image upload
+        modals/          # SettingsModal, NewEditionModal, TestSendModal, ConfirmModal
+      dist/              # Built output (committed; npm not needed on install)
     data/
       layouts/           # Hugo templates (copied to {repo}/layouts/newsletter/ by install)
       assets/
@@ -138,8 +146,18 @@ intro: |
 Body content here. Reference images relatively: ![alt](photo.jpg)
 ```
 
-- Draft toggle uses surgical regex on the frontmatter block only (preserves block scalars, key order)
+- Draft toggle and content saves use `python-frontmatter` + a custom PyYAML dumper (`_PatrYamlDumper`) that preserves key order and uses literal block scalars for multi-line strings
 - `footer/index.md` has `_build: render:never, list:never` so Hugo doesn't give it its own URL
+
+### Frontend
+
+The UI is a React app (built with Vite, output committed to `static/dist/`). The editor uses TipTap v3 with the `tiptap-markdown` extension to read/write markdown.
+
+- `EditorPanel` loads content via `GET /api/edition/<slug>/content` and auto-saves via `POST` with a 1-second debounce
+- Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored in the page bundle directory; paths rewritten to absolute on load and back to relative on save (`absolutifyImages`/`relativifyImages`)
+- Three editor modes in `MainPanel`: **Write** (full-width editor), **Split** (editor + preview side-by-side, refreshes on save), **Preview Email** / **Preview Web** (full-width iframe)
+- `immediatelyRender: false` is required in `useEditor` to avoid a TipTap v3 SSR error
+- To rebuild the frontend: `npm run build` in the repo root (requires Node + npm, one-time dev setup)
 
 ### Hugo Templates
 
