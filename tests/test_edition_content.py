@@ -70,7 +70,7 @@ def test_save_content_updates_body(client, repo):
 def test_save_content_updates_title(client, repo):
     client.post("/api/edition/test-edition/content", json={"title": "New Title"})
     text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
-    assert 'title: "New Title"' in text
+    assert "title: New Title" in text
 
 
 def test_save_content_preserves_other_frontmatter(client, repo):

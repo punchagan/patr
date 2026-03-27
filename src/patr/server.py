@@ -5,6 +5,7 @@ import secrets
 import tomllib
 import time
 import urllib.request
+import yaml
 
 from flask import (
     Flask,
@@ -161,41 +162,34 @@ def get_edition_content(slug):
     })
 
 
+class _PatrYamlDumper(yaml.SafeDumper):
+    pass
+
+def _str_representer(dumper, data):
+    if "\n" in data:
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+_PatrYamlDumper.add_representer(str, _str_representer)
+
+
 @app.route("/api/edition/<slug>/content", methods=["POST"])
 def save_edition_content(slug):
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     data = request.json or {}
-    text = f.read_text()
-    fm_pattern = re.compile(r"^(---\n.*?^---\n)", re.DOTALL | re.MULTILINE)
-    m = fm_pattern.match(text)
-    if not m:
-        return jsonify({"error": "Could not parse frontmatter"}), 400
-    fm = m.group(1)
     if "title" in data:
-        escaped = data["title"].replace('"', '\\"')
-        if re.search(r'^title:', fm, re.MULTILINE):
-            fm = re.sub(r'^title:.*$', f'title: "{escaped}"', fm, flags=re.MULTILINE)
-        else:
-            fm = fm[:-4] + f'title: "{escaped}"\n---\n'
+        post.metadata["title"] = data["title"]
     if "intro" in data:
-        intro = data["intro"]
-        # Encode as YAML block scalar: indent every line with 2 spaces
-        def intro_block(text):
-            indented = "\n".join("  " + line for line in text.rstrip("\n").splitlines())
-            return f"intro: |\n{indented}\n"
-        # Match existing intro block scalar (| or plain value) including all indented continuation lines
-        intro_re = re.compile(r'^intro:[ \t]*\|[^\n]*\n(?:[ \t]+[^\n]*\n)*', re.MULTILINE)
-        if re.search(r'^intro:', fm, re.MULTILINE):
-            if intro:
-                fm = intro_re.sub(intro_block(intro), fm)
-            else:
-                fm = intro_re.sub('', fm)
-        elif intro:
-            fm = fm[:-4] + intro_block(intro) + "---\n"
+        intro = data["intro"].strip()
+        if intro:
+            post.metadata["intro"] = intro
+        else:
+            post.metadata.pop("intro", None)
     body = data.get("body", post.content)
-    f.write_text(fm + "\n" + body.strip() + "\n")
+    fm_yaml = yaml.dump(post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True)
+    f.write_text(f"---\n{fm_yaml}---\n\n{body.strip()}\n")
     return jsonify({"ok": True})
 
 
@@ -248,22 +242,9 @@ def toggle_draft(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     new_draft = not post.get("draft", False)
-    text = f.read_text()
-    new_value = "true" if new_draft else "false"
-    # Only patch inside the first frontmatter block (between the two --- fences)
-    fm_pattern = re.compile(r"^(---\n.*?^---\n)", re.DOTALL | re.MULTILINE)
-    m = fm_pattern.match(text)
-    if m:
-        fm = m.group(1)
-        if re.search(r"^draft:", fm, re.MULTILINE):
-            new_fm = re.sub(
-                r"^draft:.*$", f"draft: {new_value}", fm, flags=re.MULTILINE
-            )
-        else:
-            # Insert draft before the closing ---
-            new_fm = fm[:-4] + f"draft: {new_value}\n---\n"
-        text = new_fm + text[m.end() :]
-    f.write_text(text)
+    post.metadata["draft"] = new_draft
+    fm_yaml = yaml.dump(post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True)
+    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
     return jsonify({"draft": new_draft})
 
 
