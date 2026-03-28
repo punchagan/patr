@@ -92,17 +92,16 @@ def test_pdf_html_has_no_base_tag(client, edition):
 
 
 
-def test_pdf_img_width_px_attribute_converted_to_inline_style(client, repo, edition):
-    """width="180px" HTML attributes must become style="width:180px".
+def test_pdf_img_width_attribute_converted_to_inline_style(client, repo, edition):
+    """width="180" attr_list attributes must become style="width:180px".
 
-    WeasyPrint ignores the px suffix on HTML width attributes (not valid HTML),
-    so the image renders at full/natural size instead of the intended 180px.
-    Converting to an inline style guarantees WeasyPrint applies the constraint.
+    WeasyPrint ignores bare HTML width attributes; only inline CSS style applies.
+    Python markdown's attr_list extension produces width="180" (no px unit).
     """
     footer_dir = repo / "content" / "newsletter" / "footer"
     footer_dir.mkdir()
     (footer_dir / "index.md").write_text(
-        '---\ntitle: Footer\n---\n\n<img src="/images/newsletter/upi-qr.png" width="180px">\n'
+        '---\ntitle: Footer\n---\n\n![upi](/images/newsletter/upi-qr.png){: width="180"}\n'
     )
     img_dir = repo / "static" / "images" / "newsletter"
     img_dir.mkdir(parents=True)
@@ -115,7 +114,7 @@ def test_pdf_img_width_px_attribute_converted_to_inline_style(client, repo, edit
 
     _, kwargs = mock_html_cls.call_args
     html_string = kwargs.get("string", "")
-    assert 'width="180px"' not in html_string, "raw width='180px' must be converted"
+    assert 'width="180"' not in html_string, "bare width='180' must be converted to inline style"
     assert "width:180px" in html_string or "width: 180px" in html_string
 
 

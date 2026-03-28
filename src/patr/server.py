@@ -259,10 +259,10 @@ def preview_email_pdf(slug):
         elif src.startswith(f"{localhost}/newsletter/{slug}/"):
             filename = src[len(f"{localhost}/newsletter/{slug}/"):]
             img["src"] = (state.CONTENT_DIR / slug / filename).as_uri()
-        # fix width="Npx" HTML attribute → inline style for WeasyPrint
+        # fix width="N" attr_list attribute → inline style for WeasyPrint
         width = str(img.get("width", ""))
-        if width.endswith("px"):
-            img["style"] = f"width:{width}"
+        if width.isdigit():
+            img["style"] = f"width:{width}px"
             del img["width"]
     pdf_bytes = HTML(string=str(soup)).write_pdf()
     return (
