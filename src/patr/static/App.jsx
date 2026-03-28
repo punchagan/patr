@@ -11,6 +11,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [contactCount, setContactCount] = useState(null)
   const [hasSheetId, setHasSheetId] = useState(false)
+  const [editingFooter, setEditingFooter] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showNewEdition, setShowNewEdition] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
@@ -61,14 +62,17 @@ export default function App() {
     <div className="layout">
       <Sidebar
         editions={editions}
-        selectedSlug={selectedEdition?.slug}
-        onSelect={setSelectedEdition}
+        selectedSlug={editingFooter ? null : selectedEdition?.slug}
+        editingFooter={editingFooter}
+        onSelect={e => { setSelectedEdition(e); setEditingFooter(false) }}
+        onFooter={() => { setSelectedEdition(null); setEditingFooter(true) }}
         onNewEdition={() => setShowNewEdition(true)}
         onSettings={() => setShowSettings(true)}
         onHelp={() => setShowHelp(true)}
       />
       <MainPanel
         edition={selectedEdition}
+        editingFooter={editingFooter}
         theme={theme}
         contactCount={contactCount}
         hasSheetId={hasSheetId}

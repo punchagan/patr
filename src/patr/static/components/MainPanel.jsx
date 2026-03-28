@@ -41,7 +41,7 @@ function ViewToggle({ viewMode, onViewModeChange }) {
   )
 }
 
-export default function MainPanel({ edition, theme, contactCount, hasSheetId, onToggleTheme, onEditionUpdated }) {
+export default function MainPanel({ edition, editingFooter, theme, contactCount, hasSheetId, onToggleTheme, onEditionUpdated }) {
   const [draft, setDraft] = useState(edition?.draft ?? true)
   const [editorMode, setEditorMode] = useState('write')  // 'write' | 'split' | 'preview'
   const [viewMode, setViewMode] = useState('email')
@@ -102,8 +102,8 @@ export default function MainPanel({ edition, theme, contactCount, hasSheetId, on
   return (
     <main className="main">
       <div className="toolbar">
-        <span className={`toolbar-title${edition ? '' : ' empty'}`}>
-          {edition ? edition.title : 'Select an edition'}
+        <span className={`toolbar-title${edition || editingFooter ? '' : ' empty'}`}>
+          {editingFooter ? 'Footer' : edition ? edition.title : 'Select an edition'}
         </span>
         {edition && <>
           <button className={`btn btn-toggle${editorMode === 'write' ? ' active' : ''}`} onClick={() => setEditorMode('write')}>Write</button>
@@ -119,7 +119,13 @@ export default function MainPanel({ edition, theme, contactCount, hasSheetId, on
         </button>
       </div>
 
-      {!edition ? (
+      {editingFooter ? (
+        <div className="content-area">
+          <div className="editor-pane">
+            <EditorPanel key="footer" slug="footer" isFooter onSaved={() => {}} />
+          </div>
+        </div>
+      ) : !edition ? (
         <div className="empty-state">← Select an edition to preview</div>
       ) : (
         <div className="content-area">

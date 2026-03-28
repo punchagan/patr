@@ -109,6 +109,7 @@ body {
 
 .edition-item:hover { background: var(--btn-hover); }
 .edition-item.active { background: var(--active-bg); border-left: 3px solid var(--active-accent); }
+.footer-item { border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; margin-top: auto; }
 
 .edition-title {
   font-weight: 500;

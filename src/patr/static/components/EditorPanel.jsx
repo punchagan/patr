@@ -80,7 +80,7 @@ function EditorToolbar({ editor, slug }) {
   )
 }
 
-export default function EditorPanel({ slug, onTitleChange, onSaved }) {
+export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) {
   const [title, setTitle] = useState('')
   const [intro, setIntro] = useState('')
   const [saveStatus, setSaveStatus] = useState('')
@@ -192,25 +192,27 @@ export default function EditorPanel({ slug, onTitleChange, onSaved }) {
 
   return (
     <div className="editor-panel">
-      <div className="editor-field">
-        <label>Title</label>
-        <input
-          type="text"
-          className="editor-title-input"
-          value={title}
-          onChange={handleTitleChange}
-          autoComplete="off"
-        />
-      </div>
-      <div className="editor-field">
-        <label>Intro</label>
-        <textarea
-          className="editor-intro-input"
-          rows={2}
-          value={intro}
-          onChange={e => { setIntro(e.target.value); scheduleSave() }}
-        />
-      </div>
+      {!isFooter && <>
+        <div className="editor-field">
+          <label>Title</label>
+          <input
+            type="text"
+            className="editor-title-input"
+            value={title}
+            onChange={handleTitleChange}
+            autoComplete="off"
+          />
+        </div>
+        <div className="editor-field">
+          <label>Intro</label>
+          <textarea
+            className="editor-intro-input"
+            rows={2}
+            value={intro}
+            onChange={e => { setIntro(e.target.value); scheduleSave() }}
+          />
+        </div>
+      </>}
       <div className="editor-field" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <label>Body</label>
         <EditorToolbar editor={editor} slug={slug} />

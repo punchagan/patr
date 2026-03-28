@@ -27,7 +27,7 @@ function AuthBar() {
   )
 }
 
-export default function Sidebar({ editions, selectedSlug, onSelect, onNewEdition, onSettings, onHelp }) {
+export default function Sidebar({ editions, selectedSlug, editingFooter, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
   return (
     <aside className="sidebar">
       <AuthBar />
@@ -59,6 +59,12 @@ export default function Sidebar({ editions, selectedSlug, onSelect, onNewEdition
             </div>
           ))
         )}
+      </div>
+      <div
+        className={`edition-item footer-item${editingFooter ? ' active' : ''}`}
+        onClick={onFooter}
+      >
+        Footer
       </div>
     </aside>
   )
