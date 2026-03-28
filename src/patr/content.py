@@ -3,6 +3,7 @@ import re
 
 import frontmatter
 import markdown
+from bs4 import BeautifulSoup
 from premailer import transform
 
 from patr import state
@@ -64,14 +65,17 @@ def render_md(text):
     html = markdown.markdown(text or "", extensions=["extra", "smarty"])
 
     # Mirror Hugo's render hook: wrap <img> with <figure>/<figcaption>
-    def img_to_figure(m):
-        tag = m.group(0)
-        alt = re.search(r'alt="([^"]+)"', tag)
-        if not alt:
-            return tag
-        return f"<figure>{tag}<figcaption>{alt.group(1)}</figcaption></figure>"
-
-    return re.sub(r"<img[^>]+>", img_to_figure, html)
+    soup = BeautifulSoup(html, "html.parser")
+    for img in soup.find_all("img"):
+        alt = img.get("alt", "")
+        if alt:
+            figure = soup.new_tag("figure")
+            img.replace_with(figure)
+            figure.append(img)
+            figcaption = soup.new_tag("figcaption")
+            figcaption.string = alt
+            figure.append(figcaption)
+    return str(soup)
 
 
 def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
