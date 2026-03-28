@@ -38,7 +38,6 @@ from patr.config import (
 from patr.contacts import fetch_contacts, get_already_sent, log_sent
 from patr.content import (
     build_email_html,
-    build_web_html,
     load_edition,
     load_footer,
     get_editions,
@@ -206,6 +205,7 @@ def save_edition_content(slug):
     return jsonify({"ok": True})
 
 
+
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 
@@ -237,7 +237,8 @@ def preview_email(slug):
     _, post = load_edition(slug)
     if post is None:
         return "Not found", 404
-    return build_web_html(slug, post, load_footer())
+    port = app.config["PORT"]
+    return build_email_html(slug, post, load_footer(), {"baseURL": f"http://127.0.0.1:{port}"})
 
 
 @app.route("/preview/<slug>/email.pdf")
@@ -245,24 +246,25 @@ def preview_email_pdf(slug):
     _, post = load_edition(slug)
     if post is None:
         return "Not found", 404
-    soup = BeautifulSoup(build_web_html(slug, post, load_footer()), "html.parser")
-    # Strip <base> tag — WeasyPrint uses base_url directly instead
-    for tag in soup.find_all("base"):
-        tag.decompose()
-    # Rewrite root-relative /images/... src to file:// so WeasyPrint loads
-    # from disk without HTTP round-trips; fix width="Npx" → style= while here
-    static_dir = state.REPO_ROOT / "static"
+    port = app.config["PORT"]
+    localhost = f"http://127.0.0.1:{port}"
+    html = build_email_html(slug, post, load_footer(), {"baseURL": localhost})
+    # Rewrite localhost image URLs to file:// so WeasyPrint loads from disk
+    soup = BeautifulSoup(html, "html.parser")
     for img in soup.find_all("img"):
         src = str(img.get("src", ""))
-        if src.startswith("/"):
-            img["src"] = (static_dir / src.lstrip("/")).as_uri()
+        if src.startswith(f"{localhost}/images/"):
+            remainder = src[len(f"{localhost}/images/"):]
+            img["src"] = (state.REPO_ROOT / "static" / "images" / remainder).as_uri()
+        elif src.startswith(f"{localhost}/newsletter/{slug}/"):
+            filename = src[len(f"{localhost}/newsletter/{slug}/"):]
+            img["src"] = (state.CONTENT_DIR / slug / filename).as_uri()
+        # fix width="Npx" HTML attribute → inline style for WeasyPrint
         width = str(img.get("width", ""))
         if width.endswith("px"):
             img["style"] = f"width:{width}"
             del img["width"]
-    # Load page-bundle images from disk via file:// base URL
-    base_url = (state.CONTENT_DIR / slug).as_uri() + "/"
-    pdf_bytes = HTML(string=str(soup), base_url=base_url).write_pdf()
+    pdf_bytes = HTML(string=str(soup)).write_pdf()
     return (
         pdf_bytes,
         200,

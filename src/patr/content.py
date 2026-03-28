@@ -8,6 +8,17 @@ from premailer import transform
 from patr import state
 
 
+NEWSLETTER_CSS = """\
+  body { font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #333; background: #fff; line-height: 1.7; }
+  .view-in-browser { font-size: 0.8em; color: #aaa; margin-bottom: 2em; }
+  .view-in-browser a { color: #aaa; }
+  .intro { font-style: italic; color: #555; border-bottom: 1px solid #eee; padding-bottom: 1em; margin-bottom: 1.5em; font-size: 1.05em; }
+  .footer { border-top: 1px solid #eee; margin-top: 2em; padding-top: 1em; font-size: 0.9em; color: #666; }
+  img { max-width: 500px; height: auto; display: block; margin: 1rem auto; }
+  figure { margin: 1.5rem 0; text-align: center; }
+  figcaption { font-size: 0.85em; color: #888; margin-top: 0.5rem; }"""
+
+
 def get_editions():
     posts = []
     for d in sorted(state.CONTENT_DIR.iterdir()):
@@ -93,40 +104,6 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     return str(soup)
 
 
-def build_web_html(slug, post, footer_md):
-    date = str(post.get("date", ""))[:10]
-    title_escaped = _html.escape(post.get("title", ""))
-    intro_html = render_md(post.get("intro", ""))
-    body_html = render_md(post.content)
-    footer_html = render_md(footer_md)
-
-    return f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<base href="/newsletter/{slug}/">
-<title>{title_escaped}</title>
-<style>
-  body {{ font-family: Georgia, serif; max-width: 640px; margin: 2rem auto; padding: 0 1.5rem; color: #333; line-height: 1.7; }}
-  h1 {{ font-size: 1.8rem; margin-bottom: 0.25rem; }}
-  .date {{ color: #999; font-size: 0.85em; margin-bottom: 1.5rem; }}
-  .intro {{ font-style: italic; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 1rem; margin-bottom: 1.5rem; font-size: 1.05em; }}
-  .footer {{ border-top: 1px solid #ddd; margin-top: 2rem; padding-top: 1rem; font-size: 0.9em; color: #666; }}
-  img {{ max-width: 500px; height: auto; display: block; margin: 1rem auto; }}
-  figure {{ margin: 1.5rem 0; text-align: center; }}
-  figcaption {{ font-size: 0.85em; color: #888; margin-top: 0.5rem; }}
-</style>
-</head>
-<body>
-  <p class="date">{date}</p>
-  <h1>{title_escaped}</h1>
-  {"<div class='intro'>" + intro_html + "</div>" if intro_html else ""}
-  <div class="content">{body_html}</div>
-  {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
-</body>
-</html>"""
-
-
 def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
@@ -138,15 +115,13 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
 
     html = f"""<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><style>img {{ max-width: 500px; height: auto; display: block; margin: 1rem auto; }}</style></head>
-<body style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #333; background: #fff; line-height: 1.7;">
-  <p style="font-size: 0.8em; color: #aaa; margin-bottom: 2em;">
-    <a href="{page_url}" style="color: #aaa;">View in browser</a>
-  </p>
+<head><meta charset="utf-8"><style>{NEWSLETTER_CSS}</style></head>
+<body>
+  <p class="view-in-browser"><a href="{page_url}">View in browser</a></p>
   <p>{greeting}</p>
-  {"<div style='font-style:italic;color:#555;border-bottom:1px solid #eee;padding-bottom:1em;margin-bottom:1.5em;font-size:1.05em;'>" + intro_html + "</div>" if intro_html else ""}
-  <div>{body_html}</div>
-  {"<div style='border-top:1px solid #eee;margin-top:2em;padding-top:1em;font-size:0.9em;color:#666;'>" + footer_html + "</div>" if footer_html else ""}
+  {"<div class='intro'>" + intro_html + "</div>" if intro_html else ""}
+  <div class="content">{body_html}</div>
+  {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
 </body>
 </html>"""
     return transform(absolutify_urls(html, base_url, page_url))

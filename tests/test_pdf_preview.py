@@ -54,16 +54,30 @@ def test_pdf_endpoint_404_for_missing_edition(client, repo):
     assert r.status_code == 404
 
 
-def test_pdf_uses_filesystem_base_url_not_http(client, edition):
-    """WeasyPrint must use a file:// base URL so images load from disk."""
+def test_pdf_image_srcs_are_file_not_http(client, edition):
+    """Image src attributes passed to WeasyPrint must be file:// not http://
+    to avoid WeasyPrint making HTTP requests back to the running Flask server."""
+    img_dir = edition.parent.parent.parent / "static" / "images"
+    img_dir.mkdir(parents=True)
+    (img_dir / "logo.png").write_bytes(b"\x89PNG")
+    (edition / "photo.jpg").write_bytes(b"\xff\xd8")
+    # Re-write the edition to include both image types
+    (edition / "index.md").write_text(
+        "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\n\n"
+        "![photo](photo.jpg)\n\n![logo](/images/logo.png)\n"
+    )
     mock_html_cls = MagicMock()
     mock_html_cls.return_value.write_pdf.return_value = b"%PDF"
     with patch("patr.server.HTML", mock_html_cls):
         client.get("/preview/my-ed/email.pdf")
     _, kwargs = mock_html_cls.call_args
-    base_url = kwargs.get("base_url", "")
-    assert base_url.startswith("file://"), f"Expected file:// base_url, got: {base_url!r}"
-    assert "http" not in base_url
+    html_string = kwargs.get("string", "")
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html_string, "html.parser")
+    for img in soup.find_all("img"):
+        src = img.get("src", "")
+        assert not src.startswith("http://127.0.0.1"), f"img src must not be localhost: {src}"
+        assert src.startswith("file://"), f"img src must be file://: {src}"
 
 
 def test_pdf_html_has_no_base_tag(client, edition):

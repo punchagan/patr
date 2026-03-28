@@ -1,6 +1,6 @@
-"""Tests for content rendering — render_md, absolutify_urls, build_email_html, build_web_html."""
+"""Tests for content rendering — render_md, absolutify_urls, build_email_html."""
 import frontmatter
-from patr.content import render_md, absolutify_urls, build_email_html, build_web_html
+from patr.content import render_md, absolutify_urls, build_email_html
 
 HUGO_CONFIG = {"baseURL": "https://example.com"}
 
@@ -129,8 +129,9 @@ def test_email_html_css_inlined_by_premailer():
 def test_email_html_image_with_alt_becomes_figure():
     post = make_post(body="![A sunset](sunset.jpg)")
     html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
-    assert "<figure>" in html
-    assert "<figcaption>A sunset</figcaption>" in html
+    assert "<figure" in html
+    assert "A sunset" in html
+    assert "figcaption" in html
 
 
 # build_email_html — edge cases
@@ -183,42 +184,61 @@ def test_email_html_whitespace_only_name_falls_back_to_generic_greeting():
     assert "Hi," in html
 
 
-# build_web_html — end-to-end
-
-def test_web_html_contains_title():
-    post = make_post(title="My Newsletter")
-    html = build_web_html("test-ed", post, FOOTER_MD)
-    assert "My Newsletter" in html
+LOCALHOST_CONFIG = {"baseURL": "http://127.0.0.1:5000"}
 
 
-def test_web_html_contains_date():
-    post = make_post(date="2024-03-15")
-    html = build_web_html("test-ed", post, FOOTER_MD)
-    assert "2024-03-15" in html
+# preview HTML (build_email_html with localhost base URL) — same function, local images
+
+def test_preview_html_renders_body():
+    post = make_post(body="Read all about **it**.")
+    html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
+    assert "<strong>it</strong>" in html
 
 
-def test_web_html_base_href():
-    post = make_post()
-    html = build_web_html("test-ed", post, FOOTER_MD)
-    assert '<base href="/newsletter/test-ed/">' in html
-
-
-def test_web_html_renders_intro():
+def test_preview_html_renders_intro():
     post = make_post(intro="A quick note.")
-    html = build_web_html("test-ed", post, FOOTER_MD)
+    html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
     assert "A quick note." in html
 
 
-def test_web_html_renders_footer():
+def test_preview_html_renders_footer():
     post = make_post()
-    html = build_web_html("test-ed", post, FOOTER_MD)
+    html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
     assert "Unsubscribe" in html
 
 
-def test_web_html_title_is_html_escaped():
-    post = make_post(title="AT&T <b>News</b>")
-    html = build_web_html("test-ed", post, FOOTER_MD)
-    # Raw tags must not appear in the rendered title or h1
-    assert "<b>" not in html
-    assert "&lt;b&gt;" in html
-    assert "&amp;" in html
+def test_preview_html_no_footer_when_empty():
+    post = make_post()
+    html = build_email_html("test-ed", post, "", LOCALHOST_CONFIG)
+    assert "Unsubscribe" not in html
+
+
+def test_preview_html_image_with_alt_becomes_figure():
+    post = make_post(body="![A sunset](sunset.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
+    assert "<figure" in html
+    assert "A sunset" in html
+    assert "figcaption" in html
+
+
+def test_preview_html_relative_image_uses_localhost():
+    post = make_post(body="![img](photo.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
+    assert "http://127.0.0.1:5000/newsletter/test-ed/photo.jpg" in html
+
+
+def test_preview_html_root_relative_image_uses_localhost():
+    post = make_post(body="![logo](/images/logo.png)")
+    html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
+    assert "http://127.0.0.1:5000/images/logo.png" in html
+
+
+# shared CSS — must hold for both production email and preview
+
+def test_img_max_width_constrained():
+    post = make_post(body="![img](photo.jpg)")
+    for config in [HUGO_CONFIG, LOCALHOST_CONFIG]:
+        html = build_email_html("test-ed", post, FOOTER_MD, config)
+        assert "max-width" in html
+
+
