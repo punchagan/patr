@@ -1,21 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Image from '@tiptap/extension-image'
-import Link from '@tiptap/extension-link'
-import Placeholder from '@tiptap/extension-placeholder'
-import { Markdown } from 'tiptap-markdown'
+import CodeMirror from '@uiw/react-codemirror'
+import { markdown } from '@codemirror/lang-markdown'
 import '../editor.css'
-
-function absolutifyImages(markdown, slug) {
-  return markdown.replace(/!\[([^\]]*)\]\((?!https?:\/\/|\/)(.*?)\)/g, `![$1](/newsletter/${slug}/$2)`)
-}
-
-function relativifyImages(markdown, slug) {
-  const prefix = `/newsletter/${slug}/`
-  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return markdown.replace(new RegExp(`!\\[([^\\]]*)\\]\\(${escaped}(.*?)\\)`, 'g'), '![$1]($2)')
-}
 
 async function uploadImage(file, slug) {
   const formData = new FormData()
@@ -25,11 +11,46 @@ async function uploadImage(file, slug) {
   return (await r.json()).path
 }
 
-function ToolbarButton({ onClick, active, title, children }) {
+function wrapSelection(view, before, after = before) {
+  const { state } = view
+  const changes = []
+  const newRanges = []
+  for (const range of state.selection.ranges) {
+    if (range.empty) {
+      changes.push({ from: range.from, insert: before + after })
+      newRanges.push({ anchor: range.from + before.length })
+    } else {
+      changes.push({ from: range.from, insert: before })
+      changes.push({ from: range.to, insert: after })
+      newRanges.push({ anchor: range.from + before.length, head: range.to + before.length })
+    }
+  }
+  view.dispatch(state.update({ changes, selection: { ranges: newRanges } }))
+  view.focus()
+}
+
+function prefixLine(view, prefix) {
+  const { state } = view
+  const line = state.doc.lineAt(state.selection.main.from)
+  view.dispatch(state.update({ changes: { from: line.from, insert: prefix } }))
+  view.focus()
+}
+
+function insertAtPos(view, text) {
+  const { state } = view
+  const pos = state.selection.main.head
+  view.dispatch(state.update({
+    changes: { from: pos, insert: text },
+    selection: { anchor: pos + text.length },
+  }))
+  view.focus()
+}
+
+function ToolbarButton({ onClick, title, children }) {
   return (
     <button
       type="button"
-      className={`editor-toolbar-btn${active ? ' active' : ''}`}
+      className="editor-toolbar-btn"
       title={title}
       onMouseDown={e => { e.preventDefault(); onClick() }}
     >
@@ -38,10 +59,17 @@ function ToolbarButton({ onClick, active, title, children }) {
   )
 }
 
-function EditorToolbar({ editor, slug }) {
-  if (!editor) return null
+function EditorToolbar({ viewRef, slug }) {
+  const v = () => viewRef.current
+  const wrap = (b, a = b) => v() && wrapSelection(v(), b, a)
+  const prefix = (p) => v() && prefixLine(v(), p)
 
-  const triggerImageUpload = () => {
+  const handleLink = () => {
+    const url = prompt('URL:')
+    if (url) wrap('[', `](${url})`)
+  }
+
+  const handleImageUpload = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -49,33 +77,27 @@ function EditorToolbar({ editor, slug }) {
       const file = input.files[0]
       if (!file) return
       const path = await uploadImage(file, slug)
-      if (path) editor.chain().focus().setImage({ src: `/newsletter/${slug}/${path}` }).run()
+      if (path && v()) insertAtPos(v(), `![](${path})`)
     }
     input.click()
   }
 
-  const setLink = () => {
-    const url = prompt('URL:')
-    if (url) editor.chain().focus().setLink({ href: url }).run()
-    else if (url === '') editor.chain().focus().unsetLink().run()
-  }
-
   return (
     <div className="editor-toolbar">
-      <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">B</ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic"><em>I</em></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough"><s>S</s></ToolbarButton>
+      <ToolbarButton onClick={() => wrap('**')} title="Bold">B</ToolbarButton>
+      <ToolbarButton onClick={() => wrap('*')} title="Italic"><em>I</em></ToolbarButton>
+      <ToolbarButton onClick={() => wrap('~~')} title="Strikethrough"><s>S</s></ToolbarButton>
       <span className="editor-toolbar-sep" />
-      <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">H1</ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">H2</ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">H3</ToolbarButton>
+      <ToolbarButton onClick={() => prefix('# ')} title="Heading 1">H1</ToolbarButton>
+      <ToolbarButton onClick={() => prefix('## ')} title="Heading 2">H2</ToolbarButton>
+      <ToolbarButton onClick={() => prefix('### ')} title="Heading 3">H3</ToolbarButton>
       <span className="editor-toolbar-sep" />
-      <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">• List</ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered list">1. List</ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">❝</ToolbarButton>
+      <ToolbarButton onClick={() => prefix('- ')} title="Bullet list">• List</ToolbarButton>
+      <ToolbarButton onClick={() => prefix('1. ')} title="Ordered list">1. List</ToolbarButton>
+      <ToolbarButton onClick={() => prefix('> ')} title="Blockquote">❝</ToolbarButton>
       <span className="editor-toolbar-sep" />
-      <ToolbarButton onClick={setLink} active={editor.isActive('link')} title="Link">🔗</ToolbarButton>
-      <ToolbarButton onClick={triggerImageUpload} title="Insert image">🖼</ToolbarButton>
+      <ToolbarButton onClick={handleLink} title="Link">🔗</ToolbarButton>
+      <ToolbarButton onClick={handleImageUpload} title="Insert image">🖼</ToolbarButton>
     </div>
   )
 }
@@ -83,40 +105,40 @@ function EditorToolbar({ editor, slug }) {
 export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) {
   const [title, setTitle] = useState('')
   const [intro, setIntro] = useState('')
+  const [body, setBody] = useState('')
   const [saveStatus, setSaveStatus] = useState('')
+  const [isDark, setIsDark] = useState(() => document.body.classList.contains('dark'))
+
   const loading = useRef(false)
   const saveTimer = useRef(null)
   const slugRef = useRef(slug)
-
-  // Use refs to avoid stale closures in debounced save
   const titleRef = useRef(title)
   const introRef = useRef(intro)
+  const bodyRef = useRef(body)
+  const viewRef = useRef(null)
+
   useEffect(() => { titleRef.current = title }, [title])
   useEffect(() => { introRef.current = intro }, [intro])
+  useEffect(() => { bodyRef.current = body }, [body])
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit,
-      Markdown,
-      Image,
-      Link.configure({ openOnClick: false }),
-      Placeholder.configure({ placeholder: 'Write something…' }),
-    ],
-    onUpdate: () => { if (!loading.current) scheduleSave() },
-  })
-
-  // Image paste/drop
+  // Track dark mode changes
   useEffect(() => {
-    if (!editor || !editor.view?.dom) return
-    const el = editor.view.dom
+    const obs = new MutationObserver(() => setIsDark(document.body.classList.contains('dark')))
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+
+  // Image paste/drop on the CodeMirror DOM
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
 
     const onPaste = async (e) => {
       const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'))
       for (const file of files) {
         e.preventDefault()
-        const path = await uploadImage(file, slug)
-        if (path) editor.chain().focus().setImage({ src: `/newsletter/${slug}/${path}` }).run()
+        const path = await uploadImage(file, slugRef.current)
+        if (path) insertAtPos(view, `![](${path})`)
       }
     }
     const onDrop = async (e) => {
@@ -124,31 +146,32 @@ export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) 
       if (!files.length) return
       e.preventDefault()
       for (const file of files) {
-        const path = await uploadImage(file, slug)
-        if (path) editor.chain().focus().setImage({ src: `/newsletter/${slug}/${path}` }).run()
+        const path = await uploadImage(file, slugRef.current)
+        if (path) insertAtPos(view, `![](${path})`)
       }
     }
 
-    el.addEventListener('paste', onPaste)
-    el.addEventListener('drop', onDrop)
-    return () => { el.removeEventListener('paste', onPaste); el.removeEventListener('drop', onDrop) }
-  }, [editor, slug])
+    view.dom.addEventListener('paste', onPaste)
+    view.dom.addEventListener('drop', onDrop)
+    return () => {
+      view.dom.removeEventListener('paste', onPaste)
+      view.dom.removeEventListener('drop', onDrop)
+    }
+  }, [viewRef.current]) // re-run when view is created
 
-  // Load content when slug changes
+  // Load content when slug changes, flush pending save for previous slug
   useEffect(() => {
-    if (!editor || !slug) return
+    if (!slug) return
 
-    // Flush any pending debounced save for the previous slug before switching
     const prevSlug = slugRef.current
     slugRef.current = slug
     if (prevSlug && prevSlug !== slug && saveTimer.current !== null) {
       clearTimeout(saveTimer.current)
       saveTimer.current = null
-      const body = relativifyImages(editor.storage.markdown.getMarkdown(), prevSlug)
       fetch(`/api/edition/${prevSlug}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: titleRef.current, intro: introRef.current, body }),
+        body: JSON.stringify({ title: titleRef.current, intro: introRef.current, body: bodyRef.current }),
       })
     }
 
@@ -159,21 +182,19 @@ export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) 
       .then(d => {
         setTitle(d.title || '')
         setIntro(d.intro || '')
-        editor.commands.setContent(absolutifyImages(d.body || '', slug))
+        setBody(d.body || '')
       })
       .finally(() => { loading.current = false })
-  }, [slug, editor])
+  }, [slug])
 
   const scheduleSave = useCallback(() => {
     clearTimeout(saveTimer.current)
     setSaveStatus('Saving…')
     saveTimer.current = setTimeout(() => {
-      if (!editor) return
-      const body = relativifyImages(editor.storage.markdown.getMarkdown(), slug)
       fetch(`/api/edition/${slug}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: titleRef.current, intro: introRef.current, body }),
+        body: JSON.stringify({ title: titleRef.current, intro: introRef.current, body: bodyRef.current }),
       })
         .then(r => r.json())
         .then(d => {
@@ -182,11 +203,25 @@ export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) 
         })
         .catch(() => setSaveStatus('Save failed'))
     }, 1000)
-  }, [editor, slug])
+  }, [slug])
+
+  const handleBodyChange = useCallback((val) => {
+    if (loading.current) return
+    setBody(val)
+    bodyRef.current = val
+    scheduleSave()
+  }, [scheduleSave])
 
   const handleTitleChange = (e) => {
     setTitle(e.target.value)
+    titleRef.current = e.target.value
     onTitleChange?.(e.target.value)
+    scheduleSave()
+  }
+
+  const handleIntroChange = (e) => {
+    setIntro(e.target.value)
+    introRef.current = e.target.value
     scheduleSave()
   }
 
@@ -209,15 +244,24 @@ export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) 
             className="editor-intro-input"
             rows={2}
             value={intro}
-            onChange={e => { setIntro(e.target.value); scheduleSave() }}
+            onChange={handleIntroChange}
           />
         </div>
       </>}
       <div className="editor-field" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <label>Body</label>
-        <EditorToolbar editor={editor} slug={slug} />
-        <div className="editor-body-wrap" onClick={() => editor?.commands.focus()}>
-          <EditorContent editor={editor} />
+        <EditorToolbar viewRef={viewRef} slug={slug} />
+        <div className="editor-body-wrap">
+          <CodeMirror
+            value={body}
+            onChange={handleBodyChange}
+            onCreateEditor={(view) => { viewRef.current = view }}
+            extensions={[markdown()]}
+            theme={isDark ? 'dark' : 'light'}
+            placeholder="Write something…"
+            basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }}
+            style={{ fontSize: 14, height: '100%' }}
+          />
         </div>
       </div>
       <div className={`editor-save-status${saveStatus ? ' visible' : ''}`}>{saveStatus}</div>

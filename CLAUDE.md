@@ -156,13 +156,13 @@ Body content here. Reference images relatively: ![alt](photo.jpg)
 
 ### Frontend
 
-The UI is a React app (built with Vite, output committed to `static/dist/`). The editor uses TipTap v3 with the `tiptap-markdown` extension to read/write markdown.
+The UI is a React app (built with Vite, output committed to `static/dist/`). The editor uses **CodeMirror** (`@uiw/react-codemirror`) with the `@codemirror/lang-markdown` extension — raw markdown editing with syntax highlighting, no lossy AST round-trip.
 
 - `EditorPanel` loads content via `GET /api/edition/<slug>/content` and auto-saves via `POST` with a 1-second debounce
-- Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored in the page bundle directory; paths rewritten to absolute on load and back to relative on save (`absolutifyImages`/`relativifyImages`)
+- Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored in the page bundle directory; inserted as relative markdown `![](filename)`
+- Toolbar buttons insert/wrap markdown syntax at the cursor (no WYSIWYG schema)
 - Three editor modes in `MainPanel`: **Write** (full-width editor), **Split** (editor + preview side-by-side, refreshes on save), **Preview Email** / **Preview Web** (full-width iframe)
 - **Preview Email** mode has a **Download PDF** button (`/preview/<slug>/email.pdf`) — rendered by WeasyPrint with a `file://` base URL so images load from disk
-- `immediatelyRender: false` is required in `useEditor` to avoid a TipTap v3 SSR error
 - To rebuild the frontend: `npm run build` in the repo root (requires Node + npm, one-time dev setup)
 
 ### Hugo Templates
