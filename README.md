@@ -17,6 +17,15 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 The editor supports basic formatting — bold, italic, headings, lists, links, and images. You can paste or drag images directly into the editor.
 
+To control an image's display size, use the title field with an attribute block:
+
+```
+![alt text](photo.jpg "My caption {width='300'}")
+![logo](logo.png "{style='width:120px; border: 1px solid #eee;'}")
+```
+
+The `{…}` block supports `width`, `height`, and `style` (CSS). It is stripped from the visible caption. This works consistently in email, PDF, and the web archive.
+
 The **Intro** field is optional — it appears in a highlighted style above the body in both the email and web versions. Good for a short summary or personal note.
 
 Your writing is saved automatically.
@@ -41,7 +50,6 @@ Use **Test Send** to send yourself a copy first. When you're happy with it, **Se
 
 These things currently require editing files directly outside the app:
 
-- **Editing the footer** — edit `content/newsletter/footer/index.md` in your Hugo site
 - **Deleting an edition** — delete the edition's folder from `content/newsletter/`
 - **Changing an edition's date** — edit the `date:` field in the edition's `index.md`
 <!-- help-end -->
