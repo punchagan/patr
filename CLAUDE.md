@@ -199,5 +199,3 @@ Features not yet in the UI that users currently have to do by editing files dire
 - **Edition deletion** — no delete button; user must remove the folder manually
 - **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
 - **Hugo not found feedback** — if Hugo isn't installed or on PATH, the preview iframe silently fails; should surface a clear error message
-- **Contacts sheet guidance** — if `sheet_id` isn't configured, Send All fails without actionable in-app guidance
-- **Sent history** — no way to view who was sent what from the UI; data exists in the Google Sheet's Sent Log tab
