@@ -500,7 +500,7 @@ def send_all(slug):
     newsletter_name = newsletter_config.get("name", "Newsletter")
     if not sheet_id:
         return (
-            jsonify({"error": "sheet_id not set in ~/.config/patr/config.toml"}),
+            jsonify({"error": "No contacts sheet configured — add a sheet ID in ⚙ Settings"}),
             400,
         )
     try:

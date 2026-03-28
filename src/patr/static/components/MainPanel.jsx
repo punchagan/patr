@@ -41,7 +41,7 @@ function ViewToggle({ viewMode, onViewModeChange }) {
   )
 }
 
-export default function MainPanel({ edition, theme, contactCount, onToggleTheme, onEditionUpdated }) {
+export default function MainPanel({ edition, theme, contactCount, hasSheetId, onToggleTheme, onEditionUpdated }) {
   const [draft, setDraft] = useState(edition?.draft ?? true)
   const [editorMode, setEditorMode] = useState('write')  // 'write' | 'split' | 'preview'
   const [viewMode, setViewMode] = useState('email')
@@ -94,7 +94,7 @@ export default function MainPanel({ edition, theme, contactCount, onToggleTheme,
     onEditionUpdated(edition.slug)
   }
 
-  const canSend = !draft && deploymentLive
+  const canSend = !draft && deploymentLive && hasSheetId
 
   const showEditor = editorMode === 'write' || editorMode === 'split'
   const showPreview = editorMode === 'split' || editorMode === 'preview'
@@ -154,7 +154,7 @@ export default function MainPanel({ edition, theme, contactCount, onToggleTheme,
           {status && <span className={`status-msg ${status.cls}`}>{status.text}</span>}
           <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>
           <button className="btn" onClick={() => setShowTestSend(true)}>Test Send</button>
-          <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend}>Send All</button>
+          <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend} title={!hasSheetId ? 'Add a contacts sheet ID in ⚙ Settings to enable sending' : undefined}>Send All</button>
         </div>
       )}
 

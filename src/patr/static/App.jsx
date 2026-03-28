@@ -10,6 +10,7 @@ export default function App() {
   const [selectedEdition, setSelectedEdition] = useState(null)
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [contactCount, setContactCount] = useState(null)
+  const [hasSheetId, setHasSheetId] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showNewEdition, setShowNewEdition] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
@@ -31,6 +32,7 @@ export default function App() {
 
   useEffect(() => {
     fetch('/api/contacts/count').then(r => r.json()).then(d => setContactCount(d.count))
+    fetch('/api/settings').then(r => r.json()).then(d => setHasSheetId(!!d.has_sheet_id))
     if (document.body.dataset.unconfigured) setShowSettings(true)
 
     const hashSlug = location.hash.slice(1).split('/')[0]
@@ -69,6 +71,7 @@ export default function App() {
         edition={selectedEdition}
         theme={theme}
         contactCount={contactCount}
+        hasSheetId={hasSheetId}
         onToggleTheme={toggleTheme}
         onEditionUpdated={onEditionUpdated}
       />
