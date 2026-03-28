@@ -1,6 +1,6 @@
-import re
 import subprocess
 import tomllib
+import tomlkit
 
 from patr import state
 
@@ -21,33 +21,16 @@ def load_newsletter_config():
 
 
 def save_hugo_patr_params(updates: dict):
-    """Surgically write [params.patr] keys into hugo.toml."""
+    """Write [params.patr] keys into hugo.toml, preserving comments and formatting."""
     hugo_toml = state.REPO_ROOT / "hugo.toml"
-    text = hugo_toml.read_text()
+    doc = tomlkit.parse(hugo_toml.read_text())
 
+    params = doc.setdefault("params", tomlkit.table())
+    patr = params.setdefault("patr", tomlkit.table())
     for key, value in updates.items():
-        quoted = f'"{value}"'
-        # Update existing key inside [params.patr] block
-        pattern = (
-            r"(\[params\.patr\][^\[]*?)(" + re.escape(key) + r'\s*=\s*"[^"]*")'
-        )
-        if re.search(pattern, text, re.DOTALL):
-            text = re.sub(
-                pattern,
-                lambda m: m.group(1) + f"{key} = {quoted}",
-                text,
-                flags=re.DOTALL,
-            )
-        else:
-            # Key doesn't exist — append to section or create section
-            if "[params.patr]" in text:
-                text = re.sub(
-                    r"(\[params\.patr\])", f"\\1\n  {key} = {quoted}", text
-                )
-            else:
-                text += f"\n[params.patr]\n  {key} = {quoted}\n"
+        patr[key] = value
 
-    hugo_toml.write_text(text)
+    hugo_toml.write_text(tomlkit.dumps(doc))
 
 
 def find_hugo():
