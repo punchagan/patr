@@ -41,12 +41,15 @@ def find_hugo():
     for candidate in ("hugo", "hugo.sh"):
         if shutil.which(candidate):
             return candidate
-    raise RuntimeError("Hugo not found. Install hugo or provide a hugo.sh in the repo root.")
+    return None
 
 
 def build_hugo(port: int) -> tuple[bool, str]:
+    hugo = find_hugo()
+    if hugo is None:
+        return False, "Hugo not found. Install hugo or provide a hugo.sh in the repo root."
     result = subprocess.run(
-        [find_hugo(), "-D", f"--baseURL=http://127.0.0.1:{port}/"],
+        [hugo, "-D", f"--baseURL=http://127.0.0.1:{port}/"],
         cwd=state.REPO_ROOT,
         capture_output=True,
         text=True,
