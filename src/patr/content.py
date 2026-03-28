@@ -1,4 +1,5 @@
 import html as _html
+import re
 
 import frontmatter
 import markdown
@@ -72,12 +73,41 @@ def load_footer():
     return frontmatter.load(footer_file).content
 
 
+_TITLE_BLOCK_RE = re.compile(r'\{([^}]*)\}\s*$')
+_ATTR_PAIR_RE = re.compile(r"([\w-]+)='([^']*)'")
+
+
+def _parse_title_attrs(title):
+    """Split 'Text {key='val' ...}' into (clean_text, {key: val})."""
+    m = _TITLE_BLOCK_RE.search(title)
+    if not m:
+        return title, {}
+    attrs = dict(_ATTR_PAIR_RE.findall(m.group(1)))
+    return title[:m.start()].strip(), attrs
+
+
 def render_md(text):
-    html = markdown.markdown(text or "", extensions=["extra", "smarty"])
+    # "extra" minus attr_list — attr_list is disabled so {width="N"} syntax
+    # is not silently processed; use the title convention instead.
+    extensions = ["abbr", "def_list", "fenced_code", "footnotes", "md_in_html", "tables", "smarty"]
+    html = markdown.markdown(text or "", extensions=extensions)
 
     # Mirror Hugo's render hook: wrap <img> with <figure>/<figcaption>
     soup = BeautifulSoup(html, "html.parser")
     for img in soup.find_all("img"):
+        title = str(img.get("title", ""))
+        if title:
+            clean, attrs = _parse_title_attrs(title)
+            for key, val in attrs.items():
+                if key == "style":
+                    existing = str(img.get("style", "")).rstrip(";")
+                    img["style"] = (existing + ";" + val).lstrip(";")
+                else:
+                    img[key] = val
+            if clean:
+                img["title"] = clean
+            else:
+                del img["title"]
         alt = img.get("alt", "")
         if alt:
             figure = soup.new_tag("figure")

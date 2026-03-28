@@ -30,6 +30,45 @@ def test_render_md_image_with_alt_becomes_figure():
     assert "<figcaption>A cat</figcaption>" in html
 
 
+def test_render_md_attr_list_syntax_not_processed():
+    """![](src){width="200"} must NOT apply as an attribute — use title convention instead."""
+    html = render_md('![alt](photo.jpg){width="200"}')
+    assert 'width="200"' not in html
+
+
+def test_render_md_plain_title_stays_as_title():
+    html = render_md('![A cat](photo.jpg "A cute cat")')
+    assert 'title="A cute cat"' in html
+    assert 'width' not in html
+    assert 'style' not in html
+
+
+def test_render_md_attr_block_style():
+    html = render_md("![A cat](photo.jpg \"Title {style='width:100px'}\")")
+    assert 'style="width:100px"' in html
+    assert 'title="Title"' in html
+
+
+def test_render_md_attr_block_width_and_height():
+    html = render_md("![A cat](photo.jpg \"Title {width='100' height='75'}\")")
+    assert 'width="100"' in html
+    assert 'height="75"' in html
+    assert 'title="Title"' in html
+
+
+def test_render_md_attr_block_only_no_title():
+    html = render_md("![A cat](photo.jpg \"{width='200'}\")")
+    assert 'width="200"' in html
+    assert 'title=' not in html
+
+
+def test_render_md_attr_block_multiple_attrs():
+    html = render_md("![A cat](photo.jpg \"Title {width='100' style='border: 1px solid red;'}\")")
+    assert 'width="100"' in html
+    assert 'border: 1px solid red' in html
+    assert 'title="Title"' in html
+
+
 def test_render_md_empty_and_none():
     assert render_md("") == ""
     assert render_md(None) == ""

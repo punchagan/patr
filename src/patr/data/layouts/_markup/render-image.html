@@ -1,5 +1,24 @@
+{{ $cleanTitle := .Title }}
+{{ $imgStyle := "" }}
+{{ $imgWidth := "" }}
+{{ $imgHeight := "" }}
+{{ with findRE `\{[^}]*\}` .Title }}
+  {{ $block := replaceRE `^\{|\}$` "" (index . 0) }}
+  {{ with findRE `style='[^']*'` $block }}
+    {{ $imgStyle = replaceRE `^style='|'$` "" (index . 0) }}
+  {{ end }}
+  {{ with findRE `width='[^']*'` $block }}
+    {{ $imgWidth = replaceRE `^width='|'$` "" (index . 0) }}
+  {{ end }}
+  {{ with findRE `height='[^']*'` $block }}
+    {{ $imgHeight = replaceRE `^height='|'$` "" (index . 0) }}
+  {{ end }}
+  {{ $cleanTitle = trim (replaceRE `\s*\{[^}]*\}` "" $.Title) " " }}
+{{ end }}
+{{ $styleAttr := $imgStyle }}
+{{ if $imgWidth }}{{ $styleAttr = printf "width:%spx;%s" $imgWidth $styleAttr | strings.TrimRight ";" }}{{ end }}
+{{ if $imgHeight }}{{ $styleAttr = printf "height:%spx;%s" $imgHeight $styleAttr | strings.TrimRight ";" }}{{ end }}
 <figure class="newsletter-figure">
-  {{ $width := index .Attributes "width" }}
-  <img src="{{ .Destination }}" alt="{{ .Text }}"{{ if $width }} style="width:{{ $width }}px"{{ end }} loading="lazy">
+  <img src="{{ .Destination }}" alt="{{ .Text }}"{{ if $styleAttr }} style="{{ $styleAttr }}"{{ end }}{{ if $cleanTitle }} title="{{ $cleanTitle }}"{{ end }} loading="lazy">
   {{ if .Text }}<figcaption>{{ .Text }}</figcaption>{{ end }}
 </figure>
