@@ -16,6 +16,7 @@ from flask import (
     request,
     send_from_directory,
 )
+from bs4 import BeautifulSoup
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from weasyprint import HTML
@@ -241,32 +242,35 @@ def preview_email(slug):
 
 @app.route("/preview/<slug>/email.pdf")
 def preview_email_pdf(slug):
-    import re as _re
     _, post = load_edition(slug)
     if post is None:
         return "Not found", 404
-    html = build_web_html(slug, post, load_footer())
+    soup = BeautifulSoup(build_web_html(slug, post, load_footer()), "html.parser")
     # Strip <base> tag — WeasyPrint uses base_url directly instead
-    html = _re.sub(r'<base\b[^>]*>', '', html)
-    # Rewrite root-relative image paths (/images/...) to file:// paths so
-    # WeasyPrint can load them from disk (static/) without HTTP round-trips
+    for tag in soup.find_all("base"):
+        tag.decompose()
+    # Rewrite root-relative /images/... src to file:// so WeasyPrint loads
+    # from disk without HTTP round-trips; fix width="Npx" → style= while here
     static_dir = state.REPO_ROOT / "static"
-    html = _re.sub(
-        r'(<img\b[^>]*\bsrc=")(/[^"]+)',
-        lambda m: m.group(1) + (static_dir / m.group(2).lstrip("/")).as_uri(),
-        html,
-    )
-    # Convert width="Npx" HTML attributes to inline CSS — WeasyPrint ignores
-    # the px suffix on HTML width attributes (not valid HTML), so without this
-    # images with e.g. width="180px" render at full natural size in the PDF.
-    html = _re.sub(r'\bwidth="(\d+)px"', r'style="width:\1px"', html)
+    for img in soup.find_all("img"):
+        src = str(img.get("src", ""))
+        if src.startswith("/"):
+            img["src"] = (static_dir / src.lstrip("/")).as_uri()
+        width = str(img.get("width", ""))
+        if width.endswith("px"):
+            img["style"] = f"width:{width}"
+            del img["width"]
     # Load page-bundle images from disk via file:// base URL
     base_url = (state.CONTENT_DIR / slug).as_uri() + "/"
-    pdf_bytes = HTML(string=html, base_url=base_url).write_pdf()
-    return pdf_bytes, 200, {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": f'attachment; filename="{slug}.pdf"',
-    }
+    pdf_bytes = HTML(string=str(soup), base_url=base_url).write_pdf()
+    return (
+        pdf_bytes,
+        200,
+        {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": f'attachment; filename="{slug}.pdf"',
+        },
+    )
 
 
 @app.route("/preview/<slug>/web")
