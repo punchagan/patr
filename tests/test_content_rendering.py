@@ -242,3 +242,19 @@ def test_img_max_width_constrained():
         assert "max-width" in html
 
 
+def test_footer_img_constrained_smaller_than_body_imgs():
+    """Footer images must be narrower than body images — e.g. QR codes."""
+    footer_with_img = "![QR](/images/qr.png)"
+    post = make_post()
+    html = build_email_html("test-ed", post, footer_with_img, HUGO_CONFIG)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    footer_div = soup.find("div", style=lambda s: s and "border-top" in s)
+    assert footer_div is not None, "footer div not found"
+    img = footer_div.find("img")
+    assert img is not None, "no img in footer"
+    style = str(img.get("style", ""))
+    assert "max-width" in style
+    assert "200px" in style
+
+

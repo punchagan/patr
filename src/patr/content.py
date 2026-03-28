@@ -14,6 +14,7 @@ NEWSLETTER_CSS = """\
   .view-in-browser a { color: #aaa; }
   .intro { font-style: italic; color: #555; border-bottom: 1px solid #eee; padding-bottom: 1em; margin-bottom: 1.5em; font-size: 1.05em; }
   .footer { border-top: 1px solid #eee; margin-top: 2em; padding-top: 1em; font-size: 0.9em; color: #666; }
+  .footer img { max-width: 200px; height: auto; }
   img { max-width: 500px; height: auto; display: block; margin: 1rem auto; }
   figure { margin: 1.5rem 0; text-align: center; }
   figcaption { font-size: 0.85em; color: #888; margin-top: 0.5rem; }"""
