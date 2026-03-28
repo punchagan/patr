@@ -15,9 +15,17 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 ### Write
 
-The editor supports basic formatting — bold, italic, headings, lists, links, and images. You can paste or drag images directly into the editor.
+The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically.
 
-To control an image's display size, use the title field with an attribute block:
+#### Intro
+
+The **Intro** field is optional. It appears in an italicised, bordered style above the body — good for a short summary or personal note.
+
+#### Images
+
+Paste or drag images directly into the editor, or use the 🖼 toolbar button to upload. Images are stored alongside the edition and referenced with a relative path.
+
+To control display size, add a title with an attribute block:
 
 ```
 ![alt text](photo.jpg "My caption {width='300'}")
@@ -26,9 +34,9 @@ To control an image's display size, use the title field with an attribute block:
 
 The `{…}` block supports `width`, `height`, and `style` (CSS). It is stripped from the visible caption. This works consistently in email, PDF, and the web archive.
 
-The **Intro** field is optional — it appears in a highlighted style above the body in both the email and web versions. Good for a short summary or personal note.
+#### Footer
 
-Your writing is saved automatically.
+Click **Footer** at the bottom of the sidebar to edit the footer that appears in every edition — unsubscribe links, social handles, a QR code, etc.
 
 ### Preview
 
