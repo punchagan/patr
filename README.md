@@ -29,6 +29,10 @@ Switch to **Split** to write and see the email preview side by side. Use **Previ
 
 When your edition is ready, click **Mark as Live**, then **Publish**. This pushes the edition to your website.
 
+### Configure newsletter name and mailing list
+
+Open the **⚙ Settings** panel to set your newsletter name and connect Gmail. To enable sending, you'll also need to add your Google Sheets contacts sheet ID — paste the ID from the sheet's URL (the long string between `/d/` and `/edit`) into the **Contacts sheet ID** field.
+
 ### Send
 
 Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web.
