@@ -121,7 +121,7 @@ Fails if flat `.md` edition files exist in `content/newsletter/` — run `patr m
 | `~/.config/patr/credentials.json` | GCP OAuth client credentials |
 | `~/.config/patr/token.json` | OAuth access/refresh token |
 
-`load_newsletter_config()` merges both sources. `save_hugo_patr_params()` surgically patches `hugo.toml` without round-tripping through a TOML serializer (preserves key order, block scalars, comments).
+`load_newsletter_config()` merges both sources. `save_hugo_patr_params()` uses `tomlkit` to write `[params.patr]` keys into `hugo.toml` while preserving comments, key order, and formatting.
 
 ### Content Format
 
@@ -161,6 +161,7 @@ The UI is a React app (built with Vite, output committed to `static/dist/`). The
 - `EditorPanel` loads content via `GET /api/edition/<slug>/content` and auto-saves via `POST` with a 1-second debounce
 - Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored in the page bundle directory; paths rewritten to absolute on load and back to relative on save (`absolutifyImages`/`relativifyImages`)
 - Three editor modes in `MainPanel`: **Write** (full-width editor), **Split** (editor + preview side-by-side, refreshes on save), **Preview Email** / **Preview Web** (full-width iframe)
+- **Preview Email** mode has a **Download PDF** button (`/preview/<slug>/email.pdf`) — rendered by WeasyPrint with a `file://` base URL so images load from disk
 - `immediatelyRender: false` is required in `useEditor` to avoid a TipTap v3 SSR error
 - To rebuild the frontend: `npm run build` in the repo root (requires Node + npm, one-time dev setup)
 
