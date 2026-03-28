@@ -1,5 +1,4 @@
 import html as _html
-import re
 
 import frontmatter
 import markdown
@@ -84,17 +83,14 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     Handles root-relative (/images/foo.png → base_url/images/foo.png)
     and relative (photo.jpg → page_url/photo.jpg) paths.
     """
-    html = re.sub(
-        r'(<img\b[^>]*\bsrc=")(/[^"]+)',
-        lambda m: m.group(1) + base_url + m.group(2),
-        html,
-    )
-    html = re.sub(
-        r'(<img\b[^>]*\bsrc=")(?!https?://|/)([^"]+)',
-        lambda m: m.group(1) + page_url + m.group(2),
-        html,
-    )
-    return html
+    soup = BeautifulSoup(html, "html.parser")
+    for img in soup.find_all("img"):
+        src = img.get("src", "")
+        if src.startswith("/"):
+            img["src"] = base_url + src
+        elif not src.startswith(("http://", "https://")):
+            img["src"] = page_url + src
+    return str(soup)
 
 
 def build_web_html(slug, post, footer_md):
