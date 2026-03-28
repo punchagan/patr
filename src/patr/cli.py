@@ -62,6 +62,21 @@ def cmd_install(args):
         )
         print(f"✓ Created {footer_dir / 'index.md'}")
 
+    # Enable Goldmark attribute extension (needed for {width="N"} image sizing)
+    import tomlkit
+    hugo_toml = repo / "hugo.toml"
+    doc = tomlkit.parse(hugo_toml.read_text())
+    markup = doc.setdefault("markup", tomlkit.table())
+    goldmark = markup.setdefault("goldmark", tomlkit.table())
+    extensions = goldmark.setdefault("extensions", tomlkit.table())
+    attributes = extensions.setdefault("attributes", tomlkit.table())
+    if not attributes.get("enable"):
+        attributes["enable"] = True
+        hugo_toml.write_text(tomlkit.dumps(doc))
+        print("✓ Goldmark attributes extension enabled in hugo.toml")
+    else:
+        print("  Goldmark attributes already enabled (skipped)")
+
     # Ask about menu entry
     add_menu = input("\nAdd newsletter to site menu? [y/N] ").strip().lower()
     if add_menu == "y":

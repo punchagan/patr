@@ -1,4 +1,5 @@
 <figure class="newsletter-figure">
-  <img src="{{ .Destination }}" alt="{{ .Text }}" loading="lazy">
+  {{ $width := index .Attributes "width" }}
+  <img src="{{ .Destination }}" alt="{{ .Text }}"{{ if $width }} style="width:{{ $width }}px"{{ end }} loading="lazy">
   {{ if .Text }}<figcaption>{{ .Text }}</figcaption>{{ end }}
 </figure>
