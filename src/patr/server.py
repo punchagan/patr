@@ -258,7 +258,8 @@ def preview_email_pdf(slug):
             return "No usable browser found. Install Chromium or Chrome.", 501
         page = browser.new_page()
         page.goto(url, wait_until="networkidle")
-        pdf_bytes = page.pdf()
+        height = page.evaluate("document.body.scrollHeight")
+        pdf_bytes = page.pdf(width="670px", height=f"{height}px", print_background=True)
         browser.close()
     return (
         pdf_bytes,
