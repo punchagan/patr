@@ -12,8 +12,8 @@ dependencies = [
     "google-auth-oauthlib>=1.2",
     "google-api-python-client>=2.120",
     "premailer>=3.10",
-    "weasyprint>=68.1",
     "beautifulsoup4>=4.12",
+    "playwright>=1.40",
     "tomlkit>=0.14.0",
 ]
 

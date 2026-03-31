@@ -38,15 +38,20 @@ def edition(repo):
     return d
 
 
+def _mock_playwright(pdf_bytes=b"%PDF-fake"):
+    mock_pw = MagicMock()
+    mock_pw.return_value.__enter__.return_value.chromium.launch.return_value \
+        .new_page.return_value.pdf.return_value = pdf_bytes
+    return mock_pw
+
+
 def test_pdf_endpoint_returns_pdf(client, edition):
-    fake_pdf = b"%PDF-fake"
-    mock_html_cls = MagicMock()
-    mock_html_cls.return_value.write_pdf.return_value = fake_pdf
-    with patch("patr.server.HTML", mock_html_cls):
+    mock_pw = _mock_playwright(b"%PDF-fake")
+    with patch("patr.server.sync_playwright", mock_pw):
         r = client.get("/preview/my-ed/email.pdf")
     assert r.status_code == 200
     assert r.content_type == "application/pdf"
-    assert r.data == fake_pdf
+    assert r.data == b"%PDF-fake"
 
 
 def test_pdf_endpoint_404_for_missing_edition(client, repo):
@@ -54,95 +59,21 @@ def test_pdf_endpoint_404_for_missing_edition(client, repo):
     assert r.status_code == 404
 
 
-def test_pdf_image_srcs_are_file_not_http(client, edition):
-    """Image src attributes passed to WeasyPrint must be file:// not http://
-    to avoid WeasyPrint making HTTP requests back to the running Flask server."""
-    img_dir = edition.parent.parent.parent / "static" / "images"
-    img_dir.mkdir(parents=True)
-    (img_dir / "logo.png").write_bytes(b"\x89PNG")
-    (edition / "photo.jpg").write_bytes(b"\xff\xd8")
-    # Re-write the edition to include both image types
-    (edition / "index.md").write_text(
-        "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\n\n"
-        "![photo](photo.jpg)\n\n![logo](/images/logo.png)\n"
-    )
-    mock_html_cls = MagicMock()
-    mock_html_cls.return_value.write_pdf.return_value = b"%PDF"
-    with patch("patr.server.HTML", mock_html_cls):
+def test_pdf_navigates_to_email_preview_url(client, edition):
+    """Playwright must load the email preview URL so images serve over HTTP."""
+    mock_pw = _mock_playwright()
+    with patch("patr.server.sync_playwright", mock_pw):
         client.get("/preview/my-ed/email.pdf")
-    _, kwargs = mock_html_cls.call_args
-    html_string = kwargs.get("string", "")
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup(html_string, "html.parser")
-    for img in soup.find_all("img"):
-        src = img.get("src", "")
-        assert not src.startswith("http://127.0.0.1"), f"img src must not be localhost: {src}"
-        assert src.startswith("file://"), f"img src must be file://: {src}"
+    page = mock_pw.return_value.__enter__.return_value.chromium.launch.return_value.new_page.return_value
+    page.goto.assert_called_once()
+    url = page.goto.call_args[0][0]
+    assert url == "http://127.0.0.1:5000/preview/my-ed/email"
 
 
-def test_pdf_html_has_no_base_tag(client, edition):
-    """<base> tag must be stripped before passing to WeasyPrint."""
-    mock_html_cls = MagicMock()
-    mock_html_cls.return_value.write_pdf.return_value = b"%PDF"
-    with patch("patr.server.HTML", mock_html_cls):
-        client.get("/preview/my-ed/email.pdf")
-    _, kwargs = mock_html_cls.call_args
-    html_string = kwargs.get("string", "")
-    assert "<base" not in html_string
-
-
-
-def test_pdf_img_width_attribute_converted_to_inline_style(client, repo, edition):
-    """width="180" HTML attributes must become style="width:180px".
-
-    WeasyPrint ignores bare HTML width attributes; only inline CSS style applies.
-    The title attr-block convention "{width='180'}" produces width="180" via render_md.
-    """
-    footer_dir = repo / "content" / "newsletter" / "footer"
-    footer_dir.mkdir()
-    (footer_dir / "index.md").write_text(
-        "---\ntitle: Footer\n---\n\n![upi](/images/newsletter/upi-qr.png \"{width='180'}\")\n"
-    )
-    img_dir = repo / "static" / "images" / "newsletter"
-    img_dir.mkdir(parents=True)
-    (img_dir / "upi-qr.png").write_bytes(b"\x89PNG")
-
-    mock_html_cls = MagicMock()
-    mock_html_cls.return_value.write_pdf.return_value = b"%PDF"
-    with patch("patr.server.HTML", mock_html_cls):
-        client.get("/preview/my-ed/email.pdf")
-
-    _, kwargs = mock_html_cls.call_args
-    html_string = kwargs.get("string", "")
-    assert 'width="180"' not in html_string, "bare width='180' must be converted to inline style"
-    assert "width:180px" in html_string or "width: 180px" in html_string
-
-
-def test_pdf_footer_root_relative_images_are_absolutified(client, repo, edition):
-    """Root-relative footer images (/images/...) must be rewritten to file:// paths.
-
-    Without this, WeasyPrint resolves /images/logo.png as file:///images/logo.png
-    which doesn't exist — the image silently disappears from the PDF.
-    """
-    # Create a footer with a root-relative image
-    footer_dir = repo / "content" / "newsletter" / "footer"
-    footer_dir.mkdir()
-    (footer_dir / "index.md").write_text("---\ntitle: Footer\n---\n\n![logo](/images/newsletter/logo.png)\n")
-
-    # Create the image on disk where Flask would serve it from
-    img_dir = repo / "static" / "images" / "newsletter"
-    img_dir.mkdir(parents=True)
-    (img_dir / "logo.png").write_bytes(b"\x89PNG")
-
-    mock_html_cls = MagicMock()
-    mock_html_cls.return_value.write_pdf.return_value = b"%PDF"
-    with patch("patr.server.HTML", mock_html_cls):
-        client.get("/preview/my-ed/email.pdf")
-
-    _, kwargs = mock_html_cls.call_args
-    html_string = kwargs.get("string", "")
-    # Root-relative path must NOT appear raw
-    assert 'src="/images/' not in html_string
-    # Must be replaced with a file:// path pointing into static/
-    assert "file://" in html_string
-    assert "logo.png" in html_string
+def test_pdf_returns_501_when_no_browser(client, edition):
+    """501 if no system browser is available."""
+    mock_pw = MagicMock()
+    mock_pw.return_value.__enter__.return_value.chromium.launch.side_effect = Exception("not found")
+    with patch("patr.server.sync_playwright", mock_pw):
+        r = client.get("/preview/my-ed/email.pdf")
+    assert r.status_code == 501

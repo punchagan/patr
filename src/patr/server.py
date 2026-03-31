@@ -16,10 +16,9 @@ from flask import (
     request,
     send_from_directory,
 )
-from bs4 import BeautifulSoup
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from weasyprint import HTML
+from playwright.sync_api import sync_playwright
 
 from patr import state
 from patr.auth import (
@@ -247,25 +246,20 @@ def preview_email_pdf(slug):
     if post is None:
         return "Not found", 404
     port = app.config["PORT"]
-    localhost = f"http://127.0.0.1:{port}"
-    html = build_email_html(slug, post, load_footer(), {"baseURL": localhost})
-    # Rewrite localhost image URLs to file:// so WeasyPrint loads from disk
-    soup = BeautifulSoup(html, "html.parser")
-    for img in soup.find_all("img"):
-        src = str(img.get("src", ""))
-        if src.startswith(f"{localhost}/images/"):
-            remainder = src[len(f"{localhost}/images/"):]
-            img["src"] = (state.REPO_ROOT / "static" / "images" / remainder).as_uri()
-        elif src.startswith(f"{localhost}/newsletter/{slug}/"):
-            filename = src[len(f"{localhost}/newsletter/{slug}/"):]
-            img["src"] = (state.CONTENT_DIR / slug / filename).as_uri()
-        # merge width="N" HTML attribute into inline style for WeasyPrint
-        width = str(img.get("width", ""))
-        if width.isdigit():
-            existing = str(img.get("style", "")).rstrip(";")
-            img["style"] = (existing + f";width:{width}px").lstrip(";")
-            del img["width"]
-    pdf_bytes = HTML(string=str(soup)).write_pdf()
+    url = f"http://127.0.0.1:{port}/preview/{slug}/email"
+    with sync_playwright() as p:
+        for channel in ("chromium", "chrome", "msedge"):
+            try:
+                browser = p.chromium.launch(channel=channel)
+                break
+            except Exception:
+                continue
+        else:
+            return "No usable browser found. Install Chromium or Chrome.", 501
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle")
+        pdf_bytes = page.pdf()
+        browser.close()
     return (
         pdf_bytes,
         200,
