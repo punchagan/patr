@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
+import { EditorView } from '@codemirror/view'
 import '../editor.css'
 
 async function uploadImage(file, slug) {
@@ -256,7 +257,7 @@ export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) 
             value={body}
             onChange={handleBodyChange}
             onCreateEditor={(view) => { viewRef.current = view }}
-            extensions={[markdown()]}
+            extensions={[markdown(), EditorView.lineWrapping]}
             theme={isDark ? 'dark' : 'light'}
             placeholder="Write something…"
             basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }}
