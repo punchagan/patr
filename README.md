@@ -17,6 +17,8 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically.
 
+Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar, action bar, title, and intro fields all hide, leaving just the editor. Press `Esc` or **⊠** to exit.
+
 #### Intro
 
 The **Intro** field is optional. It appears in an italicised, bordered style above the body — good for a short summary or personal note.

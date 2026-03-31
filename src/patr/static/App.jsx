@@ -15,10 +15,21 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showNewEdition, setShowNewEdition] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [focusMode, setFocusMode] = useState(false)
 
   useEffect(() => {
     document.body.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setFocusMode(false)
+      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && !e.target.isContentEditable)
+        setFocusMode(f => !f)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const loadEditions = (selectSlug) => {
     return fetch('/api/editions').then(r => r.json()).then(list => {
@@ -64,6 +75,7 @@ export default function App() {
         editions={editions}
         selectedSlug={editingFooter ? null : selectedEdition?.slug}
         editingFooter={editingFooter}
+        hidden={focusMode}
         onSelect={e => { setSelectedEdition(e); setEditingFooter(false) }}
         onFooter={() => { setSelectedEdition(null); setEditingFooter(true) }}
         onNewEdition={() => setShowNewEdition(true)}
@@ -76,6 +88,8 @@ export default function App() {
         theme={theme}
         contactCount={contactCount}
         hasSheetId={hasSheetId}
+        focusMode={focusMode}
+        onToggleFocus={() => setFocusMode(f => !f)}
         onToggleTheme={toggleTheme}
         onEditionUpdated={onEditionUpdated}
       />

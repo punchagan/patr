@@ -41,7 +41,7 @@ function ViewToggle({ viewMode, onViewModeChange }) {
   )
 }
 
-export default function MainPanel({ edition, editingFooter, theme, contactCount, hasSheetId, onToggleTheme, onEditionUpdated }) {
+export default function MainPanel({ edition, editingFooter, theme, contactCount, hasSheetId, focusMode, onToggleFocus, onToggleTheme, onEditionUpdated }) {
   const [draft, setDraft] = useState(edition?.draft ?? true)
   const [editorMode, setEditorMode] = useState('write')  // 'write' | 'split' | 'preview'
   const [viewMode, setViewMode] = useState('email')
@@ -114,6 +114,9 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
             {draft ? 'Mark as Live' : 'Mark as Draft'}
           </button>
         </>}
+        <button className="btn btn-theme" onClick={onToggleFocus} title={focusMode ? 'Exit focus mode (Esc)' : 'Focus mode (F)'}>
+          {focusMode ? '⊠' : '⛶'}
+        </button>
         <button className="btn btn-theme" onClick={onToggleTheme} title="Toggle dark mode">
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
@@ -133,7 +136,7 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
             className={`editor-pane${editorMode === 'split' ? ' bordered' : ''}`}
             style={{ display: showEditor ? undefined : 'none' }}
           >
-            <EditorPanel key={edition.slug} slug={edition.slug} onSaved={() => setPreviewKey(k => k + 1)} />
+            <EditorPanel key={edition.slug} slug={edition.slug} focusMode={focusMode} onSaved={() => setPreviewKey(k => k + 1)} />
           </div>
           {showPreview && (
             <div className={editorMode === 'split' ? 'split-preview' : 'full-preview'}>
@@ -154,7 +157,7 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
         </div>
       )}
 
-      {edition && (
+      {edition && !focusMode && (
         <div className="action-bar">
           <div className="spacer" />
           {status && <span className={`status-msg ${status.cls}`}>{status.text}</span>}

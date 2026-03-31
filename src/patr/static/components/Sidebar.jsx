@@ -27,9 +27,9 @@ function AuthBar() {
   )
 }
 
-export default function Sidebar({ editions, selectedSlug, editingFooter, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
+export default function Sidebar({ editions, selectedSlug, editingFooter, hidden, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={hidden ? { display: 'none' } : undefined}>
       <AuthBar />
       <div className="sidebar-header">
         Editions

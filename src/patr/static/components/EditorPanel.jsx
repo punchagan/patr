@@ -103,7 +103,7 @@ function EditorToolbar({ viewRef, slug }) {
   )
 }
 
-export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) {
+export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, onSaved }) {
   const [title, setTitle] = useState('')
   const [intro, setIntro] = useState('')
   const [body, setBody] = useState('')
@@ -228,7 +228,7 @@ export default function EditorPanel({ slug, isFooter, onTitleChange, onSaved }) 
 
   return (
     <div className="editor-panel">
-      {!isFooter && <>
+      {!isFooter && !focusMode && <>
         <div className="editor-field">
           <label>Title</label>
           <input
