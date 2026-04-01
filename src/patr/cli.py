@@ -7,11 +7,13 @@ import webbrowser
 from pathlib import Path
 
 import patr.state as state
+from patr.config import load_newsletter_config
 
 
 def cmd_install(args):
     import shutil
     repo = Path(args.repo).resolve()
+    state.REPO_ROOT = repo
     if not (repo / "hugo.toml").exists() and not (repo / "config.toml").exists():
         print(f"Error: {repo} doesn't look like a Hugo site (no hugo.toml found).")
         return
@@ -52,7 +54,8 @@ def cmd_install(args):
         content_dst.mkdir(parents=True)
 
         index_md = content_dst / "_index.md"
-        index_md.write_text('---\ntitle: "Newsletter"\ndescription: ""\n---\n')
+        nl_name = load_newsletter_config().get("name", "Newsletter")
+        index_md.write_text(f'---\ntitle: "{nl_name}"\ndescription: ""\n---\n')
         print(f"✓ Created {index_md}")
 
         footer_dir = content_dst / "footer"
@@ -72,7 +75,8 @@ def cmd_install(args):
             weight = 10
         hugo_toml = repo / "hugo.toml"
         text = hugo_toml.read_text()
-        menu_entry = f'\n[[menus.main]]\n  name = "Newsletter"\n  url = "/newsletter/"\n  weight = {weight}\n'
+        nl_name = load_newsletter_config().get("name", "Newsletter")
+        menu_entry = f'\n[[menus.main]]\n  name = "{nl_name}"\n  url = "/newsletter/"\n  weight = {weight}\n'
         if "[[menus.main]]" in text and "/newsletter/" in text:
             print("  Menu entry already exists (skipped)")
         else:
