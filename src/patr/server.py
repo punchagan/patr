@@ -1,11 +1,14 @@
 import base64
 import hashlib
+import markdown as md_lib
 import re
 import secrets
+import subprocess
 import tomllib
 import time
 import urllib.request
 import yaml
+from importlib.metadata import metadata as pkg_metadata
 from pathlib import Path
 
 from flask import (
@@ -210,8 +213,6 @@ ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 @app.route("/api/edition/<slug>/upload-image", methods=["POST"])
 def upload_image(slug):
-    import secrets as _secrets
-
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -226,7 +227,7 @@ def upload_image(slug):
     dest = dest_dir / filename
     if dest.exists():
         stem = filename.rsplit(".", 1)[0]
-        dest = dest_dir / f"{stem}-{_secrets.token_hex(4)}.{ext}"
+        dest = dest_dir / f"{stem}-{secrets.token_hex(4)}.{ext}"
     file.save(dest)
     return jsonify({"path": dest.name})
 
@@ -298,8 +299,6 @@ def toggle_draft(slug):
 
 @app.route("/api/publish/<slug>", methods=["POST"])
 def publish_edition(slug):
-    import subprocess
-
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -340,9 +339,6 @@ def check_deployment(slug):
 
 @app.route("/api/help")
 def get_help():
-    from importlib.metadata import metadata as pkg_metadata
-    import markdown as md_lib
-
     readme = state.PATR_ROOT.parent.parent / "README.md"
     if readme.exists():
         text = readme.read_text()

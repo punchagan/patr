@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import json
 import secrets
 
 from google.auth.transport.requests import Request as GoogleRequest
@@ -41,8 +42,6 @@ def auth_status():
             state.TOKEN_FILE.write_text(creds.to_json())
         if creds.valid:
             # Extract email from token file
-            import json
-
             data = json.loads(state.TOKEN_FILE.read_text())
             return True, data.get("client_id", "").split("-")[0] or None
     except Exception:

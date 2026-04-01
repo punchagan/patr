@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import tomllib
 import tomlkit
@@ -34,7 +35,6 @@ def save_hugo_patr_params(updates: dict):
 
 
 def find_hugo():
-    import shutil
     local = state.REPO_ROOT / "hugo.sh"
     if local.exists():
         return str(local)

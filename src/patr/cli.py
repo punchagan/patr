@@ -1,17 +1,23 @@
 import argparse
 import os
+import re
+import shutil
 import socket
 import threading
 import time
 import webbrowser
 from pathlib import Path
 
+try:
+    import winreg
+except ImportError:
+    winreg = None
+
 import patr.state as state
 from patr.config import load_newsletter_config
 
 
 def cmd_install(args):
-    import shutil
     repo = Path(args.repo).resolve()
     state.REPO_ROOT = repo
     if not (repo / "hugo.toml").exists() and not (repo / "config.toml").exists():
@@ -85,7 +91,6 @@ def cmd_install(args):
 
     # Create a launcher on the Desktop on Windows
     if os.name == "nt":
-        import winreg
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
             desktop = Path(winreg.QueryValueEx(key, "Desktop")[0])
@@ -100,8 +105,6 @@ def cmd_install(args):
 
 
 def cmd_migrate(args):
-    import re
-    import shutil
     repo = Path(args.repo).resolve()
     content_dir = repo / "content" / "newsletter"
     static_images_dir = repo / "static" / "images" / "newsletter"
