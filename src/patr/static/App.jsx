@@ -42,6 +42,15 @@ export default function App() {
     })
   }
 
+  const [initialEditorMode] = useState(() => {
+    const mode = location.hash.slice(1).split('/')[1] || ''
+    return mode === 'split' ? 'split' : (mode === 'email' || mode === 'web') ? 'preview' : 'write'
+  })
+  const [initialViewMode] = useState(() => {
+    const mode = location.hash.slice(1).split('/')[1] || ''
+    return mode === 'web' ? 'web' : 'email'
+  })
+
   useEffect(() => {
     fetch('/api/contacts/count').then(r => r.json()).then(d => setContactCount(d.count))
     fetch('/api/settings').then(r => r.json()).then(d => setHasSheetId(!!d.has_sheet_id))
@@ -91,6 +100,8 @@ export default function App() {
         focusMode={focusMode}
         onToggleFocus={() => setFocusMode(f => !f)}
         onToggleTheme={toggleTheme}
+        initialEditorMode={initialEditorMode}
+        initialViewMode={initialViewMode}
         onEditionUpdated={onEditionUpdated}
       />
       {showSettings && (

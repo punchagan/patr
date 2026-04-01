@@ -169,3 +169,44 @@ def test_footer_editing(page):
     assert page.locator(".cm-content").is_visible()
     # Title and intro fields should not appear for footer
     assert not page.locator(".editor-title-input").is_visible()
+
+
+def test_mode_stored_in_hash(page, edition, base_url):
+    # Write mode: hash has no suffix
+    assert page.evaluate("location.hash") == f"#{edition}"
+
+    # Split mode
+    page.locator(".btn-toggle", has_text="Split").click()
+    assert page.evaluate("location.hash") == f"#{edition}/split"
+
+    # Preview Email
+    page.locator(".btn-toggle", has_text="Preview Email").click()
+    assert page.evaluate("location.hash") == f"#{edition}/email"
+
+    # Preview Web
+    page.locator(".btn-toggle", has_text="Preview Web").click()
+    assert page.evaluate("location.hash") == f"#{edition}/web"
+
+    # Back to Write
+    page.locator(".btn-toggle", has_text="Write").click()
+    assert page.evaluate("location.hash") == f"#{edition}"
+
+
+def test_hash_restores_mode(browser, edition, base_url):
+    # Use fresh pages so React initializes from the hash (not a hash-change on existing page)
+    p = browser.new_page()
+    try:
+        p.goto(f"{base_url}/#{edition}/email")
+        p.wait_for_selector(".full-preview")
+        assert p.locator(".btn-toggle.active", has_text="Preview Email").is_visible()
+    finally:
+        p.close()
+
+    p = browser.new_page()
+    try:
+        p.goto(f"{base_url}/#{edition}/split")
+        p.wait_for_selector(".cm-content")
+        p.wait_for_selector(".preview-frame")
+        assert p.locator(".btn-toggle.active", has_text="Split").is_visible()
+    finally:
+        p.close()

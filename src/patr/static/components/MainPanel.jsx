@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import TestSendModal from './modals/TestSendModal'
 import ConfirmModal from './modals/ConfirmModal'
 import EditorPanel from './EditorPanel'
@@ -41,25 +41,35 @@ function ViewToggle({ viewMode, onViewModeChange }) {
   )
 }
 
-export default function MainPanel({ edition, editingFooter, theme, contactCount, hasSheetId, focusMode, onToggleFocus, onToggleTheme, onEditionUpdated }) {
+export default function MainPanel({ edition, editingFooter, theme, contactCount, hasSheetId, focusMode, onToggleFocus, onToggleTheme, onEditionUpdated, initialEditorMode = 'write', initialViewMode = 'email' }) {
   const [draft, setDraft] = useState(edition?.draft ?? true)
-  const [editorMode, setEditorMode] = useState('write')  // 'write' | 'split' | 'preview'
-  const [viewMode, setViewMode] = useState('email')
+  const [editorMode, setEditorMode] = useState(initialEditorMode)
+  const [viewMode, setViewMode] = useState(initialViewMode)
   const [previewKey, setPreviewKey] = useState(0)
   const [showTestSend, setShowTestSend] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const { deploymentLive, status, setStatus, setDeploymentLive } = useDeployStatus(edition)
+  const isInitialLoad = useRef(true)
 
   useEffect(() => {
     setDraft(edition?.draft ?? true)
-    setEditorMode('write')
-    setViewMode('email')
+    if (isInitialLoad.current && edition) {
+      isInitialLoad.current = false
+      setEditorMode(initialEditorMode)
+      setViewMode(initialViewMode)
+    } else if (!isInitialLoad.current) {
+      setEditorMode('write')
+      setViewMode('email')
+    }
   }, [edition?.slug])
 
   useEffect(() => {
     if (!edition) return
-    history.replaceState(null, '', `#${edition.slug}`)
-  }, [edition?.slug])
+    const suffix = editorMode === 'split' ? '/split'
+      : editorMode === 'preview' ? `/${viewMode}`
+      : ''
+    history.replaceState(null, '', `#${edition.slug}${suffix}`)
+  }, [edition?.slug, editorMode, viewMode])
 
   const toggleDraft = () => {
     fetch(`/api/toggle-draft/${edition.slug}`, { method: 'POST' })
