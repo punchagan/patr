@@ -20,6 +20,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 
+[tool.pytest.ini_options]
+markers = ["e2e: end-to-end browser tests (require Chromium or Chrome)"]
+
 [tool.setuptools.package-data]
 patr = ["data/**/*", "templates/*", "static/dist/**/*"]
 
