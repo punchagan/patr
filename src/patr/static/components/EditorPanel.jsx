@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
+import { EditorSelection } from '@codemirror/state'
 import '../editor.css'
 
 async function uploadImage(file, slug) {
@@ -19,14 +20,14 @@ function wrapSelection(view, before, after = before) {
   for (const range of state.selection.ranges) {
     if (range.empty) {
       changes.push({ from: range.from, insert: before + after })
-      newRanges.push({ anchor: range.from + before.length })
+      newRanges.push(EditorSelection.cursor(range.from + before.length))
     } else {
       changes.push({ from: range.from, insert: before })
       changes.push({ from: range.to, insert: after })
-      newRanges.push({ anchor: range.from + before.length, head: range.to + before.length })
+      newRanges.push(EditorSelection.range(range.from + before.length, range.to + before.length))
     }
   }
-  view.dispatch(state.update({ changes, selection: { ranges: newRanges } }))
+  view.dispatch(state.update({ changes, selection: EditorSelection.create(newRanges) }))
   view.focus()
 }
 
