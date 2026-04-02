@@ -5,6 +5,7 @@ import shutil
 import socket
 import threading
 import time
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -179,13 +180,19 @@ def cmd_serve(args):
     # Import server after state is configured
     from patr.server import app
 
-    if debug_arg:
-        port = 5000
-    else:
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            port = s.getsockname()[1]
+    port = 5000
+    with socket.socket() as s:
+        try:
+            s.bind(("127.0.0.1", port))
+        except OSError:
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/api/editions", timeout=1)
+                print(f"Patr is already running at http://127.0.0.1:{port}")
+            except Exception:
+                print(f"Error: port {port} is already in use by another process.")
+            raise SystemExit(0)
 
+    if not debug_arg:
         def open_browser():
             time.sleep(1)
             webbrowser.open(f"http://127.0.0.1:{port}")
