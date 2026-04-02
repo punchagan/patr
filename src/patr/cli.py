@@ -163,7 +163,6 @@ def cmd_migrate(args):
 
 def cmd_serve(args):
     repo_arg = getattr(args, "repo", ".")
-    debug_arg = getattr(args, "debug", False)
 
     state.REPO_ROOT = Path(repo_arg).resolve()
     state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
@@ -192,7 +191,8 @@ def cmd_serve(args):
                 print(f"Error: port {port} is already in use by another process.")
             raise SystemExit(0)
 
-    if not debug_arg:
+    # Only open the browser on initial start, not on reloader restarts
+    if not os.environ.get("WERKZEUG_RUN_MAIN"):
         def open_browser():
             time.sleep(1)
             webbrowser.open(f"http://127.0.0.1:{port}")
@@ -200,7 +200,7 @@ def cmd_serve(args):
         threading.Thread(target=open_browser, daemon=True).start()
 
     app.config["PORT"] = port
-    app.run(host="127.0.0.1", port=port, debug=debug_arg)
+    app.run(host="127.0.0.1", port=port, debug=True)
 
 
 def main():
@@ -213,7 +213,6 @@ def main():
     # serve
     serve_parser = sub.add_parser("serve", help="Start the Patr web UI")
     serve_parser.add_argument("--repo", default=".", help="Path to Hugo site root (default: cwd)")
-    serve_parser.add_argument("--debug", action="store_true", help="Enable Flask debug mode (fixed port 5000)")
 
     # install
     install_parser = sub.add_parser("install", help="Install Patr layouts/CSS into a Hugo site")

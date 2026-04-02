@@ -22,9 +22,6 @@ patr install --repo /path/to/hugo-site
 # Start the UI
 patr serve --repo /path/to/hugo-site
 
-# Debug mode: fixed port 5000, Flask reloader enabled, no browser auto-open
-patr serve --repo /path/to/hugo-site --debug
-
 # Migrate existing flat .md editions to page bundles (dry run first)
 patr migrate --repo /path/to/hugo-site
 patr migrate --repo /path/to/hugo-site --apply
