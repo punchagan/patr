@@ -140,19 +140,13 @@ A "Sent Log" tab is created automatically on first send.
 
 ## Development
 
-Clone the repo and install in editable mode:
-
 ```bash
 git clone https://github.com/punchagan/patr
 cd patr
-uv pip install -e .
+uv run patr serve --repo /path/to/hugo-site
 ```
 
-Run the server (Flask reloader is always enabled — the server restarts when Python files change):
-
-```bash
-patr serve --repo /path/to/hugo-site
-```
+Flask reloader is always enabled — the server restarts when Python files change.
 
 ## Content format
 
