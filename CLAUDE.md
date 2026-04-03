@@ -19,8 +19,9 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 # Install into a Hugo site (one-time setup)
 patr install --repo /path/to/hugo-site
 
-# Start the UI
+# Start the UI (always port 5000; use --port to override)
 patr serve --repo /path/to/hugo-site
+patr serve --repo /path/to/hugo-site --port 5001
 
 # Migrate existing flat .md editions to page bundles (dry run first)
 patr migrate --repo /path/to/hugo-site
@@ -56,7 +57,7 @@ patr/
       components/
         Sidebar.jsx      # Edition list + auth bar
         MainPanel.jsx    # Write/Split/Preview modes, action bar
-        EditorPanel.jsx  # TipTap rich markdown editor, auto-save, image upload
+        EditorPanel.jsx  # CodeMirror markdown editor, auto-save, auto-commit, image upload
         modals/          # SettingsModal, NewEditionModal, TestSendModal, ConfirmModal
       dist/              # Built output (committed; npm not needed on install)
     data/
@@ -94,8 +95,10 @@ Fails if flat `.md` edition files exist in `content/newsletter/` — run `patr m
 
 ### Flask App
 
-- Normal mode: random free port via `socket.bind(("127.0.0.1", 0))`; auto-opens browser
-- Debug mode: fixed port 5000, Flask reloader enabled, no browser open
+- Always binds to port 5000 (fixed, so `localStorage` origin is stable across restarts); `--port` overrides
+- If port is busy: probes `/api/editions` to distinguish a running Patr instance from another process
+- Port check and browser open only run in the initial process (`WERKZEUG_RUN_MAIN` guard), not on reloader restarts
+- Flask reloader always enabled (restarts on Python file changes)
 - Port stored in `app.config['PORT']`
 - `OAUTHLIB_INSECURE_TRANSPORT=1` and `OAUTHLIB_RELAX_TOKEN_SCOPE=1` set at startup (localhost OAuth)
 
@@ -155,11 +158,13 @@ Body content here. Reference images relatively: ![alt](photo.jpg)
 
 The UI is a React app (built with Vite, output committed to `static/dist/`). The editor uses **CodeMirror** (`@uiw/react-codemirror`) with the `@codemirror/lang-markdown` extension — raw markdown editing with syntax highlighting, no lossy AST round-trip.
 
-- `EditorPanel` loads content via `GET /api/edition/<slug>/content` and auto-saves via `POST` with a 1-second debounce
+- `EditorPanel` loads content via `GET /api/edition/<slug>/content`, auto-saves via `POST` with a 1-second debounce, and auto-commits via `POST /api/edition/<slug>/commit` with a 5-second debounce (amends previous `wip:` commit if diff < 500 bytes, else new commit)
+- Body content is kept in a ref (not React state) to avoid per-keystroke re-renders; `initialBody` state is only set on load
 - Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored in the page bundle directory; inserted as relative markdown `![](filename)`
 - Toolbar buttons insert/wrap markdown syntax at the cursor (no WYSIWYG schema)
 - Three editor modes in `MainPanel`: **Write** (full-width editor), **Split** (editor + preview side-by-side, refreshes on save), **Preview Email** / **Preview Web** (full-width iframe)
-- **Preview Email** mode has a **Download PDF** button (`/preview/<slug>/email.pdf`) — rendered by WeasyPrint with a `file://` base URL so images load from disk
+- Active mode is stored in the URL hash fragment: `#slug` (write), `#slug/split`, `#slug/email`, `#slug/web`
+- **Preview Email** mode has a **Download PDF** button (`/preview/<slug>/email.pdf`) — rendered by Playwright (system Chromium/Chrome) as a single-page PDF
 - To rebuild the frontend: `npm run build` in the repo root (requires Node + npm, one-time dev setup)
 
 ### Hugo Templates
@@ -193,6 +198,5 @@ Runs `hugo -D --baseURL=http://127.0.0.1:{PORT}/` and redirects iframe to the bu
 
 Features not yet in the UI that users currently have to do by editing files directly:
 
-- **Footer editing** — `content/newsletter/footer/index.md` should be editable from the app (could be a dedicated panel or modal)
 - **Edition deletion** — no delete button; user must remove the folder manually
 - **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel

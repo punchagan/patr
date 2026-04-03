@@ -15,7 +15,7 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 ### Write
 
-The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically.
+The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically, and a git commit is created after a short pause so you can always recover previous versions.
 
 Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar, action bar, title, and intro fields all hide, leaving just the editor. Press `Esc` or **⊠** to exit.
 
@@ -114,10 +114,10 @@ patr migrate --repo /path/to/hugo-site --apply  # apply
 patr serve --repo /path/to/hugo-site
 ```
 
-Opens a browser UI at a random local port. Connect Gmail via the ⚙ settings panel on first use.
+Opens a browser UI at `http://127.0.0.1:5000`. Connect Gmail via the ⚙ settings panel on first use. Use `--port` to override if port 5000 is busy:
 
 ```bash
-patr serve --repo /path/to/hugo-site --debug    # fixed port 5000, Flask reloader
+patr serve --repo /path/to/hugo-site --port 5001
 ```
 
 ## Configuration
@@ -134,8 +134,6 @@ Columns: `Name`, `Email`, `Send` (leave blank or set to `y` to include; `n`/`no`
 
 A "Sent Log" tab is created automatically on first send.
 
-<!-- help-end -->
-
 ## Development
 
 Clone the repo and install in editable mode:
@@ -146,10 +144,10 @@ cd patr
 uv pip install -e .
 ```
 
-Run in debug mode (fixed port 5000, Flask reloader enabled, no browser auto-open):
+Run the server (Flask reloader is always enabled — the server restarts when Python files change):
 
 ```bash
-patr serve --repo /path/to/hugo-site --debug
+patr serve --repo /path/to/hugo-site
 ```
 
 ## Content format
