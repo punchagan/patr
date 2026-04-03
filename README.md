@@ -6,6 +6,62 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 > **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
 
+## Prerequisites
+
+- [Hugo](https://gohugo.io/installation/) — to build and preview the site
+- [Git](https://git-scm.com/downloads) — to publish editions
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — to install Patr (manages Python automatically)
+- A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials (see below)
+
+### GCP credentials setup
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project.
+2. Enable the **Gmail API** and **Google Sheets API**:
+   - Navigate to **APIs & Services → Library**
+   - Search for and enable each API.
+3. Configure the OAuth consent screen:
+   - Go to **APIs & Services → OAuth consent screen**
+   - Choose **External**, fill in an app name and your email, and save.
+   - Under **Test users**, add the Gmail address(es) that will use Patr.
+4. Create OAuth 2.0 credentials:
+   - Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   - Choose **Desktop app**, give it a name, and click Create.
+   - Download the JSON file.
+5. Save the downloaded file as `~/.config/patr/credentials.json` (Linux/macOS) or `%USERPROFILE%\.config\patr\credentials.json` (Windows).
+
+## Installation
+
+```bash
+uv tool install git+https://github.com/punchagan/patr
+```
+
+Then install Patr's layouts and assets into your Hugo site:
+
+```bash
+patr install --repo /path/to/hugo-site
+```
+
+This copies Hugo templates and CSS into the site, creates `content/newsletter/` stubs, and optionally adds a nav menu entry.
+
+If you have existing flat `.md` newsletter editions, migrate them to page bundles first:
+
+```bash
+patr migrate --repo /path/to/hugo-site          # dry run
+patr migrate --repo /path/to/hugo-site --apply  # apply
+```
+
+## Usage
+
+```bash
+patr serve --repo /path/to/hugo-site
+```
+
+Opens a browser UI at `http://127.0.0.1:5000`. Connect Gmail via the ⚙ settings panel on first use. Use `--port` to override if port 5000 is busy:
+
+```bash
+patr serve --repo /path/to/hugo-site --port 5001
+```
+
 <!-- help-start -->
 ## How to use Patr
 
@@ -65,62 +121,6 @@ These things currently require editing files directly outside the app:
 - **Deleting an edition** — delete the edition's folder from `content/newsletter/`
 - **Changing an edition's date** — edit the `date:` field in the edition's `index.md`
 <!-- help-end -->
-
-## What it does
-
-- [Hugo](https://gohugo.io/installation/) — to build and preview the site
-- [Git](https://git-scm.com/downloads) — to publish editions
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) — to install Patr (manages Python automatically)
-- A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials (see below)
-
-### GCP credentials setup
-
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project.
-2. Enable the **Gmail API** and **Google Sheets API**:
-   - Navigate to **APIs & Services → Library**
-   - Search for and enable each API.
-3. Configure the OAuth consent screen:
-   - Go to **APIs & Services → OAuth consent screen**
-   - Choose **External**, fill in an app name and your email, and save.
-   - Under **Test users**, add the Gmail address(es) that will use Patr.
-4. Create OAuth 2.0 credentials:
-   - Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
-   - Choose **Desktop app**, give it a name, and click Create.
-   - Download the JSON file.
-5. Save the downloaded file as `~/.config/patr/credentials.json` (Linux/macOS) or `%USERPROFILE%\.config\patr\credentials.json` (Windows).
-
-## Installation
-
-```bash
-uv tool install git+https://github.com/punchagan/patr
-```
-
-Then install Patr's layouts and assets into your Hugo site:
-
-```bash
-patr install --repo /path/to/hugo-site
-```
-
-This copies Hugo templates and CSS into the site, creates `content/newsletter/` stubs, and optionally adds a nav menu entry.
-
-If you have existing flat `.md` newsletter editions, migrate them to page bundles first:
-
-```bash
-patr migrate --repo /path/to/hugo-site          # dry run
-patr migrate --repo /path/to/hugo-site --apply  # apply
-```
-
-## Usage
-
-```bash
-patr serve --repo /path/to/hugo-site
-```
-
-Opens a browser UI at `http://127.0.0.1:5000`. Connect Gmail via the ⚙ settings panel on first use. Use `--port` to override if port 5000 is busy:
-
-```bash
-patr serve --repo /path/to/hugo-site --port 5001
-```
 
 ## Configuration
 
