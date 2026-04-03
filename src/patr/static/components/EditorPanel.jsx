@@ -113,6 +113,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
 
   const loading = useRef(false)
   const saveTimer = useRef(null)
+  const commitTimer = useRef(null)
   const slugRef = useRef(slug)
   const titleRef = useRef(title)
   const introRef = useRef(intro)
@@ -169,6 +170,8 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
     if (prevSlug && prevSlug !== slug && saveTimer.current !== null) {
       clearTimeout(saveTimer.current)
       saveTimer.current = null
+      clearTimeout(commitTimer.current)
+      commitTimer.current = null
       fetch(`/api/edition/${prevSlug}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,8 +192,16 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
       .finally(() => { loading.current = false })
   }, [slug])
 
+  const scheduleCommit = useCallback(() => {
+    clearTimeout(commitTimer.current)
+    commitTimer.current = setTimeout(() => {
+      fetch(`/api/edition/${slug}/commit`, { method: 'POST' })
+    }, 5000)
+  }, [slug])
+
   const scheduleSave = useCallback(() => {
     clearTimeout(saveTimer.current)
+    scheduleCommit()
     saveTimer.current = setTimeout(() => {
       setSaveStatus('Saving…')
       fetch(`/api/edition/${slug}/content`, {
@@ -205,7 +216,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
         })
         .catch(() => setSaveStatus('Save failed'))
     }, 1000)
-  }, [slug])
+  }, [slug, scheduleCommit])
 
   const handleBodyChange = useCallback((val) => {
     if (loading.current) return

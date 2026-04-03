@@ -322,6 +322,45 @@ def publish_edition(slug):
     return jsonify({"ok": True})
 
 
+COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit
+
+
+@app.route("/api/edition/<slug>/commit", methods=["POST"])
+def commit_edition(slug):
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+
+    edition_dir = state.CONTENT_DIR / slug
+    title = post.metadata.get("title", slug)
+
+    diff = subprocess.run(
+        ["git", "diff", "HEAD", "--", str(f)],
+        cwd=state.REPO_ROOT, capture_output=True, text=True,
+    )
+    diff_size = len(diff.stdout)
+
+    subprocess.run(["git", "add", str(edition_dir)], cwd=state.REPO_ROOT, capture_output=True)
+
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"], cwd=state.REPO_ROOT
+    )
+    if staged.returncode == 0:
+        return jsonify({"ok": True, "committed": False})
+
+    last_msg = subprocess.run(
+        ["git", "log", "-1", "--format=%s"],
+        cwd=state.REPO_ROOT, capture_output=True, text=True,
+    ).stdout.strip()
+
+    if diff_size < COMMIT_DIFF_THRESHOLD and last_msg.startswith("wip:"):
+        subprocess.run(["git", "commit", "--amend", "--no-edit"], cwd=state.REPO_ROOT, capture_output=True)
+    else:
+        subprocess.run(["git", "commit", "-m", f"wip: {title}"], cwd=state.REPO_ROOT, capture_output=True)
+
+    return jsonify({"ok": True, "committed": True})
+
+
 @app.route("/api/check-deployment/<slug>")
 def check_deployment(slug):
     hugo_config = load_hugo_config()
