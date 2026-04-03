@@ -3,7 +3,23 @@ import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { tags } from '@lezer/highlight'
 import '../editor.css'
+
+const markdownHighlight = HighlightStyle.define([
+  { tag: tags.heading1, fontSize: '1.4em', fontWeight: 'bold' },
+  { tag: tags.heading2, fontSize: '1.2em', fontWeight: 'bold' },
+  { tag: tags.heading3, fontSize: '1.1em', fontWeight: 'bold' },
+  { tag: tags.strong, fontWeight: 'bold' },
+  { tag: tags.emphasis, fontStyle: 'italic' },
+  { tag: tags.strikethrough, textDecoration: 'line-through' },
+  { tag: tags.link, color: 'var(--accent, #4a9eff)' },
+  { tag: tags.url, color: 'var(--accent, #4a9eff)' },
+  { tag: tags.quote, color: 'var(--text-secondary)', fontStyle: 'italic' },
+  { tag: tags.monospace, fontFamily: 'monospace', fontSize: '0.9em' },
+  { tag: tags.processingInstruction, color: 'var(--text-secondary)' },
+])
 
 async function uploadImage(file, slug) {
   const formData = new FormData()
@@ -276,7 +292,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
             value={initialBody}
             onChange={handleBodyChange}
             onCreateEditor={(view) => { viewRef.current = view }}
-            extensions={[markdown(), EditorView.lineWrapping, EditorView.contentAttributes.of({ spellcheck: "true" })]}
+            extensions={[markdown(), EditorView.lineWrapping, EditorView.contentAttributes.of({ spellcheck: "true" }), syntaxHighlighting(markdownHighlight)]}
             theme={isDark ? 'dark' : 'light'}
             placeholder="Write something…"
             basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }}
