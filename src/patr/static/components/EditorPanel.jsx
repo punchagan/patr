@@ -107,7 +107,7 @@ function EditorToolbar({ viewRef, slug }) {
 export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, onSaved }) {
   const [title, setTitle] = useState('')
   const [intro, setIntro] = useState('')
-  const [body, setBody] = useState('')
+  const [initialBody, setInitialBody] = useState('')
   const [saveStatus, setSaveStatus] = useState('')
   const [isDark, setIsDark] = useState(() => document.body.classList.contains('dark'))
 
@@ -116,12 +116,11 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
   const slugRef = useRef(slug)
   const titleRef = useRef(title)
   const introRef = useRef(intro)
-  const bodyRef = useRef(body)
+  const bodyRef = useRef('')
   const viewRef = useRef(null)
 
   useEffect(() => { titleRef.current = title }, [title])
   useEffect(() => { introRef.current = intro }, [intro])
-  useEffect(() => { bodyRef.current = body }, [body])
 
   // Track dark mode changes
   useEffect(() => {
@@ -184,15 +183,16 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
       .then(d => {
         setTitle(d.title || '')
         setIntro(d.intro || '')
-        setBody(d.body || '')
+        setInitialBody(d.body || '')
+        bodyRef.current = d.body || ''
       })
       .finally(() => { loading.current = false })
   }, [slug])
 
   const scheduleSave = useCallback(() => {
     clearTimeout(saveTimer.current)
-    setSaveStatus('Saving…')
     saveTimer.current = setTimeout(() => {
+      setSaveStatus('Saving…')
       fetch(`/api/edition/${slug}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -209,7 +209,6 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
 
   const handleBodyChange = useCallback((val) => {
     if (loading.current) return
-    setBody(val)
     bodyRef.current = val
     scheduleSave()
   }, [scheduleSave])
@@ -255,7 +254,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
         <EditorToolbar viewRef={viewRef} slug={slug} />
         <div className="editor-body-wrap">
           <CodeMirror
-            value={body}
+            value={initialBody}
             onChange={handleBodyChange}
             onCreateEditor={(view) => { viewRef.current = view }}
             extensions={[markdown(), EditorView.lineWrapping]}
