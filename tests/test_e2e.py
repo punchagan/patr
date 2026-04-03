@@ -67,9 +67,17 @@ def browser(base_url):
     pw.stop()
 
 
+@pytest.fixture(scope="session")
+def context(browser):
+    ctx = browser.new_context()
+    ctx.set_default_timeout(8000)
+    yield ctx
+    ctx.close()
+
+
 @pytest.fixture
-def page(browser, base_url):
-    p = browser.new_page()
+def page(context, base_url):
+    p = context.new_page()
     p.goto(base_url)
     p.wait_for_selector(".sidebar")
     yield p
@@ -192,9 +200,9 @@ def test_mode_stored_in_hash(page, edition, base_url):
     assert page.evaluate("location.hash") == f"#{edition}"
 
 
-def test_hash_restores_mode(browser, edition, base_url):
+def test_hash_restores_mode(context, edition, base_url):
     # Use fresh pages so React initializes from the hash (not a hash-change on existing page)
-    p = browser.new_page()
+    p = context.new_page()
     try:
         p.goto(f"{base_url}/#{edition}/email")
         p.wait_for_selector(".full-preview")
@@ -202,7 +210,7 @@ def test_hash_restores_mode(browser, edition, base_url):
     finally:
         p.close()
 
-    p = browser.new_page()
+    p = context.new_page()
     try:
         p.goto(f"{base_url}/#{edition}/split")
         p.wait_for_selector(".cm-content")
