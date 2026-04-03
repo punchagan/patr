@@ -177,19 +177,25 @@ def cmd_serve(args):
     # Import server after state is configured
     from patr.server import app
 
-    with socket.socket() as s:
-        try:
-            s.bind(("127.0.0.1", args.port))
-        except OSError:
-            try:
-                urllib.request.urlopen(f"http://127.0.0.1:{args.port}/api/editions", timeout=1)
-                print(f"Patr is already running at http://127.0.0.1:{args.port}")
-            except Exception:
-                print(f"Error: port {args.port} is already in use by another process.")
-            raise SystemExit(0)
-
-    # Only open the browser on initial start, not on reloader restarts
+    # Only check free port, open browser on initial start, not on reloader restarts
     if not os.environ.get("WERKZEUG_RUN_MAIN"):
+
+        with socket.socket() as s:
+            try:
+                s.bind(("127.0.0.1", args.port))
+            except OSError as e:
+                print(e)
+                try:
+                    urllib.request.urlopen(
+                        f"http://127.0.0.1:{args.port}/api/editions", timeout=1
+                    )
+                    print(f"Patr is already running at http://127.0.0.1:{args.port}")
+                except Exception:
+                    print(
+                        f"Error: port {args.port} is already in use by another process."
+                    )
+                raise SystemExit(0)
+
         def open_browser():
             time.sleep(1)
             webbrowser.open(f"http://127.0.0.1:{args.port}")
