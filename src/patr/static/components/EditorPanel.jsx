@@ -276,7 +276,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
             value={initialBody}
             onChange={handleBodyChange}
             onCreateEditor={(view) => { viewRef.current = view }}
-            extensions={[markdown(), EditorView.lineWrapping]}
+            extensions={[markdown(), EditorView.lineWrapping, EditorView.contentAttributes.of({ spellcheck: "true" })]}
             theme={isDark ? 'dark' : 'light'}
             placeholder="Write something…"
             basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }}
