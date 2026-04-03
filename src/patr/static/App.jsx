@@ -11,6 +11,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [contactCount, setContactCount] = useState(null)
   const [hasSheetId, setHasSheetId] = useState(false)
+  const [gmailConnected, setGmailConnected] = useState(false)
   const [editingFooter, setEditingFooter] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showNewEdition, setShowNewEdition] = useState(false)
@@ -54,6 +55,7 @@ export default function App() {
   useEffect(() => {
     fetch('/api/contacts/count').then(r => r.json()).then(d => setContactCount(d.count))
     fetch('/api/settings').then(r => r.json()).then(d => setHasSheetId(!!d.has_sheet_id))
+    fetch('/api/auth-status').then(r => r.json()).then(d => setGmailConnected(!!d.connected))
     if (document.body.dataset.unconfigured) setShowSettings(true)
 
     const hashSlug = location.hash.slice(1).split('/')[0]
@@ -85,6 +87,8 @@ export default function App() {
         selectedSlug={editingFooter ? null : selectedEdition?.slug}
         editingFooter={editingFooter}
         hidden={focusMode}
+        gmailConnected={gmailConnected}
+        onGmailConnected={setGmailConnected}
         onSelect={e => { setSelectedEdition(e); setEditingFooter(false) }}
         onFooter={() => { setSelectedEdition(null); setEditingFooter(true) }}
         onNewEdition={() => setShowNewEdition(true)}
@@ -97,6 +101,7 @@ export default function App() {
         theme={theme}
         contactCount={contactCount}
         hasSheetId={hasSheetId}
+        gmailConnected={gmailConnected}
         focusMode={focusMode}
         onToggleFocus={() => setFocusMode(f => !f)}
         onToggleTheme={toggleTheme}

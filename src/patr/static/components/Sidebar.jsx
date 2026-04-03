@@ -1,26 +1,29 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 
-function AuthBar() {
-  const [status, setStatus] = useState(null)
+function AuthBar({ gmailConnected, onGmailConnected }) {
+  const [needsCredentials, setNeedsCredentials] = useState(false)
 
-  const refresh = () => fetch('/api/auth-status').then(r => r.json()).then(setStatus)
+  useEffect(() => {
+    fetch('/api/auth-status').then(r => r.json()).then(d => {
+      setNeedsCredentials(!!d.needs_credentials)
+      onGmailConnected(!!d.connected)
+    })
+  }, [])
 
-  useEffect(() => { refresh() }, [])
-
-  const disconnect = () => fetch('/oauth/disconnect', { method: 'POST' }).then(refresh)
-
-  if (!status) return <div className="auth-bar" />
+  const disconnect = () => fetch('/oauth/disconnect', { method: 'POST' })
+    .then(() => fetch('/api/auth-status').then(r => r.json()))
+    .then(d => { setNeedsCredentials(!!d.needs_credentials); onGmailConnected(!!d.connected) })
 
   return (
     <div className="auth-bar">
-      <span className={`auth-dot ${status.needs_credentials || !status.connected ? 'err' : 'ok'}`} />
+      <span className={`auth-dot ${needsCredentials || !gmailConnected ? 'err' : 'ok'}`} />
       <span className="auth-label">
-        {status.needs_credentials ? 'No credentials.json' : status.connected ? 'Gmail connected' : 'Not connected'}
+        {needsCredentials ? 'No credentials.json' : gmailConnected ? 'Gmail connected' : 'Not connected'}
       </span>
-      {!status.connected && !status.needs_credentials && (
+      {!gmailConnected && !needsCredentials && (
         <a className="btn" href="/oauth/start" style={{ fontSize: 11, padding: '3px 8px' }}>Connect</a>
       )}
-      {status.connected && (
+      {gmailConnected && (
         <button className="btn" onClick={disconnect} style={{ fontSize: 11, padding: '3px 8px' }}>Disconnect</button>
       )}
     </div>
@@ -31,7 +34,7 @@ const SIDEBAR_WIDTH_KEY = 'patr-sidebar-width'
 const MIN_WIDTH = 160
 const MAX_WIDTH = 500
 
-export default function Sidebar({ editions, selectedSlug, editingFooter, hidden, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
+export default function Sidebar({ editions, selectedSlug, editingFooter, hidden, gmailConnected, onGmailConnected, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
   const [width, setWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10)
     return (stored >= MIN_WIDTH && stored <= MAX_WIDTH) ? stored : 260
@@ -63,7 +66,7 @@ export default function Sidebar({ editions, selectedSlug, editingFooter, hidden,
   return (
     <aside className="sidebar" style={style}>
       <div className="sidebar-resize-handle" onMouseDown={onMouseDown} />
-      <AuthBar />
+      <AuthBar gmailConnected={gmailConnected} onGmailConnected={onGmailConnected} />
       <div className="sidebar-header">
         Editions
         <span style={{ float: 'right', display: 'flex', gap: 4 }}>
