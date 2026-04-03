@@ -161,17 +161,25 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
     }
   }, [viewRef.current]) // re-run when view is created
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(saveTimer.current)
+      clearTimeout(commitTimer.current)
+    }
+  }, [])
+
   // Load content when slug changes, flush pending save for previous slug
   useEffect(() => {
     if (!slug) return
 
     const prevSlug = slugRef.current
     slugRef.current = slug
+    clearTimeout(commitTimer.current)
+    commitTimer.current = null
     if (prevSlug && prevSlug !== slug && saveTimer.current !== null) {
       clearTimeout(saveTimer.current)
       saveTimer.current = null
-      clearTimeout(commitTimer.current)
-      commitTimer.current = null
       fetch(`/api/edition/${prevSlug}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
