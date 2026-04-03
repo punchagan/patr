@@ -120,9 +120,6 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
           <button className={`btn btn-toggle${editorMode === 'split' ? ' active' : ''}`} onClick={() => setEditorMode('split')}>Split</button>
           <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'email' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('email') }}>Preview Email</button>
           <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'web' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('web') }}>Preview Web</button>
-          <button className="btn btn-draft-toggle" onClick={toggleDraft}>
-            {draft ? 'Mark as Live' : 'Mark as Draft'}
-          </button>
         </>}
         <button className="btn btn-theme" onClick={onToggleFocus} title={focusMode ? 'Exit focus mode (Esc)' : 'Focus mode (F)'}>
           {focusMode ? '⊠' : '⛶'}
@@ -171,6 +168,9 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
         <div className="action-bar">
           <div className="spacer" />
           {status && <span className={`status-msg ${status.cls}`}>{status.text}</span>}
+          <button className="btn btn-draft-toggle" onClick={toggleDraft}>
+            {draft ? 'Mark as Live' : 'Mark as Draft'}
+          </button>
           <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>
           <button className="btn" onClick={() => setShowTestSend(true)}>Test Send</button>
           <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend} title={!hasSheetId ? 'Add a contacts sheet ID in ⚙ Settings to enable sending' : undefined}>Send All</button>
