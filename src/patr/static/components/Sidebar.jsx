@@ -18,10 +18,10 @@ function AuthBar({ gmailConnected, onGmailConnected }) {
     <div className="auth-bar">
       <span className={`auth-dot ${needsCredentials || !gmailConnected ? 'err' : 'ok'}`} />
       <span className="auth-label">
-        {needsCredentials ? 'No credentials.json' : gmailConnected ? 'Gmail connected' : 'Not connected'}
+        {needsCredentials ? 'No credentials.json' : gmailConnected ? 'Gmail connected' : 'Gmail not connected'}
       </span>
       {!gmailConnected && !needsCredentials && (
-        <a className="btn" href="/oauth/start" style={{ fontSize: 11, padding: '3px 8px' }}>Connect</a>
+        <a className="btn" href="/oauth/start" style={{ fontSize: 11, padding: '3px 8px' }}>Connect Gmail</a>
       )}
       {gmailConnected && (
         <button className="btn" onClick={disconnect} style={{ fontSize: 11, padding: '3px 8px' }}>Disconnect</button>
