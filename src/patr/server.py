@@ -58,7 +58,9 @@ def static_images(filename):
 def index():
     cfg = load_newsletter_config()
     unconfigured = not cfg.get("name", "").strip()
-    return render_template("index.html", unconfigured=unconfigured)
+    name = cfg.get("name", "").strip()
+    title = f"{name} — Patr" if name else "Patr"
+    return render_template("index.html", unconfigured=unconfigured, title=title)
 
 
 @app.route("/api/auth-status")
