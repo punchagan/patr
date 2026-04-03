@@ -87,8 +87,6 @@ export default function App() {
         selectedSlug={editingFooter ? null : selectedEdition?.slug}
         editingFooter={editingFooter}
         hidden={focusMode}
-        gmailConnected={gmailConnected}
-        onGmailConnected={setGmailConnected}
         onSelect={e => { setSelectedEdition(e); setEditingFooter(false) }}
         onFooter={() => { setSelectedEdition(null); setEditingFooter(true) }}
         onNewEdition={() => setShowNewEdition(true)}
@@ -112,6 +110,8 @@ export default function App() {
       {showSettings && (
         <SettingsModal
           unconfigured={!!document.body.dataset.unconfigured}
+          gmailConnected={gmailConnected}
+          onGmailConnected={setGmailConnected}
           onClose={() => setShowSettings(false)}
         />
       )}

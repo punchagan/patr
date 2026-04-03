@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import Modal from './Modal'
 
-export default function SettingsModal({ unconfigured, onClose }) {
+export default function SettingsModal({ unconfigured, gmailConnected, onGmailConnected, onClose }) {
   const [name, setName] = useState('')
   const [sheet, setSheet] = useState('')
   const [contactsResult, setContactsResult] = useState('')
   const [sentLog, setSentLog] = useState(null)
+  const [needsCredentials, setNeedsCredentials] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(d => {
       setName(d.newsletter_name || '')
       setSheet(d.has_sheet_id ? '(saved)' : '')
+    })
+    fetch('/api/auth-status').then(r => r.json()).then(d => {
+      setNeedsCredentials(!!d.needs_credentials)
+      onGmailConnected(!!d.connected)
     })
   }, [])
 
@@ -24,6 +29,10 @@ export default function SettingsModal({ unconfigured, onClose }) {
       body: JSON.stringify(payload),
     }).then(() => onClose())
   }
+
+  const disconnect = () => fetch('/oauth/disconnect', { method: 'POST' })
+    .then(() => fetch('/api/auth-status').then(r => r.json()))
+    .then(d => { setNeedsCredentials(!!d.needs_credentials); onGmailConnected(!!d.connected) })
 
   const testContacts = () => {
     setContactsResult('Checking…')
@@ -76,6 +85,21 @@ export default function SettingsModal({ unconfigured, onClose }) {
           </div>
           {contactsResult && <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>{contactsResult}</span>}
         </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, flex: 1 }}>
+            Gmail
+            {needsCredentials
+              ? <span style={{ color: 'var(--text-secondary)', marginLeft: 8, fontSize: 12 }}>No credentials.json</span>
+              : gmailConnected
+                ? <span style={{ color: 'var(--ok)', marginLeft: 8, fontSize: 12 }}>Connected ✓</span>
+                : <span style={{ color: 'var(--err)', marginLeft: 8, fontSize: 12 }}>Not connected</span>
+            }
+          </span>
+          {!needsCredentials && (gmailConnected
+            ? <button className="btn" onClick={disconnect} style={{ fontSize: 12 }}>Disconnect</button>
+            : <a className="btn" href="/oauth/start" style={{ fontSize: 12 }}>Connect Gmail</a>
+          )}
+        </div>
         <div>
           <button className="btn" onClick={checkSentLog} style={{ fontSize: 12 }}>Check Sent Log</button>
           {sentLog && (

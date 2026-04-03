@@ -1,40 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-
-function AuthBar({ gmailConnected, onGmailConnected }) {
-  const [needsCredentials, setNeedsCredentials] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/auth-status').then(r => r.json()).then(d => {
-      setNeedsCredentials(!!d.needs_credentials)
-      onGmailConnected(!!d.connected)
-    })
-  }, [])
-
-  const disconnect = () => fetch('/oauth/disconnect', { method: 'POST' })
-    .then(() => fetch('/api/auth-status').then(r => r.json()))
-    .then(d => { setNeedsCredentials(!!d.needs_credentials); onGmailConnected(!!d.connected) })
-
-  return (
-    <div className="auth-bar">
-      <span className={`auth-dot ${needsCredentials || !gmailConnected ? 'err' : 'ok'}`} />
-      <span className="auth-label">
-        {needsCredentials ? 'No credentials.json' : gmailConnected ? 'Gmail connected' : 'Gmail not connected'}
-      </span>
-      {!gmailConnected && !needsCredentials && (
-        <a className="btn" href="/oauth/start" style={{ fontSize: 11, padding: '3px 8px' }}>Connect Gmail</a>
-      )}
-      {gmailConnected && (
-        <button className="btn" onClick={disconnect} style={{ fontSize: 11, padding: '3px 8px' }}>Disconnect</button>
-      )}
-    </div>
-  )
-}
+import React, { useState, useRef, useCallback } from 'react'
 
 const SIDEBAR_WIDTH_KEY = 'patr-sidebar-width'
 const MIN_WIDTH = 160
 const MAX_WIDTH = 500
 
-export default function Sidebar({ editions, selectedSlug, editingFooter, hidden, gmailConnected, onGmailConnected, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
+export default function Sidebar({ editions, selectedSlug, editingFooter, hidden, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
   const [width, setWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10)
     return (stored >= MIN_WIDTH && stored <= MAX_WIDTH) ? stored : 260
@@ -66,7 +36,6 @@ export default function Sidebar({ editions, selectedSlug, editingFooter, hidden,
   return (
     <aside className="sidebar" style={style}>
       <div className="sidebar-resize-handle" onMouseDown={onMouseDown} />
-      <AuthBar gmailConnected={gmailConnected} onGmailConnected={onGmailConnected} />
       <div className="sidebar-header">
         Editions
         <span style={{ float: 'right', display: 'flex', gap: 4 }}>
