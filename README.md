@@ -44,6 +44,8 @@ Click **Footer** at the bottom of the sidebar to edit the footer that appears in
 
 Switch to **Split** to write and see the email preview side by side. Use **Preview Email** or **Preview Web** for a full-screen read before sending.
 
+To share a draft for review, use **Preview Email** and click **⬇ Download PDF** — the PDF can be emailed or shared directly.
+
 ### Publish to the web
 
 When your edition is ready, click **Mark as Live**, then **Publish**. This pushes the edition to your website.
