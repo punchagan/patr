@@ -41,7 +41,7 @@ function ViewToggle({ viewMode, onViewModeChange }) {
   )
 }
 
-export default function MainPanel({ edition, editingFooter, theme, contactCount, hasSheetId, gmailConnected, focusMode, onToggleFocus, onToggleTheme, onEditionUpdated, initialEditorMode = 'write', initialViewMode = 'email' }) {
+export default function MainPanel({ edition, editingFooter, theme, hasSheetId, gmailConnected, focusMode, onToggleFocus, onToggleTheme, onEditionUpdated, initialEditorMode = 'write', initialViewMode = 'email' }) {
   const [draft, setDraft] = useState(edition?.draft ?? true)
   const [editorMode, setEditorMode] = useState(initialEditorMode)
   const [viewMode, setViewMode] = useState(initialViewMode)
@@ -173,7 +173,7 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
           </button>
           <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>
           <button className="btn" onClick={() => setShowTestSend(true)} disabled={!gmailConnected} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : undefined}>Test Send</button>
-          <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : !hasSheetId ? 'Add a contacts sheet ID in ⚙ Settings to enable sending' : undefined}>Send All</button>
+          <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : !hasSheetId ? 'Add a contacts sheet ID in ⚙ Settings to enable sending' : undefined} >Send All</button>
         </div>
       )}
 
@@ -187,7 +187,6 @@ export default function MainPanel({ edition, editingFooter, theme, contactCount,
       {showConfirm && (
         <ConfirmModal
           title={edition.title}
-          contactCount={contactCount}
           onClose={() => setShowConfirm(false)}
           onConfirm={() => {
             setShowConfirm(false)
