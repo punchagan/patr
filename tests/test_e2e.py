@@ -99,7 +99,36 @@ def edition(page, request):
     yield slug
 
 
+REPO_ROOT = Path(__file__).parent.parent
+
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
+def test_screenshot(context, base_url):
+    """Capture a screenshot of the app in a realistic state for the README."""
+    p = context.new_page()
+    p.set_viewport_size({"width": 1280, "height": 800})
+    try:
+        p.goto(base_url)
+        p.wait_for_selector(".sidebar")
+        # Create an edition
+        p.locator(".sidebar-header button", has_text="+").click()
+        p.locator("input[placeholder='e.g. Spring Edition']").fill("April 2025")
+        p.locator("button.btn-primary", has_text="Create").click()
+        p.locator(".edition-item:has-text('April 2025')").click()
+        p.wait_for_selector(".cm-content")
+        # Fill in title and body
+        p.locator(".editor-title-input").fill("Hello from Patr")
+        p.locator(".cm-content").click()
+        p.locator(".cm-content").press_sequentially(
+            "Writing newsletters should be simple. Patr keeps everything local — "
+            "your words, your git history, your Gmail."
+        )
+        p.wait_for_function("document.querySelector('.cm-content').textContent.length > 10")
+        p.screenshot(path=str(REPO_ROOT / "screenshot.png"))
+    finally:
+        p.close()
+
 
 def test_app_loads(page):
     assert page.locator(".sidebar").is_visible()
