@@ -162,9 +162,7 @@ def cmd_migrate(args):
 
 
 def cmd_serve(args):
-    repo_arg = getattr(args, "repo", ".")
-
-    state.REPO_ROOT = Path(repo_arg).resolve()
+    state.REPO_ROOT = Path(args.repo).resolve()
     state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
 
     if not (state.REPO_ROOT / "hugo.toml").exists() and not (state.REPO_ROOT / "config.toml").exists():
@@ -179,28 +177,27 @@ def cmd_serve(args):
     # Import server after state is configured
     from patr.server import app
 
-    port = 5000
     with socket.socket() as s:
         try:
-            s.bind(("127.0.0.1", port))
+            s.bind(("127.0.0.1", args.port))
         except OSError:
             try:
-                urllib.request.urlopen(f"http://127.0.0.1:{port}/api/editions", timeout=1)
-                print(f"Patr is already running at http://127.0.0.1:{port}")
+                urllib.request.urlopen(f"http://127.0.0.1:{args.port}/api/editions", timeout=1)
+                print(f"Patr is already running at http://127.0.0.1:{args.port}")
             except Exception:
-                print(f"Error: port {port} is already in use by another process.")
+                print(f"Error: port {args.port} is already in use by another process.")
             raise SystemExit(0)
 
     # Only open the browser on initial start, not on reloader restarts
     if not os.environ.get("WERKZEUG_RUN_MAIN"):
         def open_browser():
             time.sleep(1)
-            webbrowser.open(f"http://127.0.0.1:{port}")
+            webbrowser.open(f"http://127.0.0.1:{args.port}")
 
         threading.Thread(target=open_browser, daemon=True).start()
 
-    app.config["PORT"] = port
-    app.run(host="127.0.0.1", port=port, debug=True)
+    app.config["PORT"] = args.port
+    app.run(host="127.0.0.1", port=args.port, debug=True)
 
 
 def main():
@@ -213,6 +210,7 @@ def main():
     # serve
     serve_parser = sub.add_parser("serve", help="Start the Patr web UI")
     serve_parser.add_argument("--repo", default=".", help="Path to Hugo site root (default: cwd)")
+    serve_parser.add_argument("--port", type=int, default=5000, help="Port to listen on (default: 5000)")
 
     # install
     install_parser = sub.add_parser("install", help="Install Patr layouts/CSS into a Hugo site")
