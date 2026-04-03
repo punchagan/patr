@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 function AuthBar() {
   const [status, setStatus] = useState(null)
@@ -27,9 +27,42 @@ function AuthBar() {
   )
 }
 
+const SIDEBAR_WIDTH_KEY = 'patr-sidebar-width'
+const MIN_WIDTH = 160
+const MAX_WIDTH = 500
+
 export default function Sidebar({ editions, selectedSlug, editingFooter, hidden, onSelect, onFooter, onNewEdition, onSettings, onHelp }) {
+  const [width, setWidth] = useState(() => {
+    const stored = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10)
+    return (stored >= MIN_WIDTH && stored <= MAX_WIDTH) ? stored : 260
+  })
+  const dragging = useRef(false)
+
+  const onMouseDown = useCallback((e) => {
+    e.preventDefault()
+    dragging.current = true
+    const onMouseMove = (e) => {
+      if (!dragging.current) return
+      // sidebar is on the right; handle is on its left edge
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - e.clientX))
+      setWidth(newWidth)
+    }
+    const onMouseUp = (e) => {
+      dragging.current = false
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - e.clientX))
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, newWidth)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [])
+
+  const style = hidden ? { display: 'none' } : { width, minWidth: width }
+
   return (
-    <aside className="sidebar" style={hidden ? { display: 'none' } : undefined}>
+    <aside className="sidebar" style={style}>
+      <div className="sidebar-resize-handle" onMouseDown={onMouseDown} />
       <AuthBar />
       <div className="sidebar-header">
         Editions
