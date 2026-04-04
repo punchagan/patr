@@ -133,6 +133,43 @@ def test_screenshot(context, base_url):
     assert (REPO_ROOT / "screenshots" / "editor.png").exists()
 
 
+def test_screenshot_email_preview(context, base_url):
+    """Capture a screenshot of the email preview for the README."""
+    import re
+    p = context.new_page()
+    p.set_viewport_size({"width": 700, "height": 900})
+    try:
+        p.goto(base_url)
+        p.wait_for_selector(".sidebar")
+        p.locator(".sidebar-header button", has_text="+").click()
+        p.locator("input[placeholder='e.g. Spring Edition']").fill("Spring 2025")
+        p.locator("button.btn-primary", has_text="Create").click()
+        p.locator(".edition-item:has-text('Spring 2025')").click()
+        p.wait_for_selector(".cm-content")
+        p.locator(".editor-title-input").fill("Welcome to Spring")
+        p.locator(".cm-content").click()
+        p.locator(".cm-content").press_sequentially(
+            "Spring is here. Here's what's happening this month.\n\n"
+            "## Highlights\n\n"
+            "- New features shipping this month\n"
+            "- Community roundup\n"
+            "- Upcoming events\n\n"
+            "We hope you enjoy this edition. More details below."
+        )
+        p.wait_for_function(
+            "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+            timeout=5000,
+        )
+        slug = re.sub(r"[^a-z0-9]+", "-", "spring 2025")
+        p.goto(f"{base_url}/preview/{slug}/email")
+        p.wait_for_load_state("networkidle")
+        out = REPO_ROOT / "screenshots" / "email-preview.png"
+        p.screenshot(path=str(out), full_page=True)
+    finally:
+        p.close()
+    assert (REPO_ROOT / "screenshots" / "email-preview.png").exists()
+
+
 def test_app_loads(page):
     assert page.locator(".sidebar").is_visible()
     assert page.locator(".main").is_visible()
