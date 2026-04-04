@@ -389,17 +389,35 @@ def commit_edition(slug):
 
 @app.route("/api/check-deployment/<slug>")
 def check_deployment(slug):
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+
     hugo_config = load_hugo_config()
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     if not base_url or "example.com" in base_url:
-        return jsonify({"live": False, "reason": "baseURL not configured in hugo.toml"})
+        return jsonify({"live": False, "uncommitted": None, "unpushed": None,
+                        "reason": "baseURL not configured in hugo.toml"})
+
+    edition_dir = state.CONTENT_DIR / slug
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-b", "--", str(edition_dir)],
+        cwd=state.REPO_ROOT, capture_output=True, text=True,
+    )
+    lines = status.stdout.split('\n') if status.stdout else []
+    branch_line = lines[0] if lines else ''
+    unpushed = '[ahead' in branch_line
+    uncommitted = any(line.strip() for line in lines[1:])
+
     url = f"{base_url}/newsletter/{slug}/"
     try:
         req = urllib.request.urlopen(url, timeout=5)
         live = req.status == 200
-        return jsonify({"live": live, "url": url})
     except Exception as e:
-        return jsonify({"live": False, "reason": str(e), "url": url})
+        return jsonify({"live": False, "uncommitted": uncommitted, "unpushed": unpushed,
+                        "url": url, "reason": str(e)})
+    return jsonify({"live": live, "uncommitted": uncommitted, "unpushed": unpushed, "url": url})
 
 
 @app.route("/api/help")
