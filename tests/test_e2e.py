@@ -157,12 +157,19 @@ def test_screenshot(screenshot_edition, context, base_url):
     finally:
         p.close()
     assert out.exists()
-    import shutil
-    shutil.copy(out, state.CONTENT_DIR / screenshot_edition / "writing.png")
 
 
 def test_screenshot_email_preview(screenshot_edition, context, base_url):
-    """Capture a screenshot of the email preview for the README."""
+    """Capture a screenshot of the email preview for the README.
+
+    Depends on test_screenshot having run first (uses editor.png as the
+    newsletter image). Skips gracefully if run in isolation.
+    """
+    import shutil
+    editor_png = REPO_ROOT / "screenshots" / "editor.png"
+    if not editor_png.exists():
+        pytest.skip("editor.png not yet generated; run test_screenshot first")
+    shutil.copy(editor_png, state.CONTENT_DIR / screenshot_edition / "writing.png")
     p = context.new_page()
     p.set_viewport_size({"width": 700, "height": 900})
     try:
@@ -172,7 +179,7 @@ def test_screenshot_email_preview(screenshot_edition, context, base_url):
         p.screenshot(path=str(out), full_page=True)
     finally:
         p.close()
-    assert (REPO_ROOT / "screenshots" / "email-preview.png").exists()
+    assert out.exists()
 
 
 def test_app_loads(page):
