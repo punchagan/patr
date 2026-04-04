@@ -4,7 +4,7 @@ import re
 import frontmatter
 import markdown
 from bs4 import BeautifulSoup
-from premailer import transform
+import css_inline
 
 from patr import state
 
@@ -155,4 +155,4 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
   {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
 </body>
 </html>"""
-    return transform(absolutify_urls(html, base_url, page_url))
+    return css_inline.inline(absolutify_urls(html, base_url, page_url))

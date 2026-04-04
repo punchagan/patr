@@ -157,12 +157,12 @@ def test_email_html_view_in_browser_link():
     assert "https://example.com/newsletter/test-ed/" in html
 
 
-def test_email_html_css_inlined_by_premailer():
+def test_email_html_css_inlined():
     post = make_post()
     html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
-    # premailer moves <style> rules into inline style= attributes
-    assert "<style>" not in html or "font-family" in html  # inlined on body tag
+    # css-inline moves <style> rules into inline style= attributes
     assert 'style="' in html
+    assert "font-family" in html
 
 
 def test_email_html_image_with_alt_becomes_figure():

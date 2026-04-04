@@ -178,7 +178,7 @@ The UI is a React app (built with Vite, output committed to `static/dist/`). The
 - Python `markdown` library with `extra` and `smarty` extensions
 - `render_md()` mirrors Hugo's render hook: post-processes `<img>` → `<figure>/<figcaption>` when alt text is non-empty
 - `absolutify_urls()` rewrites relative and root-relative image src paths to absolute URLs before sending
-- CSS inlined via `premailer` before sending
+- CSS inlined via `css-inline` before sending
 - Flask email preview uses `build_web_html()` with `<base href="/newsletter/{slug}/">` so relative image paths resolve; served by `/newsletter/<slug>/<filename>` route
 - Sender address fetched from OAuth2 userinfo API (not hardcoded)
 
