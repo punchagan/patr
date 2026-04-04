@@ -336,3 +336,120 @@ def test_hash_restores_mode(context, edition, base_url):
         assert p.locator(".btn-toggle.active", has_text="Split").is_visible()
     finally:
         p.close()
+
+
+# ── Conflict detection ─────────────────────────────────────────────────────────
+
+def _trigger_focus(page):
+    """Simulate re-focusing the window (triggers the conflict check)."""
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+
+
+def test_conflict_clean_editor_silently_reloads(page, edition):
+    """If editor is clean and file changes on disk, re-focusing reloads silently."""
+    # Wait for editor to load
+    page.wait_for_selector(".cm-content")
+    # Modify the file on disk externally
+    edition_dir = state.CONTENT_DIR / edition
+    index = edition_dir / "index.md"
+    original = index.read_text()
+    index.write_text(original.rstrip() + "\n\nExternal edit.\n")
+
+    _trigger_focus(page)
+    # No conflict modal — content should be silently updated
+    page.wait_for_function(
+        "document.querySelector('.cm-content').textContent.includes('External edit.')",
+        timeout=4000,
+    )
+    assert not page.locator(".conflict-modal").is_visible()
+
+
+def test_conflict_dirty_editor_shows_modal(page, edition):
+    """If editor has unsaved changes and file changes on disk, show conflict modal."""
+    page.wait_for_selector(".cm-content")
+    # Type something (makes editor dirty, triggers autosave)
+    editor = page.locator(".cm-content")
+    editor.click()
+    page.wait_for_function("document.activeElement.classList.contains('cm-content')")
+    editor.press_sequentially("My local edit")
+    # Wait for autosave to fire and persist mtime
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
+
+    # Now externally modify the file (after save, so mtime advances)
+    import time
+    time.sleep(0.05)
+    edition_dir = state.CONTENT_DIR / edition
+    index = edition_dir / "index.md"
+    index.write_text(index.read_text().rstrip() + "\n\nDisk version.\n")
+
+    # Type more (makes editor dirty again, so conflict check triggers modal)
+    editor.press_sequentially(" extra")
+    _trigger_focus(page)
+    page.wait_for_selector(".conflict-modal", timeout=4000)
+
+
+def test_conflict_keep_mine(page, edition, base_url):
+    """'Keep mine' dismisses modal and saves the editor content."""
+    page.wait_for_selector(".cm-content")
+    editor = page.locator(".cm-content")
+    editor.click()
+    page.wait_for_function("document.activeElement.classList.contains('cm-content')")
+    editor.press_sequentially("Keep-mine-content")
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
+
+    import time
+    time.sleep(0.05)
+    edition_dir = state.CONTENT_DIR / edition
+    index = edition_dir / "index.md"
+    index.write_text(index.read_text().rstrip() + "\n\nDisk v2.\n")
+
+    editor.press_sequentially(" more")
+    _trigger_focus(page)
+    page.wait_for_selector(".conflict-modal", timeout=4000)
+
+    page.locator(".conflict-modal button", has_text="Keep mine").click()
+    page.wait_for_function("!document.querySelector('.conflict-modal')", timeout=3000)
+    # Editor content (mine) should be saved
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
+    content = page.request.get(f"{base_url}/api/edition/{edition}/content").json()
+    assert "Keep-mine-content" in content["body"]
+
+
+def test_conflict_keep_theirs(page, edition):
+    """'Keep theirs' dismisses modal and reloads disk content into editor."""
+    page.wait_for_selector(".cm-content")
+    editor = page.locator(".cm-content")
+    editor.click()
+    page.wait_for_function("document.activeElement.classList.contains('cm-content')")
+    editor.press_sequentially("Keep-theirs-mine")
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
+
+    import time
+    time.sleep(0.05)
+    edition_dir = state.CONTENT_DIR / edition
+    index = edition_dir / "index.md"
+    index.write_text(index.read_text().rstrip() + "\n\nDisk theirs.\n")
+
+    editor.press_sequentially(" more")
+    _trigger_focus(page)
+    page.wait_for_selector(".conflict-modal", timeout=4000)
+
+    page.locator(".conflict-modal button", has_text="Keep theirs").click()
+    page.wait_for_function("!document.querySelector('.conflict-modal')", timeout=3000)
+    # Editor should now show disk content
+    page.wait_for_function(
+        "document.querySelector('.cm-content').textContent.includes('Disk theirs.')",
+        timeout=3000,
+    )

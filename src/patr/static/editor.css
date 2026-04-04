@@ -141,3 +141,52 @@
 .editor-save-status.visible {
   opacity: 1;
 }
+
+/* Conflict modal */
+.conflict-modal .modal {
+  max-width: 700px;
+}
+
+.conflict-diff {
+  background: var(--surface-alt, #f5f5f5);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 13px;
+  font-family: 'Inter', system-ui, sans-serif;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+
+.diff-added {
+  background: #d4edda;
+  color: #155724;
+  border-radius: 2px;
+}
+
+.diff-removed {
+  background: #f8d7da;
+  color: #721c24;
+  text-decoration: line-through;
+  border-radius: 2px;
+}
+
+body.dark .diff-added {
+  background: #1a3a23;
+  color: #6fcf97;
+}
+
+body.dark .diff-removed {
+  background: #3a1a1c;
+  color: #eb5757;
+}
+
+.conflict-legend {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 4px 0 12px;
+}

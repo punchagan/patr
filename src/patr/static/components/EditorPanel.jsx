@@ -7,6 +7,7 @@ import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/lang
 import { tags } from '@lezer/highlight'
 import { ViewPlugin, Decoration } from '@codemirror/view'
 import { RangeSetBuilder } from '@codemirror/state'
+import ConflictModal from './modals/ConflictModal'
 import '../editor.css'
 
 const markdownHighlight = HighlightStyle.define([
@@ -155,6 +156,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
   const [initialBody, setInitialBody] = useState('')
   const [saveStatus, setSaveStatus] = useState('')
   const [isDark, setIsDark] = useState(() => document.body.classList.contains('dark'))
+  const [conflict, setConflict] = useState(null) // { mine, theirs, mtime }
 
   const loading = useRef(false)
   const saveTimer = useRef(null)
@@ -164,6 +166,8 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
   const introRef = useRef(intro)
   const bodyRef = useRef('')
   const viewRef = useRef(null)
+  const mtimeRef = useRef(null)
+  const dirtyRef = useRef(false)
 
   useEffect(() => { titleRef.current = title }, [title])
   useEffect(() => { introRef.current = intro }, [intro])
@@ -234,6 +238,8 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
 
     loading.current = true
     setSaveStatus('')
+    dirtyRef.current = false
+    setConflict(null)
     fetch(`/api/edition/${slug}/content`)
       .then(r => r.json())
       .then(d => {
@@ -241,6 +247,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
         setIntro(d.intro || '')
         setInitialBody(d.body || '')
         bodyRef.current = d.body || ''
+        mtimeRef.current = d.mtime ?? null
       })
       .finally(() => { loading.current = false })
   }, [slug])
@@ -255,21 +262,82 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
   const scheduleSave = useCallback(() => {
     clearTimeout(saveTimer.current)
     scheduleCommit()
+    dirtyRef.current = true
     saveTimer.current = setTimeout(() => {
       setSaveStatus('Saving…')
+      const payload = { title: titleRef.current, intro: introRef.current, body: bodyRef.current }
+      if (mtimeRef.current !== null) payload.mtime = mtimeRef.current
       fetch(`/api/edition/${slug}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: titleRef.current, intro: introRef.current, body: bodyRef.current }),
+        body: JSON.stringify(payload),
       })
-        .then(r => r.json())
-        .then(d => {
-          setSaveStatus(d.ok ? 'Saved' : `Error: ${d.error}`)
-          if (d.ok) { setTimeout(() => setSaveStatus(''), 2000); onSaved?.() }
+        .then(async r => {
+          const d = await r.json()
+          if (r.status === 409) {
+            // File changed on disk — show conflict modal
+            clearTimeout(saveTimer.current)
+            clearTimeout(commitTimer.current)
+            saveTimer.current = null
+            commitTimer.current = null
+            dirtyRef.current = false
+            setSaveStatus('')
+            setConflict({ mine: bodyRef.current, theirs: d.body, mtime: d.mtime })
+            return
+          }
+          if (d.ok) {
+            mtimeRef.current = d.mtime ?? null
+            dirtyRef.current = false
+            setSaveStatus('Saved')
+            setTimeout(() => setSaveStatus(''), 2000)
+            onSaved?.()
+          } else {
+            setSaveStatus(`Error: ${d.error}`)
+          }
         })
         .catch(() => setSaveStatus('Save failed'))
     }, 1000)
   }, [slug, scheduleCommit])
+
+  // Check for external file changes when the window regains focus
+  useEffect(() => {
+    if (!slug) return
+    const checkForExternalChange = () => {
+      if (!slug) return
+      fetch(`/api/edition/${slug}/content`)
+        .then(r => r.json())
+        .then(d => {
+          if (mtimeRef.current !== null && d.mtime !== mtimeRef.current) {
+            if (!dirtyRef.current) {
+              // Clean editor — silently reload
+              loading.current = true
+              setTitle(d.title || '')
+              setIntro(d.intro || '')
+              setInitialBody(d.body || '')
+              bodyRef.current = d.body || ''
+              mtimeRef.current = d.mtime
+              loading.current = false
+            } else {
+              // Dirty editor — show conflict modal
+              clearTimeout(saveTimer.current)
+              clearTimeout(commitTimer.current)
+              saveTimer.current = null
+              commitTimer.current = null
+              setSaveStatus('')
+              setConflict({ mine: bodyRef.current, theirs: d.body, mtime: d.mtime })
+            }
+          }
+        })
+    }
+    const onFocus = () => checkForExternalChange()
+    const onVisibility = () => { if (document.visibilityState === 'visible') checkForExternalChange() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [slug])
 
   const handleBodyChange = useCallback((val) => {
     if (loading.current) return
@@ -290,8 +358,42 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
     scheduleSave()
   }
 
+  const handleKeepMine = useCallback(() => {
+    if (!conflict) return
+    // Use disk's mtime so the next save passes the conflict check (we're intentionally overwriting)
+    mtimeRef.current = conflict.mtime
+    setConflict(null)
+    dirtyRef.current = true
+    scheduleSave()
+  }, [conflict, scheduleSave])
+
+  const handleKeepTheirs = useCallback(() => {
+    if (!conflict) return
+    const { theirs, mtime } = conflict
+    setConflict(null)
+    loading.current = true
+    setInitialBody(theirs)
+    bodyRef.current = theirs
+    mtimeRef.current = mtime
+    dirtyRef.current = false
+    loading.current = false
+  }, [conflict])
+
+  const handleDismiss = useCallback(() => {
+    setConflict(null)
+  }, [])
+
   return (
     <div className="editor-panel">
+      {conflict && (
+        <ConflictModal
+          mine={conflict.mine}
+          theirs={conflict.theirs}
+          onKeepMine={handleKeepMine}
+          onKeepTheirs={handleKeepTheirs}
+          onDismiss={handleDismiss}
+        />
+      )}
       {!isFooter && !focusMode && <>
         <div className="editor-field">
           <label>Title</label>
