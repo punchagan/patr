@@ -12,6 +12,7 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 - **Use red/green TDD wherever possible.** Write a failing test first, confirm it fails for the right reason, then fix the code, then confirm it passes. If you're about to skip this (e.g. a change seems obvious, or it's hard to test), explicitly say so and ask for confirmation before proceeding.
 - **Always run all tests before committing.** Run `uv run pytest` (includes E2E tests). If tests time out, re-run with `uv run pytest -x` to stop at the first failure and diagnose before retrying.
+- **Always commit screenshots.** Screenshots are regenerated when tests are run. They should be committed with the change that is causing them to change, not be left out of commits. Always add the screenshots dir when adding files to commits.
 
 ## Running Patr
 
