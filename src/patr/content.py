@@ -1,5 +1,6 @@
 import html as _html
 import re
+from pathlib import Path
 
 import frontmatter
 import markdown
@@ -8,17 +9,7 @@ import css_inline
 
 from patr import state
 
-
-NEWSLETTER_CSS = """\
-  body { font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #333; background: #fff; line-height: 1.7; }
-  .view-in-browser { font-size: 0.8em; color: #aaa; margin-bottom: 2em; }
-  .view-in-browser a { color: #aaa; }
-  .intro { font-style: italic; color: #555; border-bottom: 1px solid #eee; padding-bottom: 1em; margin-bottom: 1.5em; font-size: 1.05em; }
-  .footer { border-top: 1px solid #eee; margin-top: 2em; padding-top: 1em; font-size: 0.9em; color: #666; }
-  .footer img { max-width: 200px; height: auto; }
-  img { max-width: 500px; height: auto; display: block; margin: 1rem auto; }
-  figure { margin: 1.5rem 0; text-align: center; }
-  figcaption { font-size: 0.85em; color: #888; margin-top: 0.5rem; }"""
+_EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 
 
 def get_editions():
@@ -146,7 +137,7 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
 
     html = f"""<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><style>{NEWSLETTER_CSS}</style></head>
+<head><meta charset="utf-8"><style>{_EMAIL_CSS_PATH.read_text()}</style></head>
 <body>
   <p class="view-in-browser"><a href="{page_url}">View in browser</a></p>
   <p>{greeting}</p>
