@@ -51,7 +51,7 @@ Then install Patr's layouts and assets into your Hugo site:
 patr install --repo /path/to/hugo-site
 ```
 
-This copies Hugo templates and CSS into the site, creates `content/newsletter/` stubs, and optionally adds a nav menu entry.
+This copies Hugo templates and CSS into the site, creates `content/newsletter/` stubs, and optionally adds a nav menu entry. To customise the newsletter's appearance, edit `assets/newsletter.css` in your Hugo site after installing.
 
 If you have existing flat `.md` newsletter editions, migrate them to page bundles first:
 
