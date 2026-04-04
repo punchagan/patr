@@ -127,6 +127,8 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
+.cm-md-mark { opacity: 0.25; }
+
 .editor-save-status {
   font-size: 11px;
   color: var(--text-muted);

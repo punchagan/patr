@@ -3,8 +3,10 @@ import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
 import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
+import { ViewPlugin, Decoration } from '@codemirror/view'
+import { RangeSetBuilder } from '@codemirror/state'
 import '../editor.css'
 
 const markdownHighlight = HighlightStyle.define([
@@ -20,6 +22,33 @@ const markdownHighlight = HighlightStyle.define([
   { tag: tags.monospace, fontFamily: 'monospace', fontSize: '0.9em' },
   { tag: tags.processingInstruction, color: 'var(--text-secondary)' },
 ])
+
+const MARK_NODES = new Set([
+  'HeaderMark', 'EmphasisMark', 'StrikethroughMark',
+  'CodeMark', 'QuoteMark', 'ListMark', 'LinkMark',
+])
+const dimMark = Decoration.mark({ class: 'cm-md-mark' })
+
+function buildMarkDecorations(view) {
+  const builder = new RangeSetBuilder()
+  const cursorLine = view.state.doc.lineAt(view.state.selection.main.head).number
+  syntaxTree(view.state).iterate({
+    enter(node) {
+      if (!MARK_NODES.has(node.name)) return
+      if (view.state.doc.lineAt(node.from).number !== cursorLine)
+        builder.add(node.from, node.to, dimMark)
+    }
+  })
+  return builder.finish()
+}
+
+const dimMarksPlugin = ViewPlugin.fromClass(class {
+  constructor(view) { this.decorations = buildMarkDecorations(view) }
+  update(update) {
+    if (update.docChanged || update.selectionSet || update.viewportChanged)
+      this.decorations = buildMarkDecorations(update.view)
+  }
+}, { decorations: v => v.decorations })
 
 async function uploadImage(file, slug) {
   const formData = new FormData()
@@ -292,7 +321,7 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
             value={initialBody}
             onChange={handleBodyChange}
             onCreateEditor={(view) => { viewRef.current = view }}
-            extensions={[markdown(), EditorView.lineWrapping, EditorView.contentAttributes.of({ spellcheck: "true" }), syntaxHighlighting(markdownHighlight)]}
+            extensions={[markdown(), EditorView.lineWrapping, EditorView.contentAttributes.of({ spellcheck: "true" }), syntaxHighlighting(markdownHighlight), dimMarksPlugin]}
             theme={isDark ? 'dark' : 'light'}
             placeholder="Write something…"
             basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: false }}
