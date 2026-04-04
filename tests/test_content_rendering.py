@@ -307,8 +307,25 @@ def test_email_only_leaves_external_images_alone(tmp_path):
     assert "data:" not in html
 
 
-def test_email_only_leaves_absolute_path_images_alone(tmp_path):
-    """Root-relative images (e.g. footer logo) are not embedded."""
+def test_email_only_embeds_root_relative_image_from_static(tmp_path):
+    """Root-relative images are resolved from {REPO_ROOT}/static/ and embedded."""
+    from patr import state
+    state.REPO_ROOT = tmp_path
+    static_img = tmp_path / "static" / "images" / "newsletter"
+    static_img.mkdir(parents=True)
+    img_bytes = b"PNGDATA"
+    (static_img / "upi-qr.png").write_bytes(img_bytes)
+    footer_md = "![QR](/images/newsletter/upi-qr.png)"
+    post = make_post()
+    html = build_email_html("test-ed", post, footer_md, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    expected = "data:image/png;base64," + base64.b64encode(img_bytes).decode()
+    assert expected in html
+
+
+def test_email_only_leaves_missing_root_relative_alone(tmp_path):
+    """Root-relative images that don't exist on disk are left as-is."""
+    from patr import state
+    state.REPO_ROOT = tmp_path
     post = make_post(body="![Logo](/images/logo.png)")
     html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
     assert "/images/logo.png" in html

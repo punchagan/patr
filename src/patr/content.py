@@ -113,16 +113,23 @@ def render_md(text):
 
 
 def embed_images(html: str, edition_dir: Path) -> str:
-    """Replace relative image src with base64 data URIs for email-only mode."""
+    """Replace image src with base64 data URIs for email-only mode.
+
+    Handles relative paths (edition bundle) and root-relative paths
+    (/images/... → {REPO_ROOT}/static/images/...).
+    """
     soup = BeautifulSoup(html, "html.parser")
     for img in soup.find_all("img"):
         src = img.get("src", "")
-        if src.startswith(("http://", "https://", "data:", "/")):
+        if src.startswith(("http://", "https://", "data:")):
             continue
-        img_path = edition_dir / src
+        if src.startswith("/"):
+            img_path = state.REPO_ROOT / "static" / src.lstrip("/")
+        else:
+            img_path = edition_dir / src
         if not img_path.exists():
             continue
-        mime = mimetypes.guess_type(src)[0] or "image/png"
+        mime = mimetypes.guess_type(str(img_path))[0] or "image/png"
         data = base64.b64encode(img_path.read_bytes()).decode()
         img["src"] = f"data:{mime};base64,{data}"
     return str(soup)
