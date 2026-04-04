@@ -125,9 +125,12 @@ def test_screenshot(context, base_url):
             "your words, your git history, your Gmail."
         )
         p.wait_for_function("document.querySelector('.cm-content').textContent.length > 10")
-        p.screenshot(path=str(REPO_ROOT / "screenshot.png"))
+        out = REPO_ROOT / "screenshots" / "editor.png"
+        out.parent.mkdir(exist_ok=True)
+        p.screenshot(path=str(out))
     finally:
         p.close()
+    assert (REPO_ROOT / "screenshots" / "editor.png").exists()
 
 
 def test_app_loads(page):

@@ -6,7 +6,7 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 > **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
 
-![Patr screenshot](screenshot.png)
+![Patr screenshot](screenshots/editor.png)
 
 ## Prerequisites
 
