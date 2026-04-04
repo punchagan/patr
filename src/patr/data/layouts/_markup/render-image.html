@@ -19,6 +19,6 @@
 {{ if $imgWidth }}{{ $styleAttr = printf "width:%spx;%s" $imgWidth $styleAttr | strings.TrimRight ";" }}{{ end }}
 {{ if $imgHeight }}{{ $styleAttr = printf "height:%spx;%s" $imgHeight $styleAttr | strings.TrimRight ";" }}{{ end }}
 <figure class="newsletter-figure">
-  <img src="{{ .Destination }}" alt="{{ .Text }}"{{ if $styleAttr }} style="{{ $styleAttr }}"{{ end }}{{ if $cleanTitle }} title="{{ $cleanTitle }}"{{ end }} loading="lazy">
+  <img src="{{ if hasPrefix .Destination "/" }}{{ strings.TrimRight "/" .Page.Site.BaseURL }}{{ .Destination }}{{ else }}{{ .Destination }}{{ end }}" alt="{{ .Text }}"{{ if $styleAttr }} style="{{ $styleAttr }}"{{ end }}{{ if $cleanTitle }} title="{{ $cleanTitle }}"{{ end }} loading="lazy">
   {{ if .Text }}<figcaption>{{ .Text }}</figcaption>{{ end }}
 </figure>
