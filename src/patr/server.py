@@ -11,6 +11,7 @@ import yaml
 from importlib.metadata import metadata as pkg_metadata
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 from flask import (
     Flask,
     jsonify,
@@ -248,22 +249,37 @@ def upload_image(slug):
     return jsonify({"path": dest.name})
 
 
-_IMAGE_REF_RE = re.compile(r'!\[[^\]]*\]\(([^\s)]+)')
-
-
 @app.route("/api/edition/<slug>/check-images")
 def check_images(slug):
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     edition_dir = state.CONTENT_DIR / slug
-    text = (post.content or "") + "\n" + (post.get("intro", "") or "")
+    port = app.config["PORT"]
+    fake_hugo_config = {"baseURL": ""}
+    html = build_email_html(
+        slug,
+        post,
+        load_footer(),
+        fake_hugo_config,
+        absolute_urls=False,
+        edition_dir=edition_dir,
+    )
+    soup = BeautifulSoup(html, "html.parser")
     missing = []
-    for ref in _IMAGE_REF_RE.findall(text):
-        if ref.startswith(("http://", "https://", "/")):
+    for img in soup.find_all("img"):
+        src = img.get("src", "")
+        if src.startswith(("http://", "https://")):
             continue
-        if not (edition_dir / ref).exists():
-            missing.append(ref)
+        if src.startswith("/"):
+            # FIXME: Can detect absolute images too?
+            # img_path = state.REPO_ROOT / "static" / src.lstrip("/")
+            continue
+        else:
+            img_path = edition_dir / src
+        if not img_path.exists():
+            missing.append(src)
+
     return jsonify({"missing": missing})
 
 

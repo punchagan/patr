@@ -152,8 +152,16 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     return str(soup)
 
 
-def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None,
-                     email_only=False, edition_dir=None):
+def build_email_html(
+    slug,
+    post,
+    footer_md,
+    hugo_config,
+    recipient_name=None,
+    absolute_urls=True,
+    email_only=False,
+    edition_dir=None,
+):
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
     name = (recipient_name or "").strip()
@@ -180,4 +188,5 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None,
 </html>"""
     if email_only and edition_dir is not None:
         return css_inline.inline(embed_images(html, edition_dir))
-    return css_inline.inline(absolutify_urls(html, base_url, page_url))
+    html = absolutify_urls(html, base_url, page_url) if absolute_urls else html
+    return css_inline.inline(html)

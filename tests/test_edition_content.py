@@ -222,9 +222,10 @@ def test_upload_image_404(client):
 
 # GET /api/edition/<slug>/check-images
 
+
 def test_check_images_all_present(client, repo):
     edition_dir = repo / "content" / "newsletter" / "test-edition"
-    (edition_dir / "photo.png").write_bytes(b"img")
+    (edition_dir / "my photo.png").write_bytes(b"img")
     # Rewrite body to reference the image
     (edition_dir / "index.md").write_text(textwrap.dedent("""\
         ---
@@ -233,7 +234,7 @@ def test_check_images_all_present(client, repo):
         draft: true
         ---
 
-        ![A photo](photo.png)
+        ![A photo](my photo.png)
     """))
     r = client.get("/api/edition/test-edition/check-images")
     assert r.status_code == 200
