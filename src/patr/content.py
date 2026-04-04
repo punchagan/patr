@@ -132,6 +132,7 @@ def embed_images(html: str, edition_dir: Path) -> str:
         mime = mimetypes.guess_type(str(img_path))[0] or "image/png"
         data = base64.b64encode(img_path.read_bytes()).decode()
         img["src"] = f"data:{mime};base64,{data}"
+        img["alt"] = img_path.name  # Gmail uses alt as MIME filename; keep it newline-free
     return str(soup)
 
 

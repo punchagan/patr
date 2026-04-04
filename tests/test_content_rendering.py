@@ -322,6 +322,18 @@ def test_email_only_embeds_root_relative_image_from_static(tmp_path):
     assert expected in html
 
 
+def test_email_only_embedded_image_alt_is_filename(tmp_path):
+    """Embedded images use the filename as alt to avoid newlines in Gmail MIME attachment names."""
+    (tmp_path / "photo.jpg").write_bytes(b"JPGDATA")
+    post = make_post(body="![Multi\nline\nalt](photo.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    img = soup.find("img", src=lambda s: s and s.startswith("data:"))
+    assert img is not None
+    assert img.get("alt") == "photo.jpg"
+
+
 def test_email_only_leaves_missing_root_relative_alone(tmp_path):
     """Root-relative images that don't exist on disk are left as-is."""
     from patr import state
