@@ -1,9 +1,10 @@
-body { font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #333; background: #fff; line-height: 1.7; }
-.view-in-browser { font-size: 0.8em; color: #aaa; margin-bottom: 2em; }
-.view-in-browser a { color: #aaa; }
-.intro { font-style: italic; color: #555; border-bottom: 1px solid #eee; padding-bottom: 1em; margin-bottom: 1.5em; font-size: 1.05em; }
-.footer { border-top: 1px solid #eee; margin-top: 2em; padding-top: 1em; font-size: 0.9em; color: #666; }
+body { font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; color: #333; background: #fff; line-height: 1.7; }
+p { margin-bottom: 1.2em; }
+.view-in-browser { font-size: 0.8em; color: #777; margin-bottom: 2em; }
+.view-in-browser a { color: #777; }
+.intro { font-style: italic; color: #777; border-bottom: 1px solid #e8e8e8; padding-bottom: 1em; margin-bottom: 1.5em; font-size: 1.05em; }
+.footer { border-top: 1px solid #e8e8e8; margin-top: 2em; padding-top: 1em; font-size: 0.9em; color: #777; }
 .footer img { max-width: 200px; height: auto; }
-img { max-width: 500px; height: auto; display: block; margin: 1rem auto; }
+img { max-width: 500px; height: auto; display: block; margin: 1.5rem auto; }
 figure { margin: 1.5rem 0; text-align: center; }
-figcaption { font-size: 0.85em; color: #888; margin-top: 0.5rem; }
+figcaption { font-size: 0.85em; color: #777; margin-top: 0.5rem; }
