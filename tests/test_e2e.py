@@ -102,66 +102,71 @@ def edition(page, request):
 REPO_ROOT = Path(__file__).parent.parent
 
 
+_SCREENSHOT_BODY = """\
+Patr makes writing newsletters simple — your words stay local, \
+your history lives in git, and sending happens via Gmail.
+
+![A quiet writing space](writing.png)
+
+## What's in this edition
+
+- **Writing**: distraction-free editor with markdown syntax highlighting
+- **Previewing**: split view or full email/web preview
+- **Sending**: one click to reach your list via Gmail
+
+Thanks for reading. Reply any time — I'd love to hear from you.
+"""
+
+
+@pytest.fixture(scope="session")
+def screenshot_edition(repo, context, base_url):
+    """Set up the 'April 2025' edition with rich content for README screenshots."""
+    p = context.new_page()
+    try:
+        p.goto(base_url)
+        p.wait_for_selector(".sidebar")
+        p.locator(".sidebar-header button", has_text="+").click()
+        p.locator("input[placeholder='e.g. Spring Edition']").fill("April 2025")
+        p.locator("button.btn-primary", has_text="Create").click()
+        p.wait_for_selector(".edition-item:has-text('April 2025')")
+    finally:
+        p.close()
+    slug = "april-2025"
+    edition_dir = state.CONTENT_DIR / slug
+    (edition_dir / "index.md").write_text(
+        "---\ntitle: Hello from Patr\ndate: 2025-04-01\ndraft: true\n---\n\n"
+        + _SCREENSHOT_BODY
+    )
+    yield slug
+
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
-def test_screenshot(context, base_url):
-    """Capture a screenshot of the app in a realistic state for the README."""
+def test_screenshot(screenshot_edition, context, base_url):
+    """Capture a screenshot of the editor for the README."""
     p = context.new_page()
     p.set_viewport_size({"width": 1280, "height": 800})
     try:
         p.goto(base_url)
         p.wait_for_selector(".sidebar")
-        # Create an edition
-        p.locator(".sidebar-header button", has_text="+").click()
-        p.locator("input[placeholder='e.g. Spring Edition']").fill("April 2025")
-        p.locator("button.btn-primary", has_text="Create").click()
-        p.locator(".edition-item:has-text('April 2025')").click()
+        p.locator(".edition-item:has-text('Hello from Patr')").click()
         p.wait_for_selector(".cm-content")
-        # Fill in title and body
-        p.locator(".editor-title-input").fill("Hello from Patr")
-        p.locator(".cm-content").click()
-        p.locator(".cm-content").press_sequentially(
-            "Writing newsletters should be simple. Patr keeps everything local — "
-            "your words, your git history, your Gmail."
-        )
-        p.wait_for_function("document.querySelector('.cm-content').textContent.length > 10")
         out = REPO_ROOT / "screenshots" / "editor.png"
         out.parent.mkdir(exist_ok=True)
         p.screenshot(path=str(out))
     finally:
         p.close()
-    assert (REPO_ROOT / "screenshots" / "editor.png").exists()
+    assert out.exists()
+    import shutil
+    shutil.copy(out, state.CONTENT_DIR / screenshot_edition / "writing.png")
 
 
-def test_screenshot_email_preview(context, base_url):
+def test_screenshot_email_preview(screenshot_edition, context, base_url):
     """Capture a screenshot of the email preview for the README."""
-    import re
     p = context.new_page()
     p.set_viewport_size({"width": 700, "height": 900})
     try:
-        p.goto(base_url)
-        p.wait_for_selector(".sidebar")
-        p.locator(".sidebar-header button", has_text="+").click()
-        p.locator("input[placeholder='e.g. Spring Edition']").fill("Spring 2025")
-        p.locator("button.btn-primary", has_text="Create").click()
-        p.locator(".edition-item:has-text('Spring 2025')").click()
-        p.wait_for_selector(".cm-content")
-        p.locator(".editor-title-input").fill("Welcome to Spring")
-        p.locator(".cm-content").click()
-        p.locator(".cm-content").press_sequentially(
-            "Spring is here. Here's what's happening this month.\n\n"
-            "## Highlights\n\n"
-            "- New features shipping this month\n"
-            "- Community roundup\n"
-            "- Upcoming events\n\n"
-            "We hope you enjoy this edition. More details below."
-        )
-        p.wait_for_function(
-            "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
-            timeout=5000,
-        )
-        slug = re.sub(r"[^a-z0-9]+", "-", "spring 2025")
-        p.goto(f"{base_url}/preview/{slug}/email")
+        p.goto(f"{base_url}/preview/{screenshot_edition}/email")
         p.wait_for_load_state("networkidle")
         out = REPO_ROOT / "screenshots" / "email-preview.png"
         p.screenshot(path=str(out), full_page=True)
