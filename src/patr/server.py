@@ -237,6 +237,25 @@ def upload_image(slug):
     return jsonify({"path": dest.name})
 
 
+_IMAGE_REF_RE = re.compile(r'!\[[^\]]*\]\(([^\s)]+)')
+
+
+@app.route("/api/edition/<slug>/check-images")
+def check_images(slug):
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    edition_dir = state.CONTENT_DIR / slug
+    text = (post.content or "") + "\n" + (post.get("intro", "") or "")
+    missing = []
+    for ref in _IMAGE_REF_RE.findall(text):
+        if ref.startswith(("http://", "https://", "/")):
+            continue
+        if not (edition_dir / ref).exists():
+            missing.append(ref)
+    return jsonify({"missing": missing})
+
+
 @app.route("/preview/<slug>/email")
 def preview_email(slug):
     _, post = load_edition(slug)

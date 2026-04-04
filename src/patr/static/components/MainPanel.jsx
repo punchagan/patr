@@ -186,6 +186,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
       )}
       {showConfirm && (
         <ConfirmModal
+          slug={edition.slug}
           title={edition.title}
           onClose={() => setShowConfirm(false)}
           onConfirm={() => {

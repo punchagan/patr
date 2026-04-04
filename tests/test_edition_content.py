@@ -218,3 +218,80 @@ def test_upload_image_404(client):
         content_type="multipart/form-data",
     )
     assert r.status_code == 404
+
+
+# GET /api/edition/<slug>/check-images
+
+def test_check_images_all_present(client, repo):
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "photo.png").write_bytes(b"img")
+    # Rewrite body to reference the image
+    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        ![A photo](photo.png)
+    """))
+    r = client.get("/api/edition/test-edition/check-images")
+    assert r.status_code == 200
+    assert r.get_json()["missing"] == []
+
+
+def test_check_images_missing_file(client, repo):
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        ![Missing](ghost.png)
+    """))
+    r = client.get("/api/edition/test-edition/check-images")
+    assert r.status_code == 200
+    assert r.get_json()["missing"] == ["ghost.png"]
+
+
+def test_check_images_skips_external_and_absolute(client, repo):
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        ![External](https://example.com/img.png)
+        ![Absolute](/images/newsletter/logo.png)
+    """))
+    r = client.get("/api/edition/test-edition/check-images")
+    assert r.status_code == 200
+    assert r.get_json()["missing"] == []
+
+
+def test_check_images_intro_images(client, repo):
+    """Images referenced in the intro frontmatter field are also checked."""
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        intro: |
+          ![Intro image](intro-missing.png)
+        ---
+
+        Body.
+    """))
+    r = client.get("/api/edition/test-edition/check-images")
+    assert r.status_code == 200
+    assert "intro-missing.png" in r.get_json()["missing"]
+
+
+def test_check_images_404(client):
+    r = client.get("/api/edition/no-such-edition/check-images")
+    assert r.status_code == 404

@@ -316,6 +316,39 @@ body.dark .status-msg.info { background: #0a1a3a; color: #80aaee; }
 
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #856404;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.info-box {
+  background: #e8f4fd;
+  border: 1px solid #90caf9;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #1565c0;
+  line-height: 1.5;
+}
+
+body.dark .warning-box {
+  background: #332900;
+  border-color: #7a5c00;
+  color: #ffd54f;
+}
+
+body.dark .info-box {
+  background: #0d2137;
+  border-color: #1565c0;
+  color: #90caf9;
+}
+
 .btn-theme { font-size: 15px; padding: 4px 8px; border-radius: 4px; line-height: 1; }
 
 /* Help modal */

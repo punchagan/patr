@@ -37,6 +37,9 @@ export default function TestSendModal({ slug, onClose, onSent }) {
   return (
     <Modal onClose={onClose}>
       <h3>Test Send</h3>
+      <div className="info-box" style={{ marginBottom: 12 }}>
+        Images in the email point to your live site. They won't display unless the edition has been published.
+      </div>
       <p style={{ marginBottom: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
         Select recipients: <strong style={{ color: 'var(--text-primary)' }}>({selectedCount} selected)</strong>
       </p>
