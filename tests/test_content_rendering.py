@@ -1,4 +1,6 @@
 """Tests for content rendering — render_md, absolutify_urls, build_email_html."""
+import base64
+from pathlib import Path
 import frontmatter
 from patr.content import render_md, absolutify_urls, build_email_html
 
@@ -270,6 +272,53 @@ def test_preview_html_root_relative_image_uses_localhost():
     post = make_post(body="![logo](/images/logo.png)")
     html = build_email_html("test-ed", post, FOOTER_MD, LOCALHOST_CONFIG)
     assert "http://127.0.0.1:5000/images/logo.png" in html
+
+
+# build_email_html — email_only mode (embedded images, no view-in-browser)
+
+def test_email_only_omits_view_in_browser(tmp_path):
+    post = make_post()
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    assert "View in browser" not in html
+    assert "view-in-browser" not in html
+
+
+def test_email_only_embeds_relative_image_as_data_uri(tmp_path):
+    img_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20  # fake PNG bytes
+    (tmp_path / "photo.png").write_bytes(img_bytes)
+    post = make_post(body="![A photo](photo.png)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    expected = "data:image/png;base64," + base64.b64encode(img_bytes).decode()
+    assert expected in html
+
+
+def test_email_only_does_not_embed_missing_image(tmp_path):
+    """Missing image src is left as-is rather than crashing."""
+    post = make_post(body="![Ghost](ghost.png)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    assert "ghost.png" in html
+    assert "data:" not in html
+
+
+def test_email_only_leaves_external_images_alone(tmp_path):
+    post = make_post(body="![Ext](https://cdn.example.com/img.jpg)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    assert "https://cdn.example.com/img.jpg" in html
+    assert "data:" not in html
+
+
+def test_email_only_leaves_absolute_path_images_alone(tmp_path):
+    """Root-relative images (e.g. footer logo) are not embedded."""
+    post = make_post(body="![Logo](/images/logo.png)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    assert "/images/logo.png" in html
+    assert "data:" not in html
+
+
+def test_normal_mode_still_has_view_in_browser():
+    post = make_post()
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "View in browser" in html
 
 
 # shared CSS — must hold for both production email and preview

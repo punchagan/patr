@@ -13,14 +13,15 @@ export default function ConfirmModal({ slug, title, onClose, onConfirm }) {
   }, [slug])
 
   const loading = count === null || missingImages === null || deployment === null
+  const emailOnly = deployment?.email_only
   const hasMissingImages = missingImages?.length > 0
-  const notLive = deployment && !deployment.live
-  const hasUncommitted = deployment?.uncommitted
-  const hasUnpushed = deployment?.unpushed
+  const notLive = !emailOnly && deployment && !deployment.live
+  const hasUncommitted = !emailOnly && deployment?.uncommitted
+  const hasUnpushed = !emailOnly && deployment?.unpushed
   const blocked = hasMissingImages || notLive || hasUncommitted || hasUnpushed
 
   const warnings = []
-  if (deployment) {
+  if (deployment && !emailOnly) {
     if (!deployment.live)
       warnings.push(`The edition isn't live yet${deployment.url ? ` (checked ${deployment.url})` : ''} — publish it before sending so images load for recipients.`)
     if (deployment.uncommitted)

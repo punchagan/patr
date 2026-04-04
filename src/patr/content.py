@@ -1,4 +1,6 @@
+import base64
 import html as _html
+import mimetypes
 import re
 from pathlib import Path
 
@@ -110,6 +112,22 @@ def render_md(text):
     return str(soup)
 
 
+def embed_images(html: str, edition_dir: Path) -> str:
+    """Replace relative image src with base64 data URIs for email-only mode."""
+    soup = BeautifulSoup(html, "html.parser")
+    for img in soup.find_all("img"):
+        src = img.get("src", "")
+        if src.startswith(("http://", "https://", "data:", "/")):
+            continue
+        img_path = edition_dir / src
+        if not img_path.exists():
+            continue
+        mime = mimetypes.guess_type(src)[0] or "image/png"
+        data = base64.b64encode(img_path.read_bytes()).decode()
+        img["src"] = f"data:{mime};base64,{data}"
+    return str(soup)
+
+
 def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     """Rewrite image src to absolute URLs for email sending.
 
@@ -126,7 +144,8 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     return str(soup)
 
 
-def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
+def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None,
+                     email_only=False, edition_dir=None):
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
     name = (recipient_name or "").strip()
@@ -135,15 +154,22 @@ def build_email_html(slug, post, footer_md, hugo_config, recipient_name=None):
     body_html = render_md(post.content)
     footer_html = render_md(footer_md)
 
+    view_in_browser = (
+        "" if email_only
+        else f'<p class="view-in-browser"><a href="{page_url}">View in browser</a></p>'
+    )
+
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><style>{_EMAIL_CSS_PATH.read_text()}</style></head>
 <body>
-  <p class="view-in-browser"><a href="{page_url}">View in browser</a></p>
+  {view_in_browser}
   <p>{greeting}</p>
   {"<div class='intro'>" + intro_html + "</div>" if intro_html else ""}
   <div class="content">{body_html}</div>
   {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
 </body>
 </html>"""
+    if email_only and edition_dir is not None:
+        return css_inline.inline(embed_images(html, edition_dir))
     return css_inline.inline(absolutify_urls(html, base_url, page_url))

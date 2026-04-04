@@ -393,6 +393,10 @@ def check_deployment(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
 
+    newsletter_config = load_newsletter_config()
+    if newsletter_config.get("email_only"):
+        return jsonify({"email_only": True, "live": None, "uncommitted": None, "unpushed": None})
+
     hugo_config = load_hugo_config()
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     if not base_url or "example.com" in base_url:
@@ -442,6 +446,7 @@ def get_settings():
         {
             "newsletter_name": newsletter_config.get("name", ""),
             "has_sheet_id": bool(newsletter_config.get("sheet_id")),
+            "email_only": bool(newsletter_config.get("email_only", False)),
         }
     )
 
@@ -453,6 +458,8 @@ def save_settings():
     local_updates = {}
     if "newsletter_name" in data:
         hugo_updates["name"] = data["newsletter_name"]
+    if "email_only" in data:
+        hugo_updates["email_only"] = bool(data["email_only"])
     if "sheet_id" in data:
         local_updates["sheet_id"] = data["sheet_id"]
     if hugo_updates:
@@ -532,6 +539,8 @@ def test_send(slug):
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
     newsletter_name = newsletter_config.get("name", "Newsletter")
+    email_only = bool(newsletter_config.get("email_only", False))
+    edition_dir = state.CONTENT_DIR / slug
     data = request.json or {}
     recipients = data.get("recipients")  # list of {name, email} or None = just self
     try:
@@ -549,7 +558,8 @@ def test_send(slug):
                     r["email"] = sender
         for r in recipients:
             html = build_email_html(
-                slug, post, footer_md, hugo_config, recipient_name=r["name"]
+                slug, post, footer_md, hugo_config, recipient_name=r["name"],
+                email_only=email_only, edition_dir=edition_dir,
             )
             send_email(gmail, sender, r["email"], subject, html)
             sheet_id = newsletter_config.get("sheet_id")
@@ -569,10 +579,12 @@ def send_all(slug):
     if post.get("draft", True):
         return jsonify({"error": "Cannot send a draft edition"}), 400
     hugo_config = load_hugo_config()
-    base_url = hugo_config.get("baseURL", "").rstrip("/")
-    if not base_url or "example.com" in base_url:
-        return jsonify({"error": "baseURL not configured in hugo.toml"}), 400
     newsletter_config = load_newsletter_config()
+    email_only = bool(newsletter_config.get("email_only", False))
+    if not email_only:
+        base_url = hugo_config.get("baseURL", "").rstrip("/")
+        if not base_url or "example.com" in base_url:
+            return jsonify({"error": "baseURL not configured in hugo.toml"}), 400
     sheet_id = newsletter_config.get("sheet_id")
     newsletter_name = newsletter_config.get("name", "Newsletter")
     if not sheet_id:
@@ -600,10 +612,12 @@ def send_all(slug):
         subject = f"{post['title']} — {newsletter_name}"
         footer_md = load_footer()
         sent, failed = 0, []
+        edition_dir = state.CONTENT_DIR / slug
         for contact in pending:
             try:
                 html = build_email_html(
-                    slug, post, footer_md, hugo_config, recipient_name=contact["name"]
+                    slug, post, footer_md, hugo_config, recipient_name=contact["name"],
+                    email_only=email_only, edition_dir=edition_dir,
                 )
                 send_email(gmail, sender, contact["email"], subject, html)
                 # log_sent is called after send_email. If log_sent fails here,

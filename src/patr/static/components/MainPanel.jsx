@@ -5,21 +5,29 @@ import EditorPanel from './EditorPanel'
 
 function useDeployStatus(edition) {
   const [deploymentLive, setDeploymentLive] = useState(false)
+  const [emailOnly, setEmailOnly] = useState(false)
   const [status, setStatus] = useState(null)
 
   useEffect(() => {
-    if (!edition) { setStatus(null); setDeploymentLive(false); return }
-    setStatus({ cls: 'info', text: 'Checking deployment…' })
+    if (!edition) { setStatus(null); setDeploymentLive(false); setEmailOnly(false); return }
+    setStatus({ cls: 'info', text: 'Checking…' })
     fetch(`/api/check-deployment/${edition.slug}`)
       .then(r => r.json())
       .then(d => {
-        setDeploymentLive(d.live)
-        if (d.live) setStatus({ cls: 'ok', text: 'Live ✓' })
-        else setStatus({ cls: 'warn', text: d.reason ? `Not live: ${d.reason}` : 'Not deployed yet' })
+        if (d.email_only) {
+          setEmailOnly(true)
+          setDeploymentLive(false)
+          setStatus(null)
+        } else {
+          setEmailOnly(false)
+          setDeploymentLive(d.live)
+          if (d.live) setStatus({ cls: 'ok', text: 'Live ✓' })
+          else setStatus({ cls: 'warn', text: d.reason ? `Not live: ${d.reason}` : 'Not deployed yet' })
+        }
       })
   }, [edition?.slug])
 
-  return { deploymentLive, status, setStatus, setDeploymentLive }
+  return { deploymentLive, emailOnly, status, setStatus, setDeploymentLive }
 }
 
 function PreviewFrame({ slug, viewMode, previewKey }) {
@@ -48,7 +56,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
   const [previewKey, setPreviewKey] = useState(0)
   const [showTestSend, setShowTestSend] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const { deploymentLive, status, setStatus, setDeploymentLive } = useDeployStatus(edition)
+  const { deploymentLive, emailOnly, status, setStatus, setDeploymentLive } = useDeployStatus(edition)
   const isInitialLoad = useRef(true)
 
   useEffect(() => {
@@ -104,7 +112,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
     onEditionUpdated(edition.slug)
   }
 
-  const canSend = !draft && deploymentLive && hasSheetId && gmailConnected
+  const canSend = !draft && (emailOnly || deploymentLive) && hasSheetId && gmailConnected
 
   const showEditor = editorMode === 'write' || editorMode === 'split'
   const showPreview = editorMode === 'split' || editorMode === 'preview'
@@ -171,7 +179,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
           <button className="btn btn-draft-toggle" onClick={toggleDraft}>
             {draft ? 'Mark as Live' : 'Mark as Draft'}
           </button>
-          <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>
+          {!emailOnly && <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>}
           <button className="btn" onClick={() => setShowTestSend(true)} disabled={!gmailConnected} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : undefined}>Test Send</button>
           <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : !hasSheetId ? 'Add a contacts sheet ID in ⚙ Settings to enable sending' : undefined} >Send All</button>
         </div>

@@ -3,6 +3,7 @@ import Modal from './Modal'
 
 export default function SettingsModal({ unconfigured, gmailConnected, onGmailConnected, onClose }) {
   const [name, setName] = useState('')
+  const [emailOnly, setEmailOnly] = useState(false)
   const [sheet, setSheet] = useState('')
   const [contactsResult, setContactsResult] = useState('')
   const [sentLog, setSentLog] = useState(null)
@@ -11,6 +12,7 @@ export default function SettingsModal({ unconfigured, gmailConnected, onGmailCon
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(d => {
       setName(d.newsletter_name || '')
+      setEmailOnly(!!d.email_only)
       setSheet(d.has_sheet_id ? '(saved)' : '')
     })
     fetch('/api/auth-status').then(r => r.json()).then(d => {
@@ -20,7 +22,7 @@ export default function SettingsModal({ unconfigured, gmailConnected, onGmailCon
   }, [])
 
   const save = () => {
-    const payload = {}
+    const payload = { email_only: emailOnly }
     if (name) payload.newsletter_name = name
     if (sheet && sheet !== '(saved)') payload.sheet_id = sheet
     fetch('/api/settings', {
@@ -70,6 +72,15 @@ export default function SettingsModal({ unconfigured, gmailConnected, onGmailCon
             onChange={e => setName(e.target.value)}
             style={{ display: 'block', width: '100%', marginTop: 4, padding: '6px 8px', fontSize: 13, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', boxSizing: 'border-box' }}
           />
+        </label>
+        <label style={{ fontSize: 13, display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+          <input type="checkbox" checked={emailOnly} onChange={e => setEmailOnly(e.target.checked)} style={{ marginTop: 2 }} />
+          <span>
+            Email-only newsletter
+            <span style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Images are embedded directly in emails. No live website needed — "View in browser" link is omitted.
+            </span>
+          </span>
         </label>
         <label style={{ fontSize: 13 }}>
           Contacts sheet ID{' '}
