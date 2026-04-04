@@ -39,7 +39,7 @@ def repo(tmp_path_factory):
 @pytest.fixture(scope="session")
 def base_url(repo):
     from werkzeug.serving import make_server
-    srv = make_server("127.0.0.1", 0, patr_server.app)
+    srv = make_server("127.0.0.1", 0, patr_server.app, threaded=True)
     port = srv.server_address[1]
     patr_server.app.config["PORT"] = port
     patr_server.app.config["TESTING"] = True
@@ -180,6 +180,43 @@ def test_screenshot_email_preview(screenshot_edition, context, base_url):
     finally:
         p.close()
     assert out.exists()
+
+
+def test_pdf_single_page(context, base_url):
+    """PDF export must always fit on a single page, even with large images."""
+    import re, shutil
+    editor_png = REPO_ROOT / "screenshots" / "editor.png"
+    email_png = REPO_ROOT / "screenshots" / "email-preview.png"
+    assert editor_png.exists(), "screenshots/editor.png missing"
+    assert email_png.exists(), "screenshots/email-preview.png missing"
+
+    p = context.new_page()
+    try:
+        p.goto(base_url)
+        p.wait_for_selector(".sidebar")
+        p.locator(".sidebar-header button", has_text="+").click()
+        p.locator("input[placeholder='e.g. Spring Edition']").fill("PDF Test")
+        p.locator("button.btn-primary", has_text="Create").click()
+        p.wait_for_selector(".edition-item:has-text('PDF Test')")
+    finally:
+        p.close()
+
+    slug = "pdf-test"
+    edition_dir = state.CONTENT_DIR / slug
+    shutil.copy(editor_png, edition_dir / "editor.png")
+    shutil.copy(email_png, edition_dir / "email-preview.png")
+    (edition_dir / "index.md").write_text(
+        "---\ntitle: PDF Test\ndate: 2025-04-01\ndraft: true\n---\n\n"
+        "Here is the editor.\n\n"
+        "![Editor screenshot](editor.png)\n\n"
+        "Here is the email preview.\n\n"
+        "![Email preview screenshot](email-preview.png)\n"
+    )
+
+    resp = context.request.get(f"{base_url}/preview/{slug}/email.pdf")
+    assert resp.status == 200
+    pages = len(re.findall(rb'/Type\s*/Page(?!s)', resp.body()))
+    assert pages == 1, f"Expected 1 page PDF, got {pages}"
 
 
 def test_app_loads(page):
