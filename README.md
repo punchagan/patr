@@ -6,7 +6,13 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 > **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
 
+## Screenshots
+
+**Editor** — write in markdown with syntax highlighting, auto-save, and split/preview modes.
+
 ![Patr editor](screenshots/editor.png)
+
+**Email preview** — see exactly what subscribers will receive before sending.
 
 ![Email preview](screenshots/email-preview.png)
 
