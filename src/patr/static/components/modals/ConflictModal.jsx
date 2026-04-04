@@ -23,12 +23,12 @@ export default function ConflictModal({ mine, theirs, onKeepMine, onKeepTheirs, 
         <p>The file was modified outside Patr while you were editing. What do you want to do?</p>
         <DiffView mine={mine} theirs={theirs} />
         <p className="conflict-legend">
-          <span className="diff-added">Green</span> = your edits &nbsp;
-          <span className="diff-removed">Red</span> = disk version
+          <span className="diff-added">Green</span> = mine &nbsp;
+          <span className="diff-removed">Red</span> = disk
         </p>
         <div className="modal-actions">
           <button className="btn" onClick={onDismiss}>Dismiss</button>
-          <button className="btn" onClick={onKeepTheirs}>Keep theirs</button>
+          <button className="btn" onClick={onKeepTheirs}>Use disk version</button>
           <button className="btn btn-primary" onClick={onKeepMine}>Keep mine</button>
         </div>
       </div>

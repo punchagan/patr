@@ -446,7 +446,7 @@ def test_conflict_keep_theirs(page, edition):
     _trigger_focus(page)
     page.wait_for_selector(".conflict-modal", timeout=4000)
 
-    page.locator(".conflict-modal button", has_text="Keep theirs").click()
+    page.locator(".conflict-modal button", has_text="Use disk version").click()
     page.wait_for_function("!document.querySelector('.conflict-modal')", timeout=3000)
     # Editor should now show disk content
     page.wait_for_function(
