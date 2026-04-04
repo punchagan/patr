@@ -49,6 +49,12 @@ def test_get_content_returns_fields(client):
     assert d["body"].strip() == "Body content here."
 
 
+def test_get_content_returns_mtime(client):
+    r = client.get("/api/edition/test-edition/content")
+    assert r.status_code == 200
+    assert "mtime" in r.get_json()
+
+
 def test_get_content_404(client):
     r = client.get("/api/edition/no-such-edition/content")
     assert r.status_code == 404
@@ -56,11 +62,29 @@ def test_get_content_404(client):
 
 # POST /api/edition/<slug>/content
 
-def test_save_content_updates_body(client, repo):
-    r = client.post(
-        "/api/edition/test-edition/content",
-        json={"body": "Updated body."},
-    )
+def test_save_returns_updated_mtime(client):
+    r = client.post("/api/edition/test-edition/content", json={"body": "New body."})
+    assert r.status_code == 200
+    assert "mtime" in r.get_json()
+
+
+def test_save_with_correct_mtime_succeeds(client, repo):
+    mtime = client.get("/api/edition/test-edition/content").get_json()["mtime"]
+    r = client.post("/api/edition/test-edition/content", json={"body": "Updated.", "mtime": mtime})
+    assert r.status_code == 200
+
+
+def test_save_with_stale_mtime_returns_409(client, repo):
+    r = client.post("/api/edition/test-edition/content", json={"body": "Updated.", "mtime": 0})
+    assert r.status_code == 409
+    d = r.get_json()
+    assert "body" in d
+    assert "mtime" in d
+
+
+def test_save_without_mtime_succeeds(client, repo):
+    """No mtime sent — backward-compatible, always saves."""
+    r = client.post("/api/edition/test-edition/content", json={"body": "Updated body."})
     assert r.status_code == 200
     assert r.get_json()["ok"] is True
     text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()

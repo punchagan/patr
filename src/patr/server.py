@@ -170,6 +170,7 @@ def get_edition_content(slug):
             "title": post.get("title", ""),
             "intro": post.get("intro", ""),
             "body": post.content,
+            "mtime": f.stat().st_mtime,
         }
     )
 
@@ -193,6 +194,8 @@ def save_edition_content(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     data = request.json or {}
+    if "mtime" in data and data["mtime"] != f.stat().st_mtime:
+        return jsonify({"body": post.content, "mtime": f.stat().st_mtime}), 409
     if "title" in data and data["title"].strip():
         post.metadata["title"] = data["title"].strip()
     if "intro" in data:
@@ -206,7 +209,7 @@ def save_edition_content(slug):
         post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
     )
     f.write_text(f"---\n{fm_yaml}---\n\n{body.strip()}\n")
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "mtime": f.stat().st_mtime})
 
 
 
