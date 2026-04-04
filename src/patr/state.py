@@ -7,6 +7,7 @@ CONTENT_DIR = REPO_ROOT / "content" / "newsletter"
 CONFIG_DIR = Path.home() / ".config" / "patr"
 CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
 TOKEN_FILE = CONFIG_DIR / "token.json"
+SENDER_EMAIL_FILE = CONFIG_DIR / "sender_email.txt"
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",

@@ -67,7 +67,8 @@ def index():
 def api_auth_status():
     connected, _ = auth_status()
     needs_credentials = not state.CREDENTIALS_FILE.exists()
-    return jsonify({"connected": connected, "needs_credentials": needs_credentials})
+    sender_email = state.SENDER_EMAIL_FILE.read_text().strip() if state.SENDER_EMAIL_FILE.exists() else None
+    return jsonify({"connected": connected, "needs_credentials": needs_credentials, "sender_email": sender_email})
 
 
 @app.route("/oauth/start")
@@ -117,6 +118,14 @@ def oauth_callback():
     )
     state.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     state.TOKEN_FILE.write_text(flow.credentials.to_json())
+    try:
+        creds = flow.credentials
+        oauth2 = build("oauth2", "v2", credentials=creds)
+        email = oauth2.userinfo().get().execute().get("email", "")
+        if email:
+            state.SENDER_EMAIL_FILE.write_text(email)
+    except Exception:
+        pass
     return redirect(stored.get("origin", "/"))
 
 
@@ -124,6 +133,8 @@ def oauth_callback():
 def oauth_disconnect():
     if state.TOKEN_FILE.exists():
         state.TOKEN_FILE.unlink()
+    if state.SENDER_EMAIL_FILE.exists():
+        state.SENDER_EMAIL_FILE.unlink()
     return jsonify({"ok": True})
 
 

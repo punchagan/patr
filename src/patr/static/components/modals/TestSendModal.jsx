@@ -7,6 +7,7 @@ export default function TestSendModal({ slug, onClose, onSent }) {
   const [checked, setChecked] = useState({ __self__: true })
   const [sending, setSending] = useState(false)
   const [emailOnly, setEmailOnly] = useState(false)
+  const [senderEmail, setSenderEmail] = useState(null)
 
   useEffect(() => {
     fetch('/api/contacts').then(r => r.json()).then(d => {
@@ -14,6 +15,7 @@ export default function TestSendModal({ slug, onClose, onSent }) {
       setContacts(d.contacts)
     })
     fetch('/api/settings').then(r => r.json()).then(d => setEmailOnly(!!d.email_only))
+    fetch('/api/auth-status').then(r => r.json()).then(d => setSenderEmail(d.sender_email || null))
   }, [])
 
   const toggle = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }))
@@ -56,7 +58,10 @@ export default function TestSendModal({ slug, onClose, onSent }) {
           <>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <input type="checkbox" checked={!!checked.__self__} onChange={() => toggle('__self__')} />
-              <span>Myself</span>
+              <span>
+                Myself
+                {senderEmail && <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}> &lt;{senderEmail}&gt;</span>}
+              </span>
             </label>
             {contacts.map(c => (
               <label key={c.email} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

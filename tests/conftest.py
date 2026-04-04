@@ -17,3 +17,4 @@ def isolate_patr_config(tmp_path, monkeypatch):
     monkeypatch.setattr(state, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(state, "TOKEN_FILE", config_dir / "token.json")
     monkeypatch.setattr(state, "CREDENTIALS_FILE", config_dir / "credentials.json")
+    monkeypatch.setattr(state, "SENDER_EMAIL_FILE", config_dir / "sender_email.txt")
