@@ -120,9 +120,11 @@ When your edition is ready, click **Mark as Live**, then **Publish**. This pushe
 
 Open the **⚙ Settings** panel to set your newsletter name and connect Gmail. To enable sending, you'll also need to add your Google Sheets contacts sheet ID — paste the ID from the sheet's URL (the long string between `/d/` and `/edit`) into the **Contacts sheet ID** field.
 
+To skip web publishing, enable **Email-only newsletter** in Settings. In this mode, images are embedded directly in the email as base64, the **Publish** button is hidden, and **Send All** is available as soon as the edition is marked as live.
+
 ### Send
 
-Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web.
+Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web (or email-only mode is enabled).
 
 ### Not yet supported
 
@@ -136,7 +138,7 @@ These things currently require editing files directly outside the app:
 
 | Location | Contents |
 |---|---|
-| `{hugo-site}/hugo.toml` → `[params.patr]` | `name` — newsletter display name |
+| `{hugo-site}/hugo.toml` → `[params.patr]` | `name` — newsletter display name; `email_only = true` for email-only mode |
 | `~/.config/patr/config.toml` | `sheet_id` — Google Sheets contacts sheet |
 | `~/.config/patr/credentials.json` | GCP OAuth client credentials (Desktop app) |
 
