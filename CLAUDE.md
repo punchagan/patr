@@ -20,10 +20,10 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 - **Always run all tests before committing.** Run `uv run pytest` (includes E2E
   tests). If tests time out, re-run with `uv run pytest -x` to stop at the
   first failure and diagnose before retrying.
-- **Always commit screenshots.** Screenshots are regenerated when tests are
-  run. They should be committed with the change that is causing them to change,
-  not be left out of commits. Always add the screenshots dir when adding files
-  to commits.
+- **Update screenshots when the UI changes.** Screenshot tests are excluded
+  from the default test run. Run them manually with `uv run pytest -m
+  screenshots` when the UI changes, then commit the updated screenshots
+  alongside the change that caused them to change.
 - **Always update doc-strings.** Everytime a function is being changed or
   edited, make sure it's doc-string reflects what the function is doing.
 - **Always update the README and CLAUDE.md.** With every change, check if the

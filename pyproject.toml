@@ -21,7 +21,11 @@ dependencies = [
 dev = ["pytest"]
 
 [tool.pytest.ini_options]
-markers = ["e2e: end-to-end browser tests (require Chromium or Chrome)"]
+markers = [
+  "e2e: end-to-end browser tests (require Chromium or Chrome)",
+  "screenshots: regenerate README screenshots (run manually with -m screenshots)",
+]
+addopts = "-m 'not screenshots'"
 
 [tool.setuptools.package-data]
 patr = ["data/**/*", "templates/*", "static/dist/**/*"]

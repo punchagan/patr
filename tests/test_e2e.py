@@ -147,6 +147,7 @@ def screenshot_edition(repo, context, base_url):
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.screenshots
 def test_screenshot(screenshot_edition, context, base_url) -> None:
     """Capture a screenshot of the editor for the README."""
     p = context.new_page()
@@ -164,6 +165,7 @@ def test_screenshot(screenshot_edition, context, base_url) -> None:
     assert out.exists()
 
 
+@pytest.mark.screenshots
 def test_screenshot_email_preview(screenshot_edition, context, base_url) -> None:
     """Capture a screenshot of the email preview for the README.
 
