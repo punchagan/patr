@@ -15,7 +15,7 @@ except ImportError:
     winreg = None
 
 from patr import state
-from patr.config import load_newsletter_config
+from patr.config import hugo_mode, load_newsletter_config
 
 
 def cmd_install(args) -> None:
@@ -171,21 +171,14 @@ def cmd_migrate(args) -> None:
 
 def cmd_serve(args) -> None:
     state.REPO_ROOT = Path(args.repo).resolve()
-    state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
-
-    if (
-        not (state.REPO_ROOT / "hugo.toml").exists()
-        and not (state.REPO_ROOT / "config.toml").exists()
-    ):
-        print(
-            f"Error: {state.REPO_ROOT} doesn't look like a Hugo site (no hugo.toml found)."
-        )
-        raise SystemExit(1)
-
-    if not (state.REPO_ROOT / "layouts" / "newsletter").exists():
-        print(f"Error: Patr layouts not found in {state.REPO_ROOT}.")
-        print(f"Run first: patr install --repo {state.REPO_ROOT}")
-        raise SystemExit(1)
+    if hugo_mode():
+        state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
+        if not (state.REPO_ROOT / "layouts" / "newsletter").exists():
+            print(f"Error: Patr layouts not found in {state.REPO_ROOT}.")
+            print(f"Run first: patr install --repo {state.REPO_ROOT}")
+            raise SystemExit(1)
+    else:
+        state.CONTENT_DIR = state.REPO_ROOT
 
     # Import server after state is configured
     from patr.server import app
