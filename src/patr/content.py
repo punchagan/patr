@@ -157,8 +157,10 @@ def render_md(text):
 def embed_images(html: str, edition_dir: Path) -> str:
     """Replace image src with base64 data URIs for email-only mode.
 
-    Handles relative paths (edition bundle) and root-relative paths
-    (/images/... → {REPO_ROOT}/static/images/...).
+    edition_dir is the directory where relative image paths are resolved —
+    either a page bundle dir (slug/index.md → slug/) or a flat file's sibling
+    dir (slug.md → slug/). Root-relative paths (/images/...) resolve against
+    REPO_ROOT/static/.
     """
     soup = BeautifulSoup(html, "html.parser")
     for img in soup.find_all("img"):
