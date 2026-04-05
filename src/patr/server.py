@@ -294,9 +294,7 @@ def check_images(slug):
         if src.startswith(("http://", "https://")):
             continue
         if src.startswith("/"):
-            # FIXME: Can detect absolute images too?
-            # img_path = state.REPO_ROOT / "static" / src.lstrip("/")
-            continue
+            img_path = state.REPO_ROOT / "static" / src.lstrip("/")
         else:
             img_path = edition_dir / src
         if not img_path.exists():
@@ -437,12 +435,14 @@ def commit_edition(slug):
     ).stdout.strip()
 
     if diff_size < COMMIT_DIFF_THRESHOLD and last_msg.startswith("wip:"):
+        # FIXME: Silently failing if things dooooooooooooon't work!
         subprocess.run(
             ["git", "commit", "--amend", "--no-edit"],
             cwd=state.REPO_ROOT,
             capture_output=True,
         )
     else:
+        # FIXME: Silently failing if things dooooooooooooon't work!
         subprocess.run(
             ["git", "commit", "-m", f"wip: {title}"],
             cwd=state.REPO_ROOT,
@@ -683,6 +683,8 @@ def send_all(slug):
             ),
             400,
         )
+    # FIXME: One hug try except block is hard to debug? Should we split into
+    # multiple steps with separate error handling and messages?
     try:
         creds = get_auth()
         gmail = build("gmail", "v1", credentials=creds)
@@ -715,11 +717,17 @@ def send_all(slug):
                     email_only=email_only,
                     edition_dir=edition_dir,
                 )
+                # FIXME: Use "Name <email>" format for sender? Does it work
+                # with Gmail API?
                 send_email(gmail, sender, contact["email"], subject, html)
                 # log_sent is called after send_email. If log_sent fails here,
                 # the email was sent but not recorded — re-running would send again.
                 log_sent(sheet_id, creds, contact["email"], slug)
                 sent += 1
+                # FIXME: Can we send a server-sent event here to update the UI
+                # in real time instead of waiting until the end? Would require
+                # some refactoring. For now, just a short sleep to avoid
+                # hitting Gmail rate limits.
                 time.sleep(0.9)
             except Exception as e:
                 failed.append({"email": contact["email"], "error": str(e)})

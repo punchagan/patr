@@ -286,7 +286,7 @@ def test_check_images_missing_file(client, repo) -> None:
     assert r.get_json()["missing"] == ["ghost.png"]
 
 
-def test_check_images_skips_external_and_absolute(client, repo) -> None:
+def test_check_images_skips_external_urls(client, repo) -> None:
     edition_dir = repo / "content" / "newsletter" / "test-edition"
     (edition_dir / "index.md").write_text(
         textwrap.dedent("""\
@@ -297,12 +297,51 @@ def test_check_images_skips_external_and_absolute(client, repo) -> None:
         ---
 
         ![External](https://example.com/img.png)
-        ![Absolute](/images/newsletter/logo.png)
     """)
     )
     r = client.get("/api/edition/test-edition/check-images")
     assert r.status_code == 200
     assert r.get_json()["missing"] == []
+
+
+def test_check_images_absolute_path_present(client, repo) -> None:
+    """Root-relative images that exist in static/ are not reported missing."""
+    (repo / "static" / "images" / "newsletter").mkdir(parents=True, exist_ok=True)
+    (repo / "static" / "images" / "newsletter" / "logo.png").write_bytes(b"")
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        ![Logo](/images/newsletter/logo.png)
+    """)
+    )
+    r = client.get("/api/edition/test-edition/check-images")
+    assert r.status_code == 200
+    assert r.get_json()["missing"] == []
+
+
+def test_check_images_absolute_path_missing(client, repo) -> None:
+    """Root-relative images missing from static/ are reported."""
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        ![Missing](/images/newsletter/no-such.png)
+    """)
+    )
+    r = client.get("/api/edition/test-edition/check-images")
+    assert r.status_code == 200
+    assert "/images/newsletter/no-such.png" in r.get_json()["missing"]
 
 
 def test_check_images_intro_images(client, repo) -> None:
