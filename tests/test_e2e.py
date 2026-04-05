@@ -293,7 +293,7 @@ def test_mode_switch_split(page, edition) -> None:
 def test_mode_switch_preview_email(page, edition) -> None:
     page.locator("button.btn-toggle", has_text="Preview Email").click()
     assert page.locator(".full-preview").is_visible()
-    assert page.locator("a", has_text="Download PDF").is_visible()
+    assert page.locator("button", has_text="Download PDF").is_visible()
 
 
 def test_focus_mode(page, edition) -> None:

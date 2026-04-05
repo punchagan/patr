@@ -40,6 +40,33 @@ function PreviewFrame({ slug, viewMode, previewKey }) {
   )
 }
 
+function PdfDownloadButton({ slug }) {
+  const [state, setState] = useState('idle') // 'idle' | 'loading' | 'error'
+
+  const download = () => {
+    setState('loading')
+    fetch(`/preview/${slug}/email.pdf`)
+      .then(r => {
+        if (!r.ok) throw new Error(`${r.status}`)
+        return r.blob()
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${slug}.pdf`
+        a.click()
+        URL.revokeObjectURL(url)
+        setState('idle')
+      })
+      .catch(() => setState('error'))
+  }
+
+  if (state === 'loading') return <span className="btn" style={{ opacity: 0.6, cursor: 'default' }}>Generating PDF…</span>
+  if (state === 'error') return <button className="btn btn-danger" onClick={() => setState('idle')}>PDF failed — retry?</button>
+  return <button className="btn" onClick={download}>⬇ Download PDF</button>
+}
+
 function ViewToggle({ viewMode, onViewModeChange }) {
   return (
     <>
@@ -163,7 +190,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
               )}
               {editorMode === 'preview' && viewMode === 'email' && (
                 <div className="split-preview-bar">
-                  <a className="btn" href={`/preview/${edition.slug}/email.pdf`} download>⬇ Download PDF</a>
+                  <PdfDownloadButton slug={edition.slug} />
                 </div>
               )}
               <PreviewFrame slug={edition.slug} viewMode={viewMode} previewKey={previewKey} />
