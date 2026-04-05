@@ -6,14 +6,31 @@ import tomlkit
 from patr import state
 
 
-def load_hugo_config():
-    with open(state.REPO_ROOT / "hugo.toml", "rb") as f:
+def hugo_mode() -> bool:
+    """Return True if the current repo is a Hugo site (hugo.toml present)."""
+    return (state.REPO_ROOT / "hugo.toml").exists()
+
+
+def load_hugo_config() -> dict:
+    """Load hugo.toml as a dict. Returns {} when hugo.toml is absent (hugo-free mode)."""
+    hugo_toml = state.REPO_ROOT / "hugo.toml"
+    if not hugo_toml.exists():
+        return {}
+    with open(hugo_toml, "rb") as f:
         return tomllib.load(f)
 
 
-def load_newsletter_config():
-    hugo = load_hugo_config()
-    config = dict(hugo.get("params", {}).get("patr", {}))
+def load_newsletter_config() -> dict:
+    """Load newsletter config from hugo.toml [params.patr] and ~/.config/patr/config.toml.
+
+    In hugo-free mode (no hugo.toml), defaults email_only to True unless
+    explicitly overridden in config.toml.
+    """
+    if hugo_mode():
+        hugo = load_hugo_config()
+        config = dict(hugo.get("params", {}).get("patr", {}))
+    else:
+        config = {"email_only": True}
     local_file = state.CONFIG_DIR / "config.toml"
     if local_file.exists():
         with open(local_file, "rb") as f:
