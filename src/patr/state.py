@@ -1,7 +1,7 @@
 from pathlib import Path
 
 PATR_ROOT = Path(__file__).parent  # src/patr/
-DATA_DIR = PATR_ROOT / "data"      # src/patr/data/
+DATA_DIR = PATR_ROOT / "data"  # src/patr/data/
 REPO_ROOT = Path.cwd()
 CONTENT_DIR = REPO_ROOT / "content" / "newsletter"
 CONFIG_DIR = Path.home() / ".config" / "patr"

@@ -43,7 +43,8 @@ def cmd_install(args):
     content_dst = repo / "content" / "newsletter"
     if content_dst.exists():
         flat_editions = [
-            f for f in content_dst.glob("*.md")
+            f
+            for f in content_dst.glob("*.md")
             if f.name not in ("_index.md", "footer.md")
         ]
         if flat_editions:
@@ -56,7 +57,9 @@ def cmd_install(args):
             print("Then apply the migration:")
             print(f"  patr migrate --repo {repo} --apply")
             return
-        print("  Content directory exists and uses page bundles, skipping stub creation.")
+        print(
+            "  Content directory exists and uses page bundles, skipping stub creation."
+        )
     else:
         content_dst.mkdir(parents=True)
 
@@ -93,7 +96,10 @@ def cmd_install(args):
     # Create a launcher on the Desktop on Windows
     if os.name == "nt":
         try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders",
+            )
             desktop = Path(winreg.QueryValueEx(key, "Desktop")[0])
         except Exception:
             desktop = Path.home()
@@ -148,7 +154,7 @@ def cmd_migrate(args):
         if not dry_run:
             bundle_dir.mkdir()
             # Rewrite image paths before writing index.md
-            new_text = re.sub(r'/images/newsletter/([^\s)"\']+)', r'\1', text)
+            new_text = re.sub(r'/images/newsletter/([^\s)"\']+)', r"\1", text)
             (bundle_dir / "index.md").write_text(new_text)
             f.unlink()
             for img in images_to_move:
@@ -156,7 +162,9 @@ def cmd_migrate(args):
 
         editions_moved += 1
 
-    print(f"\n{'Would move' if dry_run else 'Moved'} {editions_moved} edition(s), skipped {skipped}.")
+    print(
+        f"\n{'Would move' if dry_run else 'Moved'} {editions_moved} edition(s), skipped {skipped}."
+    )
     if dry_run and editions_moved:
         print("Run with --apply to move files.")
 
@@ -165,8 +173,13 @@ def cmd_serve(args):
     state.REPO_ROOT = Path(args.repo).resolve()
     state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
 
-    if not (state.REPO_ROOT / "hugo.toml").exists() and not (state.REPO_ROOT / "config.toml").exists():
-        print(f"Error: {state.REPO_ROOT} doesn't look like a Hugo site (no hugo.toml found).")
+    if (
+        not (state.REPO_ROOT / "hugo.toml").exists()
+        and not (state.REPO_ROOT / "config.toml").exists()
+    ):
+        print(
+            f"Error: {state.REPO_ROOT} doesn't look like a Hugo site (no hugo.toml found)."
+        )
         raise SystemExit(1)
 
     if not (state.REPO_ROOT / "layouts" / "newsletter").exists():
@@ -179,7 +192,6 @@ def cmd_serve(args):
 
     # Only check free port, open browser on initial start, not on reloader restarts
     if not os.environ.get("WERKZEUG_RUN_MAIN"):
-
         with socket.socket() as s:
             try:
                 s.bind(("127.0.0.1", args.port))
@@ -210,22 +222,34 @@ def main():
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
     os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
-    parser = argparse.ArgumentParser(prog="patr", description="Patr — Hugo newsletter tool")
+    parser = argparse.ArgumentParser(
+        prog="patr", description="Patr — Hugo newsletter tool"
+    )
     sub = parser.add_subparsers(dest="command")
 
     # serve
     serve_parser = sub.add_parser("serve", help="Start the Patr web UI")
-    serve_parser.add_argument("--repo", default=".", help="Path to Hugo site root (default: cwd)")
-    serve_parser.add_argument("--port", type=int, default=5000, help="Port to listen on (default: 5000)")
+    serve_parser.add_argument(
+        "--repo", default=".", help="Path to Hugo site root (default: cwd)"
+    )
+    serve_parser.add_argument(
+        "--port", type=int, default=5000, help="Port to listen on (default: 5000)"
+    )
 
     # install
-    install_parser = sub.add_parser("install", help="Install Patr layouts/CSS into a Hugo site")
+    install_parser = sub.add_parser(
+        "install", help="Install Patr layouts/CSS into a Hugo site"
+    )
     install_parser.add_argument("--repo", required=True, help="Path to Hugo site root")
 
     # migrate
-    migrate_parser = sub.add_parser("migrate", help="Convert flat .md editions to page bundles")
+    migrate_parser = sub.add_parser(
+        "migrate", help="Convert flat .md editions to page bundles"
+    )
     migrate_parser.add_argument("--repo", required=True, help="Path to Hugo site root")
-    migrate_parser.add_argument("--apply", action="store_true", help="Actually move files (default: dry run)")
+    migrate_parser.add_argument(
+        "--apply", action="store_true", help="Actually move files (default: dry run)"
+    )
 
     args = parser.parse_args()
 

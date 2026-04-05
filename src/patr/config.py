@@ -47,7 +47,10 @@ def find_hugo():
 def build_hugo(port: int) -> tuple[bool, str]:
     hugo = find_hugo()
     if hugo is None:
-        return False, "Hugo not found. Install hugo or provide a hugo.sh in the repo root."
+        return (
+            False,
+            "Hugo not found. Install hugo or provide a hugo.sh in the repo root.",
+        )
     result = subprocess.run(
         [hugo, "-D", f"--baseURL=http://127.0.0.1:{port}/"],
         cwd=state.REPO_ROOT,

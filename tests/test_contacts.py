@@ -1,4 +1,5 @@
 """Tests for contact filtering and deduplication logic."""
+
 from unittest.mock import MagicMock, patch
 from patr.contacts import fetch_contacts, get_already_sent
 
@@ -11,6 +12,7 @@ def make_sheets_mock(rows):
 
 
 # fetch_contacts — filtering
+
 
 def test_fetch_contacts_includes_blank_send():
     rows = [["Name", "Email", "Send"], ["Alice", "alice@example.com", ""]]
@@ -105,6 +107,7 @@ def test_fetch_contacts_mixed():
 
 # get_already_sent — deduplication
 
+
 def make_sent_log_mock(rows):
     mock_service = MagicMock()
     mock_service.spreadsheets().values().get().execute.return_value = {"values": rows}
@@ -150,7 +153,9 @@ def test_get_already_sent_empty_log():
 
 def test_get_already_sent_returns_empty_on_api_error():
     mock_service = MagicMock()
-    mock_service.spreadsheets().values().get().execute.side_effect = Exception("API error")
+    mock_service.spreadsheets().values().get().execute.side_effect = Exception(
+        "API error"
+    )
     with patch("patr.contacts.build", return_value=mock_service):
         sent = get_already_sent("sheet_id", None, "my-edition")
     assert sent == set()

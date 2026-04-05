@@ -68,8 +68,18 @@ def index():
 def api_auth_status():
     connected, _ = auth_status()
     needs_credentials = not state.CREDENTIALS_FILE.exists()
-    sender_email = state.SENDER_EMAIL_FILE.read_text().strip() if state.SENDER_EMAIL_FILE.exists() else None
-    return jsonify({"connected": connected, "needs_credentials": needs_credentials, "sender_email": sender_email})
+    sender_email = (
+        state.SENDER_EMAIL_FILE.read_text().strip()
+        if state.SENDER_EMAIL_FILE.exists()
+        else None
+    )
+    return jsonify(
+        {
+            "connected": connected,
+            "needs_credentials": needs_credentials,
+            "sender_email": sender_email,
+        }
+    )
 
 
 @app.route("/oauth/start")
@@ -224,7 +234,6 @@ def save_edition_content(slug):
     return jsonify({"ok": True, "mtime": f.stat().st_mtime})
 
 
-
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 
@@ -289,7 +298,9 @@ def preview_email(slug):
     if post is None:
         return "Not found", 404
     port = app.config["PORT"]
-    return build_email_html(slug, post, load_footer(), {"baseURL": f"http://127.0.0.1:{port}"})
+    return build_email_html(
+        slug, post, load_footer(), {"baseURL": f"http://127.0.0.1:{port}"}
+    )
 
 
 @app.route("/preview/<slug>/email.pdf")
@@ -313,7 +324,9 @@ def preview_email_pdf(slug):
         height = page.evaluate(
             "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)"
         )
-        pdf_bytes = page.pdf(width="670px", height=f"{height + 100}px", print_background=True)
+        pdf_bytes = page.pdf(
+            width="670px", height=f"{height + 100}px", print_background=True
+        )
         browser.close()
     return (
         pdf_bytes,
@@ -389,27 +402,39 @@ def commit_edition(slug):
 
     diff = subprocess.run(
         ["git", "diff", "HEAD", "--", str(f)],
-        cwd=state.REPO_ROOT, capture_output=True, text=True,
+        cwd=state.REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
     diff_size = len(diff.stdout)
 
-    subprocess.run(["git", "add", str(edition_dir)], cwd=state.REPO_ROOT, capture_output=True)
-
-    staged = subprocess.run(
-        ["git", "diff", "--cached", "--quiet"], cwd=state.REPO_ROOT
+    subprocess.run(
+        ["git", "add", str(edition_dir)], cwd=state.REPO_ROOT, capture_output=True
     )
+
+    staged = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=state.REPO_ROOT)
     if staged.returncode == 0:
         return jsonify({"ok": True, "committed": False})
 
     last_msg = subprocess.run(
         ["git", "log", "-1", "--format=%s"],
-        cwd=state.REPO_ROOT, capture_output=True, text=True,
+        cwd=state.REPO_ROOT,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
 
     if diff_size < COMMIT_DIFF_THRESHOLD and last_msg.startswith("wip:"):
-        subprocess.run(["git", "commit", "--amend", "--no-edit"], cwd=state.REPO_ROOT, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "--amend", "--no-edit"],
+            cwd=state.REPO_ROOT,
+            capture_output=True,
+        )
     else:
-        subprocess.run(["git", "commit", "-m", f"wip: {title}"], cwd=state.REPO_ROOT, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", f"wip: {title}"],
+            cwd=state.REPO_ROOT,
+            capture_output=True,
+        )
 
     return jsonify({"ok": True, "committed": True})
 
@@ -422,23 +447,33 @@ def check_deployment(slug):
 
     newsletter_config = load_newsletter_config()
     if newsletter_config.get("email_only"):
-        return jsonify({"email_only": True, "live": None, "uncommitted": None, "unpushed": None})
+        return jsonify(
+            {"email_only": True, "live": None, "uncommitted": None, "unpushed": None}
+        )
 
     hugo_config = load_hugo_config()
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     if not base_url or "example.com" in base_url:
-        return jsonify({"live": False, "uncommitted": None, "unpushed": None,
-                        "reason": "baseURL not configured in hugo.toml"})
+        return jsonify(
+            {
+                "live": False,
+                "uncommitted": None,
+                "unpushed": None,
+                "reason": "baseURL not configured in hugo.toml",
+            }
+        )
 
     edition_dir = state.CONTENT_DIR / slug
 
     status = subprocess.run(
         ["git", "status", "--porcelain=v1", "-b", "--", str(edition_dir)],
-        cwd=state.REPO_ROOT, capture_output=True, text=True,
+        cwd=state.REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
-    lines = status.stdout.split('\n') if status.stdout else []
-    branch_line = lines[0] if lines else ''
-    unpushed = '[ahead' in branch_line
+    lines = status.stdout.split("\n") if status.stdout else []
+    branch_line = lines[0] if lines else ""
+    unpushed = "[ahead" in branch_line
     uncommitted = any(line.strip() for line in lines[1:])
 
     url = f"{base_url}/newsletter/{slug}/"
@@ -446,9 +481,18 @@ def check_deployment(slug):
         req = urllib.request.urlopen(url, timeout=5)
         live = req.status == 200
     except Exception as e:
-        return jsonify({"live": False, "uncommitted": uncommitted, "unpushed": unpushed,
-                        "url": url, "reason": str(e)})
-    return jsonify({"live": live, "uncommitted": uncommitted, "unpushed": unpushed, "url": url})
+        return jsonify(
+            {
+                "live": False,
+                "uncommitted": uncommitted,
+                "unpushed": unpushed,
+                "url": url,
+                "reason": str(e),
+            }
+        )
+    return jsonify(
+        {"live": live, "uncommitted": uncommitted, "unpushed": unpushed, "url": url}
+    )
 
 
 @app.route("/api/help")
@@ -585,8 +629,13 @@ def test_send(slug):
                     r["email"] = sender
         for r in recipients:
             html = build_email_html(
-                slug, post, footer_md, hugo_config, recipient_name=r["name"],
-                email_only=email_only, edition_dir=edition_dir,
+                slug,
+                post,
+                footer_md,
+                hugo_config,
+                recipient_name=r["name"],
+                email_only=email_only,
+                edition_dir=edition_dir,
             )
             send_email(gmail, sender, r["email"], subject, html)
             sheet_id = newsletter_config.get("sheet_id")
@@ -616,7 +665,9 @@ def send_all(slug):
     newsletter_name = newsletter_config.get("name", "Newsletter")
     if not sheet_id:
         return (
-            jsonify({"error": "No contacts sheet configured — add a sheet ID in ⚙ Settings"}),
+            jsonify(
+                {"error": "No contacts sheet configured — add a sheet ID in ⚙ Settings"}
+            ),
             400,
         )
     try:
@@ -643,8 +694,13 @@ def send_all(slug):
         for contact in pending:
             try:
                 html = build_email_html(
-                    slug, post, footer_md, hugo_config, recipient_name=contact["name"],
-                    email_only=email_only, edition_dir=edition_dir,
+                    slug,
+                    post,
+                    footer_md,
+                    hugo_config,
+                    recipient_name=contact["name"],
+                    email_only=email_only,
+                    edition_dir=edition_dir,
                 )
                 send_email(gmail, sender, contact["email"], subject, html)
                 # log_sent is called after send_email. If log_sent fails here,

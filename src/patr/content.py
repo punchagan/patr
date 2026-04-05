@@ -65,7 +65,7 @@ def load_footer():
     return frontmatter.load(footer_file).content
 
 
-_TITLE_BLOCK_RE = re.compile(r'\{([^}]*)\}\s*$')
+_TITLE_BLOCK_RE = re.compile(r"\{([^}]*)\}\s*$")
 _ATTR_PAIR_RE = re.compile(r"([\w-]+)='([^']*)'")
 
 
@@ -75,13 +75,21 @@ def _parse_title_attrs(title):
     if not m:
         return title, {}
     attrs = dict(_ATTR_PAIR_RE.findall(m.group(1)))
-    return title[:m.start()].strip(), attrs
+    return title[: m.start()].strip(), attrs
 
 
 def render_md(text):
     # "extra" minus attr_list — attr_list is disabled so {width="N"} syntax
     # is not silently processed; use the title convention instead.
-    extensions = ["abbr", "def_list", "fenced_code", "footnotes", "md_in_html", "tables", "smarty"]
+    extensions = [
+        "abbr",
+        "def_list",
+        "fenced_code",
+        "footnotes",
+        "md_in_html",
+        "tables",
+        "smarty",
+    ]
     html = markdown.markdown(text or "", extensions=extensions)
 
     # Mirror Hugo's render hook: wrap <img> with <figure>/<figcaption>
@@ -131,7 +139,9 @@ def embed_images(html: str, edition_dir: Path) -> str:
         mime = mimetypes.guess_type(str(img_path))[0] or "image/png"
         data = base64.b64encode(img_path.read_bytes()).decode()
         img["src"] = f"data:{mime};base64,{data}"
-        img["alt"] = img_path.name  # Gmail uses alt as MIME filename; keep it newline-free
+        img["alt"] = (
+            img_path.name
+        )  # Gmail uses alt as MIME filename; keep it newline-free
     return str(soup)
 
 
@@ -170,7 +180,8 @@ def build_email_html(
     footer_html = render_md(footer_md)
 
     view_in_browser = (
-        "" if email_only
+        ""
+        if email_only
         else f'<p class="view-in-browser"><a href="{page_url}">View in browser</a></p>'
     )
 

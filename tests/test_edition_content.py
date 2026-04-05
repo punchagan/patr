@@ -1,4 +1,5 @@
 """Tests for edition content read/write, toggle-draft, and image upload endpoints."""
+
 import io
 import textwrap
 import pytest
@@ -13,7 +14,8 @@ def repo(tmp_path):
 
     edition = newsletter / "test-edition"
     edition.mkdir()
-    (edition / "index.md").write_text(textwrap.dedent("""\
+    (edition / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: "Test Edition"
         date: 2024-01-01
@@ -23,7 +25,8 @@ def repo(tmp_path):
         ---
 
         Body content here.
-    """))
+    """)
+    )
 
     state.REPO_ROOT = tmp_path
     state.CONTENT_DIR = newsletter
@@ -39,6 +42,7 @@ def client(repo):
 
 
 # GET /api/edition/<slug>/content
+
 
 def test_get_content_returns_fields(client):
     r = client.get("/api/edition/test-edition/content")
@@ -62,6 +66,7 @@ def test_get_content_404(client):
 
 # POST /api/edition/<slug>/content
 
+
 def test_save_returns_updated_mtime(client):
     r = client.post("/api/edition/test-edition/content", json={"body": "New body."})
     assert r.status_code == 200
@@ -70,12 +75,16 @@ def test_save_returns_updated_mtime(client):
 
 def test_save_with_correct_mtime_succeeds(client, repo):
     mtime = client.get("/api/edition/test-edition/content").get_json()["mtime"]
-    r = client.post("/api/edition/test-edition/content", json={"body": "Updated.", "mtime": mtime})
+    r = client.post(
+        "/api/edition/test-edition/content", json={"body": "Updated.", "mtime": mtime}
+    )
     assert r.status_code == 200
 
 
 def test_save_with_stale_mtime_returns_409(client, repo):
-    r = client.post("/api/edition/test-edition/content", json={"body": "Updated.", "mtime": 0})
+    r = client.post(
+        "/api/edition/test-edition/content", json={"body": "Updated.", "mtime": 0}
+    )
     assert r.status_code == 409
     d = r.get_json()
     assert "body" in d
@@ -127,6 +136,7 @@ def test_save_content_404(client):
 
 # POST /api/toggle-draft/<slug>
 
+
 def test_toggle_draft_false_to_true(client, repo):
     # edition starts as draft: true, toggling should make it false
     r = client.post("/api/toggle-draft/test-edition")
@@ -165,6 +175,7 @@ def test_toggle_draft_404(client):
 
 # Content round-trip
 
+
 def test_intro_with_blank_lines_round_trips(client, repo):
     intro = "First paragraph.\n\nSecond paragraph."
     client.post("/api/edition/test-edition/content", json={"intro": intro})
@@ -173,6 +184,7 @@ def test_intro_with_blank_lines_round_trips(client, repo):
 
 
 # POST /api/edition/<slug>/upload-image
+
 
 def test_upload_image(client, repo):
     data = {"file": (io.BytesIO(b"fake png data"), "photo.png")}
@@ -227,7 +239,8 @@ def test_check_images_all_present(client, repo):
     edition_dir = repo / "content" / "newsletter" / "test-edition"
     (edition_dir / "my photo.png").write_bytes(b"img")
     # Rewrite body to reference the image
-    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: "Test Edition"
         date: 2024-01-01
@@ -235,7 +248,8 @@ def test_check_images_all_present(client, repo):
         ---
 
         ![A photo](my photo.png)
-    """))
+    """)
+    )
     r = client.get("/api/edition/test-edition/check-images")
     assert r.status_code == 200
     assert r.get_json()["missing"] == []
@@ -243,7 +257,8 @@ def test_check_images_all_present(client, repo):
 
 def test_check_images_missing_file(client, repo):
     edition_dir = repo / "content" / "newsletter" / "test-edition"
-    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: "Test Edition"
         date: 2024-01-01
@@ -251,7 +266,8 @@ def test_check_images_missing_file(client, repo):
         ---
 
         ![Missing](ghost.png)
-    """))
+    """)
+    )
     r = client.get("/api/edition/test-edition/check-images")
     assert r.status_code == 200
     assert r.get_json()["missing"] == ["ghost.png"]
@@ -259,7 +275,8 @@ def test_check_images_missing_file(client, repo):
 
 def test_check_images_skips_external_and_absolute(client, repo):
     edition_dir = repo / "content" / "newsletter" / "test-edition"
-    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: "Test Edition"
         date: 2024-01-01
@@ -268,7 +285,8 @@ def test_check_images_skips_external_and_absolute(client, repo):
 
         ![External](https://example.com/img.png)
         ![Absolute](/images/newsletter/logo.png)
-    """))
+    """)
+    )
     r = client.get("/api/edition/test-edition/check-images")
     assert r.status_code == 200
     assert r.get_json()["missing"] == []
@@ -277,7 +295,8 @@ def test_check_images_skips_external_and_absolute(client, repo):
 def test_check_images_intro_images(client, repo):
     """Images referenced in the intro frontmatter field are also checked."""
     edition_dir = repo / "content" / "newsletter" / "test-edition"
-    (edition_dir / "index.md").write_text(textwrap.dedent("""\
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: "Test Edition"
         date: 2024-01-01
@@ -287,7 +306,8 @@ def test_check_images_intro_images(client, repo):
         ---
 
         Body.
-    """))
+    """)
+    )
     r = client.get("/api/edition/test-edition/check-images")
     assert r.status_code == 200
     assert "intro-missing.png" in r.get_json()["missing"]

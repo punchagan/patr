@@ -1,4 +1,5 @@
 """Tests for edition creation and content-safety edge cases."""
+
 import textwrap
 import pytest
 import frontmatter as fm
@@ -27,6 +28,7 @@ def edition_file(repo, slug):
 
 
 # New edition creation
+
 
 def test_new_edition_creates_file(client, repo):
     r = client.post("/api/new-edition", json={"title": "My First Post"})
@@ -71,11 +73,13 @@ def test_new_edition_empty_title_returns_400(client):
 
 # Content save edge cases
 
+
 @pytest.fixture
 def edition(repo):
     d = repo / "content" / "newsletter" / "test-ed"
     d.mkdir()
-    (d / "index.md").write_text(textwrap.dedent("""\
+    (d / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: Original Title
         date: 2024-01-01
@@ -85,7 +89,8 @@ def edition(repo):
         ---
 
         Original body.
-    """))
+    """)
+    )
     return d
 
 
@@ -120,6 +125,7 @@ def test_save_body_with_yaml_fence_survives(client, edition):
 
 # Content save: dangerous inputs
 
+
 def test_save_empty_title_does_not_wipe_title(client, edition):
     client.post("/api/edition/test-ed/content", json={"title": ""})
     post = fm.load(edition / "index.md")
@@ -135,6 +141,7 @@ def test_save_null_intro_does_not_crash(client, edition):
 
 def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition):
     import io
+
     data = {"file": (io.BytesIO(b"data"), "../escape.jpg")}
     r = client.post(
         "/api/edition/test-ed/upload-image",
@@ -151,6 +158,7 @@ def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition):
 
 
 # Unicode round-trips
+
 
 def test_unicode_title_round_trips(client, repo):
     client.post("/api/new-edition", json={"title": "पत्र — Issue 1 🎉"})
@@ -174,10 +182,13 @@ def test_unicode_intro_round_trips(client, edition):
 
 # Toggle draft edge cases
 
+
 def test_toggle_draft_when_no_draft_field(client, repo):
     d = repo / "content" / "newsletter" / "no-draft"
     d.mkdir()
-    (d / "index.md").write_text("---\ntitle: No Draft Field\ndate: 2024-01-01\n---\n\nBody.\n")
+    (d / "index.md").write_text(
+        "---\ntitle: No Draft Field\ndate: 2024-01-01\n---\n\nBody.\n"
+    )
     r = client.post("/api/toggle-draft/no-draft")
     assert r.status_code == 200
     # No draft field defaults to False, so toggling gives True

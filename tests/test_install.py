@@ -1,4 +1,5 @@
 """Tests for patr install command."""
+
 import pytest
 from pathlib import Path
 from patr import state
@@ -11,13 +12,16 @@ def hugo_repo(tmp_path, monkeypatch):
     repo = tmp_path / "site"
     repo.mkdir()
     (repo / "assets").mkdir()
-    monkeypatch.setattr(state, "DATA_DIR", Path(__file__).parent.parent / "src/patr/data")
+    monkeypatch.setattr(
+        state, "DATA_DIR", Path(__file__).parent.parent / "src/patr/data"
+    )
     return repo
 
 
 def _make_args(repo, add_menu=False, weight="10"):
     class Args:
         pass
+
     args = Args()
     args.repo = str(repo)
     return args

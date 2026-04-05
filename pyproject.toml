@@ -33,3 +33,6 @@ dev = [
 
 [project.scripts]
 patr = "patr.cli:main"
+
+[tool.ruff]
+line-length = 88

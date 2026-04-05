@@ -5,6 +5,7 @@ or config from ~/.config/patr/. All tests run with an empty, temporary config
 directory so that get_auth(), load_newsletter_config(), and auth_status() cannot
 accidentally use real tokens, sheet IDs, or trigger real API calls.
 """
+
 import pytest
 from patr import state
 

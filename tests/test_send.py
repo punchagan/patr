@@ -26,7 +26,8 @@ def client(repo):
 def make_edition(repo, slug, draft):
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
-    (d / "index.md").write_text(textwrap.dedent(f"""\
+    (d / "index.md").write_text(
+        textwrap.dedent(f"""\
         ---
         title: Test Edition
         date: 2024-01-01
@@ -34,7 +35,8 @@ def make_edition(repo, slug, draft):
         ---
 
         Body.
-    """))
+    """)
+    )
 
 
 def test_send_all_draft_returns_400(client, repo):
@@ -74,11 +76,15 @@ def test_test_send_succeeds_without_sheet_id(client, repo):
     make_edition(repo, "my-ed", draft=False)
     (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
 
-    with patch("patr.server.get_auth", return_value=MagicMock()), \
-         patch("patr.server.build") as mock_build, \
-         patch("patr.server.send_email"), \
-         patch("patr.server.load_newsletter_config", return_value={"name": "My Letter"}):
-        mock_build.return_value.userinfo().get().execute.return_value = {"email": "me@example.com"}
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email"),
+        patch("patr.server.load_newsletter_config", return_value={"name": "My Letter"}),
+    ):
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com"
+        }
         r = client.post("/api/test-send/my-ed", json={})
 
     assert r.status_code == 200, r.get_json()

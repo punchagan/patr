@@ -3,6 +3,7 @@
 These document and enforce the isolation guarantee provided by the
 isolate_patr_config autouse fixture in conftest.py.
 """
+
 from pathlib import Path
 import pytest
 from patr import state
@@ -24,6 +25,7 @@ def test_token_file_is_not_real_home():
 def test_get_auth_raises_without_real_token():
     """get_auth() must raise, not silently use real credentials."""
     from patr.auth import get_auth
+
     with pytest.raises(RuntimeError, match="not_authenticated"):
         get_auth()
 

@@ -1,4 +1,5 @@
 """Tests for publish_edition git flow."""
+
 import textwrap
 from unittest.mock import MagicMock, patch
 import pytest
@@ -26,7 +27,8 @@ def client(repo):
 def make_edition(repo, slug, draft=False):
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
-    (d / "index.md").write_text(textwrap.dedent(f"""\
+    (d / "index.md").write_text(
+        textwrap.dedent(f"""\
         ---
         title: Test Edition
         date: 2024-01-01
@@ -34,20 +36,24 @@ def make_edition(repo, slug, draft=False):
         ---
 
         Body.
-    """))
+    """)
+    )
 
 
 def make_run(responses):
     """Return a subprocess.run mock that cycles through the given responses."""
     calls = iter(responses)
+
     def _run(cmd, **kwargs):
         r = MagicMock()
         r.returncode, r.stdout, r.stderr = next(calls)
         return r
+
     return _run
 
 
 # Normal happy path — all three git commands run
+
 
 def test_publish_runs_add_commit_push(client, repo):
     make_edition(repo, "my-ed")
@@ -63,16 +69,22 @@ def test_publish_runs_add_commit_push(client, repo):
 
 # Bug: when commit says "nothing to commit", push is skipped
 
+
 def test_publish_still_pushes_when_nothing_to_commit(client, repo):
     """Regression: retry after a failed push must still run git push."""
     make_edition(repo, "my-ed")
     nothing_to_commit = (1, "nothing to commit, working tree clean", "")
     push_ok = (0, "", "")
-    with patch("subprocess.run", side_effect=make_run([
-        (0, "", ""),          # git add — ok
-        nothing_to_commit,    # git commit — already committed
-        push_ok,              # git push — should still run
-    ])) as mock_run:
+    with patch(
+        "subprocess.run",
+        side_effect=make_run(
+            [
+                (0, "", ""),  # git add — ok
+                nothing_to_commit,  # git commit — already committed
+                push_ok,  # git push — should still run
+            ]
+        ),
+    ) as mock_run:
         r = client.post("/api/publish/my-ed")
     assert r.status_code == 200
     cmds = [c.args[0] for c in mock_run.call_args_list]

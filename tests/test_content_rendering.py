@@ -1,4 +1,5 @@
 """Tests for content rendering — render_md, absolutify_urls, build_email_html."""
+
 import base64
 import frontmatter
 from patr.content import render_md, absolutify_urls, build_email_html
@@ -18,6 +19,7 @@ def make_post(title="Test Edition", date="2024-03-15", intro="", body="Hello wor
 
 
 # render_md — only testing our own logic, not the markdown library
+
 
 def test_render_md_image_without_alt_stays_plain():
     html = render_md("![](photo.jpg)")
@@ -40,8 +42,8 @@ def test_render_md_attr_list_syntax_not_processed():
 def test_render_md_plain_title_stays_as_title():
     html = render_md('![A cat](photo.jpg "A cute cat")')
     assert 'title="A cute cat"' in html
-    assert 'width' not in html
-    assert 'style' not in html
+    assert "width" not in html
+    assert "style" not in html
 
 
 def test_render_md_attr_block_style():
@@ -60,13 +62,15 @@ def test_render_md_attr_block_width_and_height():
 def test_render_md_attr_block_only_no_title():
     html = render_md("![A cat](photo.jpg \"{width='200'}\")")
     assert 'width="200"' in html
-    assert 'title=' not in html
+    assert "title=" not in html
 
 
 def test_render_md_attr_block_multiple_attrs():
-    html = render_md("![A cat](photo.jpg \"Title {width='100' style='border: 1px solid red;'}\")")
+    html = render_md(
+        "![A cat](photo.jpg \"Title {width='100' style='border: 1px solid red;'}\")"
+    )
     assert 'width="100"' in html
-    assert 'border: 1px solid red' in html
+    assert "border: 1px solid red" in html
     assert 'title="Title"' in html
 
 
@@ -77,29 +81,39 @@ def test_render_md_empty_and_none():
 
 # absolutify_urls
 
+
 def test_absolutify_root_relative():
     html = '<img src="/images/foo.jpg">'
-    result = absolutify_urls(html, "https://example.com", "https://example.com/newsletter/ed/")
+    result = absolutify_urls(
+        html, "https://example.com", "https://example.com/newsletter/ed/"
+    )
     assert 'src="https://example.com/images/foo.jpg"' in result
 
 
 def test_absolutify_relative():
     html = '<img src="photo.jpg">'
-    result = absolutify_urls(html, "https://example.com", "https://example.com/newsletter/ed/")
+    result = absolutify_urls(
+        html, "https://example.com", "https://example.com/newsletter/ed/"
+    )
     assert 'src="https://example.com/newsletter/ed/photo.jpg"' in result
 
 
 def test_absolutify_leaves_absolute_alone():
     html = '<img src="https://cdn.example.com/img.jpg">'
-    result = absolutify_urls(html, "https://example.com", "https://example.com/newsletter/ed/")
+    result = absolutify_urls(
+        html, "https://example.com", "https://example.com/newsletter/ed/"
+    )
     assert 'src="https://cdn.example.com/img.jpg"' in result
 
 
 # build_email_html — end-to-end
 
+
 def test_email_html_contains_greeting():
     post = make_post()
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="Alice")
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="Alice"
+    )
     assert "Hi Alice," in html
 
 
@@ -176,6 +190,7 @@ def test_email_html_image_with_alt_becomes_figure():
 
 # build_email_html — edge cases
 
+
 def test_email_html_empty_body():
     post = make_post(body="")
     html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
@@ -208,6 +223,7 @@ def test_email_html_multiple_images_all_absolutified():
 # (documents known behaviour: send is blocked at the UI layer if not deployed,
 # but callers should be aware that images will be broken without a baseURL)
 
+
 def test_email_html_empty_base_url_image_paths_are_not_absolute():
     post = make_post(body="![Cat](cat.jpg)")
     html = build_email_html("test-ed", post, FOOTER_MD, {"baseURL": ""})
@@ -217,9 +233,12 @@ def test_email_html_empty_base_url_image_paths_are_not_absolute():
 
 # build_email_html — recipient name edge cases
 
+
 def test_email_html_whitespace_only_name_falls_back_to_generic_greeting():
     post = make_post()
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="   ")
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="   "
+    )
     assert "Hi   ," not in html
     assert "Hi," in html
 
@@ -228,6 +247,7 @@ LOCALHOST_CONFIG = {"baseURL": "http://127.0.0.1:5000"}
 
 
 # preview HTML (build_email_html with localhost base URL) — same function, local images
+
 
 def test_preview_html_renders_body():
     post = make_post(body="Read all about **it**.")
@@ -275,9 +295,12 @@ def test_preview_html_root_relative_image_uses_localhost():
 
 # build_email_html — email_only mode (embedded images, no view-in-browser)
 
+
 def test_email_only_omits_view_in_browser(tmp_path):
     post = make_post()
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     assert "View in browser" not in html
     assert "view-in-browser" not in html
 
@@ -286,7 +309,9 @@ def test_email_only_embeds_relative_image_as_data_uri(tmp_path):
     img_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20  # fake PNG bytes
     (tmp_path / "photo.png").write_bytes(img_bytes)
     post = make_post(body="![A photo](photo.png)")
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     expected = "data:image/png;base64," + base64.b64encode(img_bytes).decode()
     assert expected in html
 
@@ -294,14 +319,18 @@ def test_email_only_embeds_relative_image_as_data_uri(tmp_path):
 def test_email_only_does_not_embed_missing_image(tmp_path):
     """Missing image src is left as-is rather than crashing."""
     post = make_post(body="![Ghost](ghost.png)")
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     assert "ghost.png" in html
     assert "data:" not in html
 
 
 def test_email_only_leaves_external_images_alone(tmp_path):
     post = make_post(body="![Ext](https://cdn.example.com/img.jpg)")
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     assert "https://cdn.example.com/img.jpg" in html
     assert "data:" not in html
 
@@ -309,6 +338,7 @@ def test_email_only_leaves_external_images_alone(tmp_path):
 def test_email_only_embeds_root_relative_image_from_static(tmp_path):
     """Root-relative images are resolved from {REPO_ROOT}/static/ and embedded."""
     from patr import state
+
     state.REPO_ROOT = tmp_path
     static_img = tmp_path / "static" / "images" / "newsletter"
     static_img.mkdir(parents=True)
@@ -316,7 +346,9 @@ def test_email_only_embeds_root_relative_image_from_static(tmp_path):
     (static_img / "upi-qr.png").write_bytes(img_bytes)
     footer_md = "![QR](/images/newsletter/upi-qr.png)"
     post = make_post()
-    html = build_email_html("test-ed", post, footer_md, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, footer_md, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     expected = "data:image/png;base64," + base64.b64encode(img_bytes).decode()
     assert expected in html
 
@@ -325,8 +357,11 @@ def test_email_only_embedded_image_alt_is_filename(tmp_path):
     """Embedded images use the filename as alt to avoid newlines in Gmail MIME attachment names."""
     (tmp_path / "photo.jpg").write_bytes(b"JPGDATA")
     post = make_post(body="![Multi\nline\nalt](photo.jpg)")
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(html, "html.parser")
     img = soup.find("img", src=lambda s: s and s.startswith("data:"))
     assert img is not None
@@ -336,9 +371,12 @@ def test_email_only_embedded_image_alt_is_filename(tmp_path):
 def test_email_only_leaves_missing_root_relative_alone(tmp_path):
     """Root-relative images that don't exist on disk are left as-is."""
     from patr import state
+
     state.REPO_ROOT = tmp_path
     post = make_post(body="![Logo](/images/logo.png)")
-    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path)
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True, edition_dir=tmp_path
+    )
     assert "/images/logo.png" in html
     assert "data:" not in html
 
@@ -350,6 +388,7 @@ def test_normal_mode_still_has_view_in_browser():
 
 
 # shared CSS — must hold for both production email and preview
+
 
 def test_img_max_width_constrained():
     post = make_post(body="![img](photo.jpg)")
@@ -364,6 +403,7 @@ def test_footer_img_constrained_smaller_than_body_imgs():
     post = make_post()
     html = build_email_html("test-ed", post, footer_with_img, HUGO_CONFIG)
     from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(html, "html.parser")
     footer_div = soup.find("div", style=lambda s: s and "border-top" in s)
     assert footer_div is not None, "footer div not found"

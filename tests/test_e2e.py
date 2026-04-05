@@ -3,6 +3,7 @@
 Run with:  uv run pytest -m e2e
 Skip with: uv run pytest -m "not e2e"
 """
+
 import threading
 from pathlib import Path
 
@@ -15,6 +16,7 @@ pytestmark = pytest.mark.e2e
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="session")
 def repo(tmp_path_factory):
@@ -39,6 +41,7 @@ def repo(tmp_path_factory):
 @pytest.fixture(scope="session")
 def base_url(repo):
     from werkzeug.serving import make_server
+
     srv = make_server("127.0.0.1", 0, patr_server.app, threaded=True)
     port = srv.server_address[1]
     patr_server.app.config["PORT"] = port
@@ -51,6 +54,7 @@ def base_url(repo):
 @pytest.fixture(scope="session")
 def browser(base_url):
     from playwright.sync_api import sync_playwright
+
     pw = sync_playwright().start()
     br = None
     for channel in ("chromium", "chrome", "msedge"):
@@ -95,6 +99,7 @@ def edition(page, request):
     page.wait_for_selector(".cm-content")
     # Derive slug the same way the server does
     import re
+
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     yield slug
 
@@ -142,6 +147,7 @@ def screenshot_edition(repo, context, base_url):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 def test_screenshot(screenshot_edition, context, base_url):
     """Capture a screenshot of the editor for the README."""
     p = context.new_page()
@@ -166,6 +172,7 @@ def test_screenshot_email_preview(screenshot_edition, context, base_url):
     newsletter image). Skips gracefully if run in isolation.
     """
     import shutil
+
     editor_png = REPO_ROOT / "screenshots" / "editor.png"
     if not editor_png.exists():
         pytest.skip("editor.png not yet generated; run test_screenshot first")
@@ -186,6 +193,7 @@ def test_pdf_single_page(context, base_url):
     """PDF export must always fit on a single page, even with large images."""
     import re
     import shutil
+
     editor_png = REPO_ROOT / "screenshots" / "editor.png"
     email_png = REPO_ROOT / "screenshots" / "email-preview.png"
     assert editor_png.exists(), "screenshots/editor.png missing"
@@ -216,7 +224,7 @@ def test_pdf_single_page(context, base_url):
 
     resp = context.request.get(f"{base_url}/preview/{slug}/email.pdf")
     assert resp.status == 200
-    pages = len(re.findall(rb'/Type\s*/Page(?!s)', resp.body()))
+    pages = len(re.findall(rb"/Type\s*/Page(?!s)", resp.body()))
     assert pages == 1, f"Expected 1 page PDF, got {pages}"
 
 
@@ -245,8 +253,13 @@ def test_autosave(page, edition, base_url):
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     editor.press_sequentially("Hello autosave")
     # Wait for text to appear in DOM, then for autosave to fire
-    page.wait_for_function("document.querySelector('.cm-content').textContent.includes('Hello autosave')")
-    page.wait_for_function("document.querySelector('.editor-save-status')?.textContent === 'Saved'", timeout=5000)
+    page.wait_for_function(
+        "document.querySelector('.cm-content').textContent.includes('Hello autosave')"
+    )
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
     content = page.request.get(f"{base_url}/api/edition/{edition}/content").json()
     assert "Hello autosave" in content["body"]
 
@@ -256,14 +269,18 @@ def test_toolbar_bold(page, edition):
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     page.locator(".editor-toolbar-btn", has_text="B").click()
     # Toolbar dispatches synchronously to CodeMirror — check DOM directly
-    page.wait_for_function("document.querySelector('.cm-content').textContent.includes('**')")
+    page.wait_for_function(
+        "document.querySelector('.cm-content').textContent.includes('**')"
+    )
 
 
 def test_toolbar_italic(page, edition):
     page.locator(".cm-content").click()
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     page.locator(".editor-toolbar-btn em", has_text="I").click()
-    page.wait_for_function("document.querySelector('.cm-content').textContent.includes('*')")
+    page.wait_for_function(
+        "document.querySelector('.cm-content').textContent.includes('*')"
+    )
 
 
 def test_mode_switch_split(page, edition):
@@ -341,6 +358,7 @@ def test_hash_restores_mode(context, edition, base_url):
 
 # ── Conflict detection ─────────────────────────────────────────────────────────
 
+
 def _trigger_focus(page):
     """Simulate re-focusing the window (triggers the conflict check)."""
     page.evaluate("window.dispatchEvent(new Event('focus'))")
@@ -381,6 +399,7 @@ def test_conflict_dirty_editor_shows_modal(page, edition):
 
     # Now externally modify the file (after save, so mtime advances)
     import time
+
     time.sleep(0.05)
     edition_dir = state.CONTENT_DIR / edition
     index = edition_dir / "index.md"
@@ -405,6 +424,7 @@ def test_conflict_keep_mine(page, edition, base_url):
     )
 
     import time
+
     time.sleep(0.05)
     edition_dir = state.CONTENT_DIR / edition
     index = edition_dir / "index.md"
@@ -438,6 +458,7 @@ def test_conflict_keep_theirs(page, edition):
     )
 
     import time
+
     time.sleep(0.05)
     edition_dir = state.CONTENT_DIR / edition
     index = edition_dir / "index.md"

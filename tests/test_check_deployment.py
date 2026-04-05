@@ -1,4 +1,5 @@
 """Tests for GET /api/check-deployment/<slug>."""
+
 import textwrap
 from unittest.mock import MagicMock, patch
 import pytest
@@ -25,7 +26,8 @@ def client(repo):
 def make_edition(repo, slug):
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
-    (d / "index.md").write_text(textwrap.dedent("""\
+    (d / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: Test
         date: 2024-01-01
@@ -33,17 +35,21 @@ def make_edition(repo, slug):
         ---
 
         Body.
-    """))
+    """)
+    )
 
 
 def git_run(uncommitted="", ahead=False):
     """Return a subprocess.run mock for git status --porcelain=v1 -b -- <edition_dir>."""
-    branch_line = "## main...origin/main [ahead 1]" if ahead else "## main...origin/main"
+    branch_line = (
+        "## main...origin/main [ahead 1]" if ahead else "## main...origin/main"
+    )
     stdout = branch_line + ("\n" + uncommitted if uncommitted else "") + "\n"
     return MagicMock(return_value=MagicMock(stdout=stdout, returncode=0))
 
 
 # baseURL not configured
+
 
 def test_no_base_url_returns_not_live(client, repo):
     (repo / "hugo.toml").write_text("[params]\n")
@@ -65,10 +71,14 @@ def test_example_com_base_url_returns_not_live(client, repo):
 
 # git status checks (no HTTP — baseURL present but we mock urlopen as unreachable)
 
+
 def test_uncommitted_changes_reported(client, repo):
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
-    with patch("subprocess.run", git_run(uncommitted=" M content/newsletter/my-ed/index.md", ahead=False)):
+    with patch(
+        "subprocess.run",
+        git_run(uncommitted=" M content/newsletter/my-ed/index.md", ahead=False),
+    ):
         with patch("urllib.request.urlopen", side_effect=Exception("offline")):
             r = client.get("/api/check-deployment/my-ed")
     d = r.get_json()
@@ -108,6 +118,7 @@ def test_no_unpushed_commits(client, repo):
 
 # HTTP live check
 
+
 def test_live_url_reachable(client, repo):
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
@@ -125,7 +136,9 @@ def test_live_url_unreachable(client, repo):
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
     with patch("subprocess.run", git_run()):
-        with patch("urllib.request.urlopen", side_effect=Exception("connection refused")):
+        with patch(
+            "urllib.request.urlopen", side_effect=Exception("connection refused")
+        ):
             r = client.get("/api/check-deployment/my-ed")
     d = r.get_json()
     assert d["live"] is False

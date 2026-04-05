@@ -1,4 +1,5 @@
 """Tests for footer editing via the edition content endpoints."""
+
 import textwrap
 import pytest
 from patr import state, server
@@ -25,7 +26,8 @@ def client(repo):
 def footer(repo):
     d = repo / "content" / "newsletter" / "footer"
     d.mkdir()
-    (d / "index.md").write_text(textwrap.dedent("""\
+    (d / "index.md").write_text(
+        textwrap.dedent("""\
         ---
         title: Footer
         _build:
@@ -34,7 +36,8 @@ def footer(repo):
         ---
 
         Unsubscribe [here](https://example.com/unsub).
-    """))
+    """)
+    )
     return d
 
 
@@ -62,4 +65,4 @@ def test_save_footer_preserves_frontmatter(client, footer):
 def test_save_footer_ignores_empty_title(client, footer):
     client.post("/api/edition/footer/content", json={"title": "", "body": "Hi."})
     text = (footer / "index.md").read_text()
-    assert 'title: Footer' in text
+    assert "title: Footer" in text

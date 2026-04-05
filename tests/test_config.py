@@ -1,4 +1,5 @@
 """Tests for save_hugo_patr_params in config.py."""
+
 import pytest
 from patr import state
 from patr.config import save_hugo_patr_params
@@ -37,7 +38,7 @@ def test_updates_existing_key(hugo_toml):
 
 def test_preserves_comments(hugo_toml):
     hugo_toml.write_text(
-        "# site config\nbaseURL = \"https://example.com\"\n\n[params.patr]\n  # patr settings\n  name = \"Old\"\n"
+        '# site config\nbaseURL = "https://example.com"\n\n[params.patr]\n  # patr settings\n  name = "Old"\n'
     )
     save_hugo_patr_params({"name": "New"})
     text = hugo_toml.read_text()
