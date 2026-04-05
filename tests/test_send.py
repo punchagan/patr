@@ -196,3 +196,31 @@ def test_test_send_uses_name_email_format_for_sender(client, repo) -> None:
         client.post("/api/test-send/my-ed", json={})
 
     assert captured["sender"] == "My Name <me@example.com>"
+
+
+def test_test_send_self_recipient_resolves_to_sender_email(client, repo) -> None:
+    """Selecting 'Myself' (__self__) must send to the OAuth email, not the literal string '__self__'."""
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    captured = {}
+
+    def fake_send(gmail, sender, to, subject, html):
+        captured["to"] = to
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email", side_effect=fake_send),
+        patch("patr.server.load_newsletter_config", return_value={"name": "My Letter"}),
+    ):
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com",
+            "name": "My Name",
+        }
+        client.post(
+            "/api/test-send/my-ed",
+            json={"recipients": [{"name": "You", "email": "__self__"}]},
+        )
+
+    assert captured["to"] == "You <me@example.com>"

@@ -647,7 +647,7 @@ def test_send(slug):
         else:
             for r in recipients:
                 if r.get("email") == "__self__":
-                    r["email"] = sender
+                    r["email"] = userinfo["email"]
         for r in recipients:
             html = build_email_html(
                 slug,
