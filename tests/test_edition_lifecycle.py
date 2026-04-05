@@ -1,9 +1,10 @@
 """Tests for edition creation and content-safety edge cases."""
 
 import textwrap
-import pytest
+
 import frontmatter as fm
-from patr import state, server
+import pytest
+from patr import server, state
 
 
 @pytest.fixture

@@ -3,11 +3,10 @@ import mimetypes
 import re
 from pathlib import Path
 
+import css_inline
 import frontmatter
 import markdown
 from bs4 import BeautifulSoup
-import css_inline
-
 from patr import state
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"

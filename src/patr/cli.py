@@ -14,7 +14,7 @@ try:
 except ImportError:
     winreg = None
 
-import patr.state as state
+from patr import state
 from patr.config import load_newsletter_config
 
 

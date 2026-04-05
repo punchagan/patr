@@ -1,8 +1,9 @@
 """Tests for content rendering — render_md, absolutify_urls, build_email_html."""
 
 import base64
+
 import frontmatter
-from patr.content import render_md, absolutify_urls, build_email_html
+from patr.content import absolutify_urls, build_email_html, render_md
 
 HUGO_CONFIG = {"baseURL": "https://example.com"}
 

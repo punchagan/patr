@@ -2,7 +2,6 @@ import json
 
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
-
 from patr import state
 
 OAUTH_CALLBACK = "/oauth/callback"

@@ -1,7 +1,8 @@
 """Tests for patr install command."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from patr import state
 from patr.cli import cmd_install
 

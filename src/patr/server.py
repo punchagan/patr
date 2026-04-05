@@ -1,16 +1,16 @@
 import base64
 import hashlib
-import markdown as md_lib
 import re
 import secrets
 import subprocess
-import tomllib
 import time
+import tomllib
 import urllib.request
-import yaml
 from importlib.metadata import metadata as pkg_metadata
 from pathlib import Path
 
+import markdown as md_lib
+import yaml
 from bs4 import BeautifulSoup
 from flask import (
     Flask,
@@ -22,8 +22,6 @@ from flask import (
 )
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from playwright.sync_api import sync_playwright
-
 from patr import state
 from patr.auth import (
     OAUTH_CALLBACK,
@@ -39,13 +37,9 @@ from patr.config import (
     save_hugo_patr_params,
 )
 from patr.contacts import fetch_contacts, get_already_sent, log_sent
-from patr.content import (
-    build_email_html,
-    load_edition,
-    load_footer,
-    get_editions,
-)
+from patr.content import build_email_html, get_editions, load_edition, load_footer
 from patr.gmail import send_email
+from playwright.sync_api import sync_playwright
 
 app = Flask(__name__)
 

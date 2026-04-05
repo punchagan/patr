@@ -7,9 +7,8 @@ Skip with: uv run pytest -m "not e2e"
 import threading
 from pathlib import Path
 
-import pytest
-
 import patr.server as patr_server
+import pytest
 from patr import state
 
 pytestmark = pytest.mark.e2e

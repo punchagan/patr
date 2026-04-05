@@ -2,8 +2,9 @@
 
 import textwrap
 from unittest.mock import MagicMock, patch
+
 import pytest
-from patr import state, server
+from patr import server, state
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
 """Tests for footer editing via the edition content endpoints."""
 
 import textwrap
+
 import pytest
-from patr import state, server
+from patr import server, state
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
 """Tests for contact filtering and deduplication logic."""
 
 from unittest.mock import MagicMock, patch
+
 from patr.contacts import fetch_contacts, get_already_sent
 
 
