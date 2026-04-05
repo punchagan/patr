@@ -183,7 +183,7 @@ def new_edition():
         return jsonify({"error": f"Edition '{slug}' already exists"}), 400
     edition_dir.mkdir(parents=True)
     fm = yaml.dump(
-        {"title": title, "date": date.today(), "draft": True},
+        {"title": title, "date": date.today(), "draft": True},  # noqa: DTZ011
         Dumper=_PatrYamlDumper,
         sort_keys=False,
         allow_unicode=True,
@@ -345,7 +345,7 @@ def preview_email_pdf(slug):
             try:
                 browser = p.chromium.launch(channel=channel)
                 break
-            except Exception:
+            except Exception:  # noqa: S112
                 continue
         else:
             return "No usable browser found. Install Chromium or Chrome.", 501
@@ -408,7 +408,7 @@ def publish_edition(slug):
         ["git", "push"],
     ]:
         result = subprocess.run(
-            cmd, cwd=state.REPO_ROOT, capture_output=True, text=True
+            cmd, cwd=state.REPO_ROOT, capture_output=True, text=True, check=False
         )
         if result.returncode != 0:
             # "nothing to commit" is not an error
@@ -435,14 +435,20 @@ def commit_edition(slug):
         cwd=state.REPO_ROOT,
         capture_output=True,
         text=True,
+        check=False,
     )
     diff_size = len(diff.stdout)
 
     subprocess.run(
-        ["git", "add", str(edition_dir)], cwd=state.REPO_ROOT, capture_output=True
+        ["git", "add", str(edition_dir)],
+        cwd=state.REPO_ROOT,
+        capture_output=True,
+        check=False,
     )
 
-    staged = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=state.REPO_ROOT)
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"], cwd=state.REPO_ROOT, check=False
+    )
     if staged.returncode == 0:
         return jsonify({"ok": True, "committed": False})
 
@@ -451,6 +457,7 @@ def commit_edition(slug):
         cwd=state.REPO_ROOT,
         capture_output=True,
         text=True,
+        check=False,
     ).stdout.strip()
 
     if diff_size < COMMIT_DIFF_THRESHOLD and last_msg.startswith("wip:"):
@@ -459,6 +466,7 @@ def commit_edition(slug):
             cwd=state.REPO_ROOT,
             capture_output=True,
             text=True,
+            check=False,
         )
     else:
         result = subprocess.run(
@@ -466,6 +474,7 @@ def commit_edition(slug):
             cwd=state.REPO_ROOT,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     if result.returncode != 0:
@@ -505,6 +514,7 @@ def check_deployment(slug):
         cwd=state.REPO_ROOT,
         capture_output=True,
         text=True,
+        check=False,
     )
     lines = status.stdout.split("\n") if status.stdout else []
     branch_line = lines[0] if lines else ""
