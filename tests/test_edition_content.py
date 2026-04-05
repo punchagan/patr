@@ -133,7 +133,7 @@ def test_save_content_clears_intro(client, repo) -> None:
 def test_save_content_unicode(client, repo) -> None:
     """Unicode characters (e.g. emoji, non-ASCII) must be saved without wiping the file."""
     index = repo / "content" / "newsletter" / "test-edition" / "index.md"
-    original = index.read_text()
+    index.read_text()
     body = "Hello 🌍 — café, naïve, 日本語"
     r = client.post("/api/edition/test-edition/content", json={"body": body})
     assert r.status_code == 200
@@ -368,3 +368,83 @@ def test_check_images_intro_images(client, repo) -> None:
 def test_check_images_404(client) -> None:
     r = client.get("/api/edition/no-such-edition/check-images")
     assert r.status_code == 404
+
+
+# Flat-file editions (hugo-free mode)
+
+
+@pytest.fixture
+def flat_repo(tmp_path):
+    """Hugo-free repo with a flat slug.md edition (no hugo.toml)."""
+    (tmp_path / "test-edition.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        intro: |
+          Hello intro.
+        ---
+
+        Body content here.
+    """)
+    )
+    state.REPO_ROOT = tmp_path
+    state.CONTENT_DIR = tmp_path
+    return tmp_path
+
+
+@pytest.fixture
+def flat_client(flat_repo):
+    server.app.config["TESTING"] = True
+    server.app.config["PORT"] = 5000
+    with server.app.test_client() as c:
+        yield c
+
+
+def test_flat_get_content_returns_fields(flat_client) -> None:
+    r = flat_client.get("/api/edition/test-edition/content")
+    assert r.status_code == 200
+    d = r.get_json()
+    assert d["title"] == "Test Edition"
+    assert "Hello intro." in d["intro"]
+    assert d["body"].strip() == "Body content here."
+
+
+def test_flat_save_writes_to_flat_file(flat_client, flat_repo) -> None:
+    """Save must write back to slug.md, not slug/index.md, and atomically."""
+    r = flat_client.post("/api/edition/test-edition/content", json={"body": "New body."})
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+    text = (flat_repo / "test-edition.md").read_text()
+    assert "New body." in text
+    assert not (flat_repo / "test-edition" / "index.md").exists()
+
+
+def test_flat_save_preserves_frontmatter(flat_client, flat_repo) -> None:
+    flat_client.post("/api/edition/test-edition/content", json={"title": "Changed"})
+    text = (flat_repo / "test-edition.md").read_text()
+    assert "title: Changed" in text
+    assert "date: 2024-01-01" in text
+    assert "draft: true" in text
+
+
+def test_flat_toggle_draft(flat_client, flat_repo) -> None:
+    r = flat_client.post("/api/toggle-draft/test-edition")
+    assert r.status_code == 200
+    assert r.get_json()["draft"] is False
+    text = (flat_repo / "test-edition.md").read_text()
+    assert "draft: false" in text
+
+
+def test_flat_upload_image_creates_sibling_dir(flat_client, flat_repo) -> None:
+    """Image upload for a flat edition must create slug/ sibling dir and put image there."""
+    data = {"file": (io.BytesIO(b"fake png data"), "photo.png")}
+    r = flat_client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] == "photo.png"
+    assert (flat_repo / "test-edition" / "photo.png").exists()
