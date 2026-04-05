@@ -256,6 +256,8 @@ export default function EditorPanel({ slug, isFooter, focusMode, onTitleChange, 
     clearTimeout(commitTimer.current)
     commitTimer.current = setTimeout(() => {
       fetch(`/api/edition/${slug}/commit`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.error) setSaveStatus(`Commit failed: ${d.error}`) })
     }, 5000)
   }, [slug])
 
