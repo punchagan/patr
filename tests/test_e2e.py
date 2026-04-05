@@ -184,7 +184,8 @@ def test_screenshot_email_preview(screenshot_edition, context, base_url):
 
 def test_pdf_single_page(context, base_url):
     """PDF export must always fit on a single page, even with large images."""
-    import re, shutil
+    import re
+    import shutil
     editor_png = REPO_ROOT / "screenshots" / "editor.png"
     email_png = REPO_ROOT / "screenshots" / "email-preview.png"
     assert editor_png.exists(), "screenshots/editor.png missing"

@@ -255,7 +255,7 @@ def check_images(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     edition_dir = state.CONTENT_DIR / slug
-    port = app.config["PORT"]
+    app.config["PORT"]
     fake_hugo_config = {"baseURL": ""}
     html = build_email_html(
         slug,

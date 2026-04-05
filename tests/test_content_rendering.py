@@ -1,6 +1,5 @@
 """Tests for content rendering — render_md, absolutify_urls, build_email_html."""
 import base64
-from pathlib import Path
 import frontmatter
 from patr.content import render_md, absolutify_urls, build_email_html
 
@@ -12,7 +11,7 @@ FOOTER_MD = "Unsubscribe [here](https://example.com/unsubscribe)."
 def make_post(title="Test Edition", date="2024-03-15", intro="", body="Hello world."):
     text = f"---\ntitle: {title}\ndate: {date}\n"
     if intro:
-        indented = "\n".join("  " + l for l in intro.splitlines())
+        indented = "\n".join("  " + line for line in intro.splitlines())
         text += f"intro: |\n{indented}\n"
     text += f"---\n\n{body}\n"
     return frontmatter.loads(text)
@@ -373,5 +372,3 @@ def test_footer_img_constrained_smaller_than_body_imgs():
     style = str(img.get("style", ""))
     assert "max-width" in style
     assert "200px" in style
-
-

@@ -56,7 +56,7 @@ def cmd_install(args):
             print("Then apply the migration:")
             print(f"  patr migrate --repo {repo} --apply")
             return
-        print(f"  Content directory exists and uses page bundles, skipping stub creation.")
+        print("  Content directory exists and uses page bundles, skipping stub creation.")
     else:
         content_dst.mkdir(parents=True)
 

@@ -1,5 +1,4 @@
 import base64
-import html as _html
 import mimetypes
 import re
 from pathlib import Path
