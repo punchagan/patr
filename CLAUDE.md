@@ -23,6 +23,21 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
   run. They should be committed with the change that is causing them to change,
   not be left out of commits. Always add the screenshots dir when adding files
   to commits.
+- **Always update doc-strings.** Everytime a function is being changed or
+  edited, make sure it's doc-string reflects what the function is doing.
+- **Always update the README and CLAUDE.md.** With every change, check if the
+  README and/CLAUDE.md need updating. New features need documentation in the
+  README, etc.
+
+## Coding style
+
+- Define constants at the top of Python modules not in random places.
+- Avoid using regexes if possible. They are brittle and can break easily. Parse
+  HTML or markdown using appropriate tools, where possible.
+- Import at the top of Python modules and avoid importing inside functions,
+  unless there's no way out.
+- Add docstrings to functions. Future readers of the code shouldn't need to dig
+  their way through commit messages to figure out what functions are doing.
 
 ## Running Patr
 
