@@ -632,11 +632,12 @@ def test_send(slug):
         creds = get_auth()
         gmail = build("gmail", "v1", credentials=creds)
         oauth2 = build("oauth2", "v2", credentials=creds)
-        sender = oauth2.userinfo().get().execute()["email"]
+        userinfo = oauth2.userinfo().get().execute()
+        sender = formataddr((userinfo.get("name", ""), userinfo["email"]))
         subject = f"[TEST] {post['title']} — {newsletter_name}"
         footer_md = load_footer()
         if not recipients:
-            recipients = [{"name": "You", "email": sender}]
+            recipients = [{"name": "You", "email": userinfo["email"]}]
         else:
             for r in recipients:
                 if r.get("email") == "__self__":
@@ -692,7 +693,8 @@ def send_all(slug):
         creds = get_auth()
         gmail = build("gmail", "v1", credentials=creds)
         oauth2 = build("oauth2", "v2", credentials=creds)
-        sender = oauth2.userinfo().get().execute()["email"]
+        userinfo = oauth2.userinfo().get().execute()
+        sender = formataddr((userinfo.get("name", ""), userinfo["email"]))
         contacts = fetch_contacts(sheet_id, creds)
         if not contacts:
             return jsonify({"error": "No contacts found"}), 400
@@ -720,8 +722,6 @@ def send_all(slug):
                     email_only=email_only,
                     edition_dir=edition_dir,
                 )
-                # FIXME: Use "Name <email>" format for sender? Does it work
-                # with Gmail API?
                 send_email(
                     gmail,
                     sender,
