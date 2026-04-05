@@ -123,6 +123,26 @@ def test_commit_large_diff_creates_new_commit(client, repo) -> None:
     assert any(("commit" in cmd and "wip: My Edition" in cmd) for cmd in cmds)
 
 
+def test_commit_failure_returns_500(client, repo) -> None:
+    """If git commit fails, the endpoint should return an error, not ok=True."""
+    make_edition(repo, "my-ed")
+    with patch(
+        "subprocess.run",
+        side_effect=make_run(
+            [
+                SMALL_DIFF,  # git diff HEAD
+                NOTHING,  # git add
+                STAGED,  # git diff --cached → staged
+                (0, "wip: Test Edition", ""),  # git log -1
+                (1, "", "error: cannot commit"),  # git commit --amend → FAILS
+            ]
+        ),
+    ):
+        r = client.post("/api/edition/my-ed/commit")
+    assert r.status_code == 500
+    assert "error" in r.get_json()
+
+
 def test_commit_non_wip_last_commit_creates_new_commit(client, repo) -> None:
     make_edition(repo, "my-ed")
     with patch(

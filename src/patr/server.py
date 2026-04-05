@@ -436,19 +436,22 @@ def commit_edition(slug):
     ).stdout.strip()
 
     if diff_size < COMMIT_DIFF_THRESHOLD and last_msg.startswith("wip:"):
-        # FIXME: Silently failing if things dooooooooooooon't work!
-        subprocess.run(
+        result = subprocess.run(
             ["git", "commit", "--amend", "--no-edit"],
             cwd=state.REPO_ROOT,
             capture_output=True,
+            text=True,
         )
     else:
-        # FIXME: Silently failing if things dooooooooooooon't work!
-        subprocess.run(
+        result = subprocess.run(
             ["git", "commit", "-m", f"wip: {title}"],
             cwd=state.REPO_ROOT,
             capture_output=True,
+            text=True,
         )
+
+    if result.returncode != 0:
+        return jsonify({"error": f"git commit failed: {result.stderr.strip()}"}), 500
 
     return jsonify({"ok": True, "committed": True})
 
