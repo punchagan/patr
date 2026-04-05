@@ -325,12 +325,19 @@ def check_images(slug):
 
 @app.route("/preview/<slug>/email")
 def preview_email(slug):
+    """Render email preview. In hugo-free mode, omits the 'View in browser' link."""
     _, post = load_edition(slug)
     if post is None:
         return "Not found", 404
     port = app.config["PORT"]
+    newsletter_config = load_newsletter_config()
+    email_only = bool(newsletter_config.get("email_only", False))
     return build_email_html(
-        slug, post, load_footer(), {"baseURL": f"http://127.0.0.1:{port}"}
+        slug,
+        post,
+        load_footer(),
+        {"baseURL": f"http://127.0.0.1:{port}"},
+        email_only=email_only,
     )
 
 

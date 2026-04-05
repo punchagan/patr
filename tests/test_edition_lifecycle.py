@@ -69,6 +69,19 @@ def test_editions_no_warning_when_only_bundles(client, repo) -> None:
     assert d["warnings"] == []
 
 
+# preview_email — hugo-free mode
+
+
+def test_preview_email_omits_view_in_browser_in_hugo_free(client, repo) -> None:
+    """Email preview must not show 'View in browser' link when no hugo.toml."""
+    bundle = state.CONTENT_DIR / "my-post"
+    bundle.mkdir()
+    (bundle / "index.md").write_text("---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n")
+    r = client.get("/preview/my-post/email")
+    assert r.status_code == 200
+    assert b"View in browser" not in r.data
+
+
 # preview_web — hugo-free mode
 
 
