@@ -90,3 +90,30 @@ def test_test_send_succeeds_without_sheet_id(client, repo) -> None:
 
     assert r.status_code == 200, r.get_json()
     assert r.get_json()["ok"] is True
+
+
+def test_test_send_uses_name_email_format(client, repo) -> None:
+    """To header should be formatted as 'Name <email>' not bare email."""
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    captured = {}
+
+    def fake_send(gmail, sender, to, subject, html):
+        captured["to"] = to
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email", side_effect=fake_send),
+        patch("patr.server.load_newsletter_config", return_value={"name": "My Letter"}),
+    ):
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com"
+        }
+        client.post(
+            "/api/test-send/my-ed",
+            json={"recipients": [{"name": "Alice", "email": "alice@example.com"}]},
+        )
+
+    assert captured["to"] == "Alice <alice@example.com>"

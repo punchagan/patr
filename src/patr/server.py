@@ -8,6 +8,7 @@ import tempfile
 import time
 import tomllib
 import urllib.request
+from email.utils import formataddr
 from importlib.metadata import metadata as pkg_metadata
 from pathlib import Path
 
@@ -650,7 +651,9 @@ def test_send(slug):
                 email_only=email_only,
                 edition_dir=edition_dir,
             )
-            send_email(gmail, sender, r["email"], subject, html)
+            send_email(
+                gmail, sender, formataddr((r["name"], r["email"])), subject, html
+            )
             sheet_id = newsletter_config.get("sheet_id")
             if sheet_id is not None:
                 log_sent(sheet_id, creds, r["email"], f"test-{slug}")
@@ -719,7 +722,13 @@ def send_all(slug):
                 )
                 # FIXME: Use "Name <email>" format for sender? Does it work
                 # with Gmail API?
-                send_email(gmail, sender, contact["email"], subject, html)
+                send_email(
+                    gmail,
+                    sender,
+                    formataddr((contact["name"], contact["email"])),
+                    subject,
+                    html,
+                )
                 # log_sent is called after send_email. If log_sent fails here,
                 # the email was sent but not recorded — re-running would send again.
                 log_sent(sheet_id, creds, contact["email"], slug)
