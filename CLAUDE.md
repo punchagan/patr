@@ -227,3 +227,43 @@ Features not yet in the UI that users currently have to do by editing files dire
 
 - **Edition deletion** — no delete button; user must remove the folder manually
 - **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
+
+### Git-free mode
+
+Currently Patr requires Git for version history (auto-commit on save, amend
+small edits). The goal is to make Git optional — useful for email-only
+newsletters where there's no Hugo site or git repo involved.
+
+**Proposed design:** on every save, write a timestamped backup of `index.md`
+into `~/.local/share/patr/backups/` outside the repo, keyed by a
+human-readable slug derived from `REPO_ROOT` (path separators replaced with
+`-`) and the edition slug:
+
+```
+~/.local/share/patr/backups/
+  home-punchagan-code-my-repos-newsletter/
+    my-edition/
+      20260405T142301.md
+      20260405T142456.md
+      ...
+```
+
+This keeps backups completely outside the working tree — no `.gitignore` entry
+needed, no clutter alongside content files, and no accidental commits.
+
+Apply the same rotation logic as the current git auto-commit:
+- If the previous backup was made within the debounce window **and** the diff
+  is small (< `COMMIT_DIFF_THRESHOLD` bytes), overwrite it in place (mirrors
+  `--amend` behaviour).
+- Otherwise write a new timestamped file (mirrors a new `wip:` commit).
+
+Retention: keep the last N backups (e.g. 20), dropping older ones on each
+write so the directory doesn't grow unbounded.
+
+When Git is available the existing auto-commit path stays active and no
+`.patr-backups/` files are written — backups are only a fallback for the
+git-free case.
+
+This pairs with the broader goal of making Hugo + Git optional prerequisites
+(see README) so Patr can be used as a pure email newsletter tool pointed at
+any plain directory.
