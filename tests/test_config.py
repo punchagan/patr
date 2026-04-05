@@ -1,5 +1,7 @@
 """Tests for config.py — save_hugo_patr_params, hugo_mode, load_hugo_config."""
 
+import tomllib
+
 import pytest
 from patr import state
 from patr.config import hugo_mode, load_hugo_config, load_newsletter_config, save_hugo_patr_params
@@ -93,3 +95,46 @@ def test_load_newsletter_config_no_email_only_default_in_hugo_mode(tmp_path, mon
     monkeypatch.setattr(state, "CONFIG_DIR", tmp_path / "config")
     cfg = load_newsletter_config()
     assert "email_only" not in cfg
+
+
+def test_load_newsletter_config_reads_patr_toml_in_hugo_free(tmp_path, monkeypatch) -> None:
+    (tmp_path / "patr.toml").write_text('name = "My NL"\n')
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(state, "CONFIG_DIR", tmp_path / "config")
+    cfg = load_newsletter_config()
+    assert cfg["name"] == "My NL"
+    assert cfg["email_only"] is True  # default still applies
+
+
+def test_save_hugo_patr_params_writes_patr_toml_in_hugo_free(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    save_hugo_patr_params({"name": "My NL"})
+    assert (tmp_path / "patr.toml").exists()
+    assert "My NL" in (tmp_path / "patr.toml").read_text()
+
+
+def test_save_hugo_patr_params_writes_booleans_correctly_in_hugo_free(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    save_hugo_patr_params({"email_only": True})
+    with open(tmp_path / "patr.toml", "rb") as f:
+        data = tomllib.load(f)
+    assert data["email_only"] is True  # bool, not string "True"
+
+
+def test_load_newsletter_config_email_only_always_true_in_hugo_free(tmp_path, monkeypatch) -> None:
+    """email_only is always True in hugo-free mode regardless of patr.toml."""
+    (tmp_path / "patr.toml").write_text("email_only = false\n")
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(state, "CONFIG_DIR", tmp_path / "config")
+    cfg = load_newsletter_config()
+    assert cfg["email_only"] is True
+
+
+def test_save_hugo_patr_params_preserves_existing_patr_toml(tmp_path, monkeypatch) -> None:
+    (tmp_path / "patr.toml").write_text('name = "Old"\n')
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    save_hugo_patr_params({"email_only": False})
+    with open(tmp_path / "patr.toml", "rb") as f:
+        data = tomllib.load(f)
+    assert data["name"] == "Old"
+    assert data["email_only"] is False

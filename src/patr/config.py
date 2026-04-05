@@ -30,7 +30,12 @@ def load_newsletter_config() -> dict:
         hugo = load_hugo_config()
         config = dict(hugo.get("params", {}).get("patr", {}))
     else:
-        config = {"email_only": True}
+        config = {}
+        patr_toml = state.REPO_ROOT / "patr.toml"
+        if patr_toml.exists():
+            with open(patr_toml, "rb") as f:
+                config.update(tomllib.load(f))
+        config["email_only"] = True  # always True in hugo-free mode
     local_file = state.CONFIG_DIR / "config.toml"
     if local_file.exists():
         with open(local_file, "rb") as f:
@@ -39,16 +44,29 @@ def load_newsletter_config() -> dict:
 
 
 def save_hugo_patr_params(updates: dict) -> None:
-    """Write [params.patr] keys into hugo.toml, preserving comments and formatting."""
-    hugo_toml = state.REPO_ROOT / "hugo.toml"
-    doc = tomlkit.parse(hugo_toml.read_text())
+    """Write patr settings, preserving comments and formatting.
 
-    params = doc.setdefault("params", tomlkit.table())
-    patr = params.setdefault("patr", tomlkit.table())
-    for key, value in updates.items():
-        patr[key] = value
-
-    hugo_toml.write_text(tomlkit.dumps(doc))
+    In Hugo mode: writes to hugo.toml [params.patr].
+    In hugo-free mode: writes to patr.toml in the repo root.
+    """
+    if hugo_mode():
+        hugo_toml = state.REPO_ROOT / "hugo.toml"
+        doc = tomlkit.parse(hugo_toml.read_text())
+        params = doc.setdefault("params", tomlkit.table())
+        patr = params.setdefault("patr", tomlkit.table())
+        for key, value in updates.items():
+            patr[key] = value
+        hugo_toml.write_text(tomlkit.dumps(doc))
+    else:
+        patr_toml = state.REPO_ROOT / "patr.toml"
+        doc = (
+            tomlkit.parse(patr_toml.read_text())
+            if patr_toml.exists()
+            else tomlkit.document()
+        )
+        for key, value in updates.items():
+            doc[key] = value
+        patr_toml.write_text(tomlkit.dumps(doc))
 
 
 def find_hugo():
@@ -74,5 +92,6 @@ def build_hugo(port: int) -> tuple[bool, str]:
         capture_output=True,
         text=True,
         timeout=60,
+        check=False,
     )
     return result.returncode == 0, result.stderr
