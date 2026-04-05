@@ -8,6 +8,7 @@ import frontmatter
 import markdown
 from bs4 import BeautifulSoup
 from patr import state
+from patr.config import hugo_mode
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 
@@ -15,24 +16,34 @@ _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 def get_editions():
     """Return all editions as a list of dicts, sorted by date descending.
 
+    In Hugo mode, only page bundles (directories with index.md) are returned.
+    In hugo-free mode, flat .md files are also returned alongside bundles.
     Returns an empty list if CONTENT_DIR does not exist.
     """
     if not state.CONTENT_DIR.exists():
         return []
+
+    _SKIP_NAMES = {"footer", "_index"}
+
+    def _candidate_files():
+        for entry in sorted(state.CONTENT_DIR.iterdir()):
+            if entry.is_dir() and entry.name not in _SKIP_NAMES:
+                f = entry / "index.md"
+                if f.exists():
+                    yield entry.name, f
+            elif not hugo_mode() and entry.is_file() and entry.suffix == ".md":
+                if entry.stem not in _SKIP_NAMES:
+                    yield entry.stem, entry
+
     posts = []
-    for d in sorted(state.CONTENT_DIR.iterdir()):
-        if not d.is_dir() or d.name == "footer":
-            continue
-        f = d / "index.md"
-        if not f.exists():
-            continue
+    for slug, f in _candidate_files():
         try:
             post = frontmatter.load(f)
         except Exception as e:
             posts.append(
                 {
-                    "slug": d.name,
-                    "title": f"⚠ {d.name} (frontmatter error)",
+                    "slug": slug,
+                    "title": f"⚠ {slug} (frontmatter error)",
                     "date": "",
                     "draft": True,
                     "path": str(f.resolve()),
@@ -42,8 +53,8 @@ def get_editions():
             continue
         posts.append(
             {
-                "slug": d.name,
-                "title": post.get("title", d.name),
+                "slug": slug,
+                "title": post.get("title", slug),
                 "date": str(post.get("date", ""))[:10],
                 "draft": post.get("draft", False),
                 "path": str(f.resolve()),

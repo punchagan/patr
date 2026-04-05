@@ -11,6 +11,7 @@ from patr import server, state
 def repo(tmp_path):
     newsletter = tmp_path / "content" / "newsletter"
     newsletter.mkdir(parents=True)
+    (tmp_path / "hugo.toml").write_text('baseURL = "https://example.com/"\n')
     state.REPO_ROOT = tmp_path
     state.CONTENT_DIR = newsletter
     return tmp_path
@@ -26,6 +27,23 @@ def client(repo):
 
 def edition_file(repo, slug):
     return repo / "content" / "newsletter" / slug / "index.md"
+
+
+# get_editions — flat .md files in hugo-free mode
+
+
+def test_get_editions_picks_up_flat_md_in_hugo_free_mode(tmp_path) -> None:
+    """Flat slug.md files must appear as editions when CONTENT_DIR == REPO_ROOT."""
+    state.REPO_ROOT = tmp_path
+    state.CONTENT_DIR = tmp_path
+    (tmp_path / "my-edition.md").write_text(
+        "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
+    )
+    from patr.content import get_editions
+    editions = get_editions()
+    assert len(editions) == 1
+    assert editions[0]["slug"] == "my-edition"
+    assert editions[0]["title"] == "My Edition"
 
 
 # get_editions — missing CONTENT_DIR
@@ -69,15 +87,37 @@ def test_editions_no_warning_when_only_bundles(client, repo) -> None:
     assert d["warnings"] == []
 
 
+@pytest.fixture
+def hugo_free_client(tmp_path):
+    """Client where CONTENT_DIR == REPO_ROOT (no hugo.toml, no content/newsletter/)."""
+    state.REPO_ROOT = tmp_path
+    state.CONTENT_DIR = tmp_path
+    server.app.config["TESTING"] = True
+    server.app.config["PORT"] = 5000
+    with server.app.test_client() as c:
+        yield c
+
+
+# /api/editions warnings — hugo-free mode
+
+
+def test_no_flat_md_warning_in_hugo_free_mode(hugo_free_client, tmp_path) -> None:
+    """A README.md in REPO_ROOT must not trigger the flat-file migration warning."""
+    (tmp_path / "README.md").write_text("# hello\n")
+    r = hugo_free_client.get("/api/editions")
+    assert r.status_code == 200
+    assert r.get_json()["warnings"] == []
+
+
 # preview_email — hugo-free mode
 
 
-def test_preview_email_omits_view_in_browser_in_hugo_free(client, repo) -> None:
+def test_preview_email_omits_view_in_browser_in_hugo_free(hugo_free_client, tmp_path) -> None:
     """Email preview must not show 'View in browser' link when no hugo.toml."""
-    bundle = state.CONTENT_DIR / "my-post"
+    bundle = tmp_path / "my-post"
     bundle.mkdir()
     (bundle / "index.md").write_text("---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n")
-    r = client.get("/preview/my-post/email")
+    r = hugo_free_client.get("/preview/my-post/email")
     assert r.status_code == 200
     assert b"View in browser" not in r.data
 
@@ -85,12 +125,12 @@ def test_preview_email_omits_view_in_browser_in_hugo_free(client, repo) -> None:
 # preview_web — hugo-free mode
 
 
-def test_preview_web_returns_501_in_hugo_free(client, repo) -> None:
+def test_preview_web_returns_501_in_hugo_free(hugo_free_client, tmp_path) -> None:
     """Web preview must return 501 when no hugo.toml is present."""
-    bundle = state.CONTENT_DIR / "my-post"
+    bundle = tmp_path / "my-post"
     bundle.mkdir()
     (bundle / "index.md").write_text("---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n")
-    r = client.get("/preview/my-post/web")
+    r = hugo_free_client.get("/preview/my-post/web")
     assert r.status_code == 501
 
 
