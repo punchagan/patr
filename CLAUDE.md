@@ -15,7 +15,8 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
   you're about to skip this (e.g. a change seems obvious, or it's hard to
   test), explicitly say so and ask for confirmation before proceeding.
 - **Always lint and format before committing.** Run `uv run ruff check
-  --unsafe-fixes --fix` and `uv run ruff format` before committing.
+  --unsafe-fixes --fix` and `uv run ruff format` before committing. Use
+  `prettier` to format JS and CSS files in the source.
 - **Always run all tests before committing.** Run `uv run pytest` (includes E2E
   tests). If tests time out, re-run with `uv run pytest -x` to stop at the
   first failure and diagnose before retrying.
