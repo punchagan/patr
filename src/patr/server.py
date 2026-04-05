@@ -44,7 +44,13 @@ from patr.config import (
     save_hugo_patr_params,
 )
 from patr.contacts import fetch_contacts, get_already_sent, log_sent
-from patr.content import build_email_html, get_editions, load_edition, load_footer
+from patr.content import (
+    build_email_html,
+    edition_dir_for,
+    get_editions,
+    load_edition,
+    load_footer,
+)
 from patr.gmail import send_email
 from playwright.sync_api import sync_playwright
 
@@ -155,7 +161,7 @@ def api_editions():
     """Return all editions plus any warnings about the content directory."""
     editions = get_editions()
     warnings = []
-    if state.CONTENT_DIR.exists():
+    if hugo_mode() and state.CONTENT_DIR.exists():
         flat = [
             f.name
             for f in state.CONTENT_DIR.iterdir()
@@ -282,7 +288,8 @@ def upload_image(slug):
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         return jsonify({"error": f"File type .{ext} not allowed"}), 400
-    dest_dir = state.CONTENT_DIR / slug
+    dest_dir = edition_dir_for(f)
+    dest_dir.mkdir(exist_ok=True)
     dest = dest_dir / filename
     if dest.exists():
         stem = filename.rsplit(".", 1)[0]
@@ -296,7 +303,7 @@ def check_images(slug):
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
-    edition_dir = state.CONTENT_DIR / slug
+    edition_dir = edition_dir_for(f)
     app.config["PORT"]
     fake_hugo_config = {"baseURL": ""}
     html = build_email_html(
@@ -660,14 +667,14 @@ def sent_log():
 
 @app.route("/api/test-send/<slug>", methods=["POST"])
 def test_send(slug):
-    _, post = load_edition(slug)
+    f, post = load_edition(slug)
     if post is None:
         return jsonify({"error": "Not found"}), 404
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
     newsletter_name = newsletter_config.get("name", "Newsletter")
     email_only = bool(newsletter_config.get("email_only", False))
-    edition_dir = state.CONTENT_DIR / slug
+    edition_dir = edition_dir_for(f)
     data = request.json or {}
     recipients = data.get("recipients")  # list of {name, email} or None = just self
     try:
@@ -717,7 +724,7 @@ def send_all(slug):
     successes, {"type": "error", "email": "...", "error": "..."} for failures,
     and a final {"type": "done", "sent": N, "failed": [...], "skipped": N}.
     """
-    _, post = load_edition(slug)
+    f, post = load_edition(slug)
     if post is None:
         return jsonify({"error": "Not found"}), 404
     if post.get("draft", True):
@@ -761,7 +768,7 @@ def send_all(slug):
 
     subject = f"{post['title']} — {newsletter_name}"
     footer_md = load_footer()
-    edition_dir = state.CONTENT_DIR / slug
+    edition_dir = edition_dir_for(f)
     total = len(pending)
     skipped = len(contacts) - total
 

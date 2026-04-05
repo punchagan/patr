@@ -84,6 +84,15 @@ def load_edition(slug):
         raise ValueError(f"Frontmatter parse error in {slug}: {e}") from e
 
 
+def edition_dir_for(f):
+    """Return the directory used to store an edition's resources (e.g. images).
+
+    For a page bundle (slug/index.md) this is f.parent (slug/).
+    For a flat file (slug.md) this is a sibling directory with the same stem (slug/).
+    """
+    return f.parent if f.name == "index.md" else f.with_suffix("")
+
+
 def load_footer():
     footer_file = state.CONTENT_DIR / "footer" / "index.md"
     if not footer_file.exists():

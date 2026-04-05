@@ -125,6 +125,22 @@ def test_no_flat_md_warning_in_hugo_free_mode(hugo_free_client, tmp_path) -> Non
     assert r.get_json()["warnings"] == []
 
 
+# check-images — flat .md in hugo-free mode
+
+
+def test_check_images_finds_image_in_sibling_dir_for_flat_edition(hugo_free_client, tmp_path) -> None:
+    """Images referenced from a flat edition must be found in the sibling slug/ dir."""
+    (tmp_path / "my-post.md").write_text(
+        "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n![alt](photo.jpg)\n"
+    )
+    sibling = tmp_path / "my-post"
+    sibling.mkdir()
+    (sibling / "photo.jpg").write_bytes(b"img")
+    r = hugo_free_client.get("/api/edition/my-post/check-images")
+    assert r.status_code == 200
+    assert r.get_json()["missing"] == []
+
+
 # preview_email — hugo-free mode
 
 
