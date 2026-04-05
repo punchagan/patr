@@ -267,3 +267,29 @@ git-free case.
 This pairs with the broader goal of making Hugo + Git optional prerequisites
 (see README) so Patr can be used as a pure email newsletter tool pointed at
 any plain directory.
+
+### Hugo-free mode
+
+Currently Patr requires a Hugo site (`hugo.toml`, `content/newsletter/`) even
+for email-only newsletters. The goal is to let it run against any plain
+directory — no `hugo.toml`, no Hugo installed.
+
+**What needs to change:**
+
+- `load_hugo_config()` — return `{}` gracefully when `hugo.toml` is absent
+  instead of raising `FileNotFoundError`.
+- `load_newsletter_config()` — when no `hugo.toml` exists, default
+  `email_only = True` automatically.
+- `save_hugo_patr_params()` — settings like `name` and `email_only` currently
+  write into `hugo.toml`; without one, they should fall back to
+  `~/.config/patr/config.toml`.
+- `patr install` — skip Hugo layout/asset copying and `hugo.toml` setup when
+  the user opts into email-only mode.
+- Routes that use `hugo_config` for `baseURL`, Hugo build, web preview etc.
+  must handle an empty config gracefully (most already use `.get()`).
+- README prerequisites — Hugo and Git should be listed as optional,
+  required only for Hugo-based mode.
+
+Together with git-free mode above, this would make `uv tool install patr` +
+`patr serve --repo /some/dir` sufficient for a fully self-contained
+email-only newsletter workflow.
