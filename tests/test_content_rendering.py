@@ -398,6 +398,23 @@ def test_img_max_width_constrained() -> None:
         assert "max-width" in html
 
 
+def test_email_html_uses_table_layout() -> None:
+    """Email HTML must use table-based layout for responsive padding without media queries."""
+    post = make_post()
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+    outer = soup.find("table", attrs={"width": "100%"})
+    assert outer is not None, "outer 100% table not found"
+    inner = outer.find("table")
+    assert inner is not None, "inner centered table not found"
+    td = inner.find("td")
+    assert td is not None
+    style = str(td.get("style", ""))
+    assert "padding" in style, "content td should have padding"
+
+
 def test_footer_img_constrained_smaller_than_body_imgs() -> None:
     """Footer images must be narrower than body images — e.g. QR codes."""
     footer_with_img = "![QR](/images/qr.png)"

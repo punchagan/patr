@@ -188,11 +188,23 @@ def build_email_html(
 <html>
 <head><meta charset="utf-8"><style>{_EMAIL_CSS_PATH.read_text()}</style></head>
 <body>
-  {view_in_browser}
-  <p>{greeting}</p>
-  {"<div class='intro'>" + intro_html + "</div>" if intro_html else ""}
-  <div class="content">{body_html}</div>
-  {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
+  <table width="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <table width="600" border="0" cellpadding="0" cellspacing="0" align="center" style="max-width:600px;width:100%">
+          <tr>
+            <td class="email-body">
+              {view_in_browser}
+              <p>{greeting}</p>
+              {"<div class='intro'>" + intro_html + "</div>" if intro_html else ""}
+              <div class="content">{body_html}</div>
+              {"<div class='footer'>" + footer_html + "</div>" if footer_html else ""}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>"""
     if email_only and edition_dir is not None:
