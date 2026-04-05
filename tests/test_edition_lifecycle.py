@@ -28,6 +28,47 @@ def edition_file(repo, slug):
     return repo / "content" / "newsletter" / slug / "index.md"
 
 
+# get_editions — missing CONTENT_DIR
+
+
+def test_get_editions_returns_empty_when_content_dir_missing(repo) -> None:
+    from patr.content import get_editions
+    state.CONTENT_DIR = repo / "nonexistent"
+    assert get_editions() == []
+
+
+# /api/editions response shape
+
+
+def test_editions_returns_object_with_editions_and_warnings(client) -> None:
+    r = client.get("/api/editions")
+    assert r.status_code == 200
+    d = r.get_json()
+    assert "editions" in d
+    assert "warnings" in d
+    assert isinstance(d["editions"], list)
+    assert isinstance(d["warnings"], list)
+
+
+def test_editions_warns_about_flat_md_files(client, repo) -> None:
+    """Flat .md files in CONTENT_DIR should trigger a warning."""
+    (state.CONTENT_DIR / "old-post.md").write_text("---\ntitle: Old\n---\nBody.\n")
+    r = client.get("/api/editions")
+    d = r.get_json()
+    assert d["editions"] == []
+    assert any("old-post.md" in w for w in d["warnings"])
+
+
+def test_editions_no_warning_when_only_bundles(client, repo) -> None:
+    bundle = state.CONTENT_DIR / "my-post"
+    bundle.mkdir()
+    (bundle / "index.md").write_text("---\ntitle: My Post\ndate: 2024-01-01\ndraft: false\n---\n")
+    r = client.get("/api/editions")
+    d = r.get_json()
+    assert len(d["editions"]) == 1
+    assert d["warnings"] == []
+
+
 # New edition creation
 
 

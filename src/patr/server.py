@@ -151,7 +151,22 @@ def oauth_disconnect():
 
 @app.route("/api/editions")
 def api_editions():
-    return jsonify(get_editions())
+    """Return all editions plus any warnings about the content directory."""
+    editions = get_editions()
+    warnings = []
+    if state.CONTENT_DIR.exists():
+        flat = [
+            f.name
+            for f in state.CONTENT_DIR.iterdir()
+            if f.is_file() and f.suffix == ".md" and f.name != "_index.md"
+        ]
+        if flat:
+            names = ", ".join(flat[:3]) + ("…" if len(flat) > 3 else "")
+            warnings.append(
+                f"Found flat .md files ({names}) — these won't appear as editions."
+                " Run: patr migrate --repo ..."
+            )
+    return jsonify({"editions": editions, "warnings": warnings})
 
 
 @app.route("/api/new-edition", methods=["POST"])

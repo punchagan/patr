@@ -13,6 +13,12 @@ _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 
 
 def get_editions():
+    """Return all editions as a list of dicts, sorted by date descending.
+
+    Returns an empty list if CONTENT_DIR does not exist.
+    """
+    if not state.CONTENT_DIR.exists():
+        return []
     posts = []
     for d in sorted(state.CONTENT_DIR.iterdir()):
         if not d.is_dir() or d.name == "footer":
