@@ -59,6 +59,16 @@ def test_menu_entry_uses_configured_name(hugo_repo, monkeypatch) -> None:
     assert 'url = "/newsletter/"' in text
 
 
+def test_install_hugo_free_mode_prints_message_and_skips_copy(tmp_path, monkeypatch, capsys) -> None:
+    """In hugo-free mode, install should print a message and not copy any files."""
+    monkeypatch.setattr(state, "DATA_DIR", Path(__file__).parent.parent / "src/patr/data")
+    cmd_install(_make_args(tmp_path))
+    out = capsys.readouterr().out
+    assert "Hugo-free mode" in out
+    assert not (tmp_path / "layouts").exists()
+    assert not (tmp_path / "assets" / "newsletter.css").exists()
+
+
 def test_menu_entry_falls_back_to_newsletter(hugo_repo, monkeypatch) -> None:
     (hugo_repo / "hugo.toml").write_text('baseURL = "https://example.com"\n')
     inputs = iter(["y", "10"])
