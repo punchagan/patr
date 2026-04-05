@@ -26,5 +26,10 @@ markers = ["e2e: end-to-end browser tests (require Chromium or Chrome)"]
 [tool.setuptools.package-data]
 patr = ["data/**/*", "templates/*", "static/dist/**/*"]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.15.9",
+]
+
 [project.scripts]
 patr = "patr.cli:main"
