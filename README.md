@@ -18,10 +18,10 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 ## Prerequisites
 
-- [Hugo](https://gohugo.io/installation/) — to build and preview the site
-- [Git](https://git-scm.com/downloads) — to publish editions
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — to install Patr (manages Python automatically)
+- [Git](https://git-scm.com/downloads) — for auto-commit on save and publishing editions
 - A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials (see below)
+- [Hugo](https://gohugo.io/installation/) — optional; only needed if you want a web archive of your newsletter
 
 ### GCP credentials setup
 
@@ -45,7 +45,19 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 uv tool install git+https://github.com/punchagan/patr
 ```
 
-Then install Patr's layouts and assets into your Hugo site:
+### Email-only mode (no Hugo required)
+
+Point Patr at any directory of markdown files and start writing:
+
+```bash
+patr serve --repo /path/to/any-directory
+```
+
+No installation step needed. New editions are created as page bundles (`slug/index.md`) inside that directory. Flat `.md` files already in the directory are also recognised as editions.
+
+### Hugo site mode
+
+Install Patr's layouts and assets into your Hugo site:
 
 ```bash
 patr install --repo /path/to/hugo-site
@@ -53,7 +65,7 @@ patr install --repo /path/to/hugo-site
 
 This copies Hugo templates and CSS into the site, creates `content/newsletter/` stubs, and optionally adds a nav menu entry. To customise the newsletter's appearance, edit `assets/newsletter.css` in your Hugo site after installing.
 
-If you have existing flat `.md` newsletter editions, migrate them to page bundles first:
+If you have existing flat `.md` newsletter editions in `content/newsletter/`, migrate them to page bundles first:
 
 ```bash
 patr migrate --repo /path/to/hugo-site          # dry run
@@ -63,7 +75,7 @@ patr migrate --repo /path/to/hugo-site --apply  # apply
 ## Usage
 
 ```bash
-patr serve --repo /path/to/hugo-site
+patr serve --repo /path/to/repo-or-directory
 ```
 
 Opens a browser UI at `http://127.0.0.1:5000`. Connect Gmail via the ⚙ settings panel on first use. Use `--port` to override if port 5000 is busy:
@@ -130,15 +142,16 @@ Use **Test Send** to send yourself a copy first. When you're happy with it, **Se
 
 These things currently require editing files directly outside the app:
 
-- **Deleting an edition** — delete the edition's folder from `content/newsletter/`
-- **Changing an edition's date** — edit the `date:` field in the edition's `index.md`
+- **Deleting an edition** — delete the edition's folder (or `.md` file) from your content directory
+- **Changing an edition's date** — edit the `date:` field in the edition's `index.md` (or `.md` file)
 <!-- help-end -->
 
 ## Configuration
 
 | Location | Contents |
 |---|---|
-| `{hugo-site}/hugo.toml` → `[params.patr]` | `name` — newsletter display name; `email_only = true` for email-only mode |
+| `{hugo-site}/hugo.toml` → `[params.patr]` | `name`, `email_only` — used in Hugo mode |
+| `{dir}/patr.toml` | `name`, `email_only` — used in hugo-free mode (no `hugo.toml`) |
 | `~/.config/patr/config.toml` | `sheet_id` — Google Sheets contacts sheet |
 | `~/.config/patr/credentials.json` | GCP OAuth client credentials (Desktop app) |
 

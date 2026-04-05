@@ -187,7 +187,7 @@ The UI is a React app (built with Vite, output committed to `static/dist/`). The
 
 - `EditorPanel` loads content via `GET /api/edition/<slug>/content`, auto-saves via `POST` with a 1-second debounce, and auto-commits via `POST /api/edition/<slug>/commit` with a 5-second debounce (amends previous `wip:` commit if diff < 500 bytes, else new commit)
 - Body content is kept in a ref (not React state) to avoid per-keystroke re-renders; `initialBody` state is only set on load
-- Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored in the page bundle directory; inserted as relative markdown `![](filename)`
+- Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored alongside the edition (bundle dir for page bundles, sibling `slug/` dir for flat files); inserted as relative markdown `![](filename)`
 - Toolbar buttons insert/wrap markdown syntax at the cursor (no WYSIWYG schema)
 - Three editor modes in `MainPanel`: **Write** (full-width editor), **Split** (editor + preview side-by-side, refreshes on save), **Preview Email** / **Preview Web** (full-width iframe)
 - Active mode is stored in the URL hash fragment: `#slug` (write), `#slug/split`, `#slug/email`, `#slug/web`
@@ -270,26 +270,28 @@ any plain directory.
 
 ### Hugo-free mode
 
-Currently Patr requires a Hugo site (`hugo.toml`, `content/newsletter/`) even
-for email-only newsletters. The goal is to let it run against any plain
-directory — no `hugo.toml`, no Hugo installed.
+Patr can run against any plain directory — no `hugo.toml`, no Hugo installed.
+Hugo is detected via `hugo_mode()` (checks for `hugo.toml` in `REPO_ROOT`).
 
-**What needs to change:**
+**How it works:**
 
-- `load_hugo_config()` — return `{}` gracefully when `hugo.toml` is absent
-  instead of raising `FileNotFoundError`.
-- `load_newsletter_config()` — when no `hugo.toml` exists, default
-  `email_only = True` automatically.
-- `save_hugo_patr_params()` — settings like `name` and `email_only` currently
-  write into `hugo.toml`; without one, they should fall back to
-  `~/.config/patr/config.toml`.
-- `patr install` — skip Hugo layout/asset copying and `hugo.toml` setup when
-  the user opts into email-only mode.
-- Routes that use `hugo_config` for `baseURL`, Hugo build, web preview etc.
-  must handle an empty config gracefully (most already use `.get()`).
-- README prerequisites — Hugo and Git should be listed as optional,
-  required only for Hugo-based mode.
-
-Together with git-free mode above, this would make `uv tool install patr` +
-`patr serve --repo /some/dir` sufficient for a fully self-contained
-email-only newsletter workflow.
+- `load_hugo_config()` — returns `{}` when `hugo.toml` is absent.
+- `load_newsletter_config()` — defaults `email_only = True` automatically in
+  hugo-free mode.
+- `save_hugo_patr_params()` — falls back to `patr.toml` in `REPO_ROOT` when
+  no `hugo.toml` exists.
+- `patr install` — prints a friendly message and exits early in hugo-free mode.
+- `CONTENT_DIR` — set to `REPO_ROOT` directly (no `content/newsletter/`
+  subdirectory).
+- `get_editions()` — picks up both page bundles (`slug/index.md`) and flat
+  `.md` files in hugo-free mode. Hugo mode is bundles only.
+- `load_edition()` — falls back to `slug.md` when no bundle exists in
+  hugo-free mode.
+- `edition_dir_for(f)` — resolves image directory: `f.parent` for bundles,
+  `f.with_suffix('')` (sibling dir) for flat files.
+- `/preview/<slug>/web` — returns 501 in hugo-free mode.
+- `/preview/<slug>/email` — omits "View in browser" link in hugo-free mode.
+- Flat-file warning in `/api/editions` — only shown in Hugo mode (flat files
+  are valid editions in hugo-free mode).
+- Images for flat file editions — stored in a sibling `slug/` directory,
+  served via the existing `/newsletter/<slug>/<filename>` route.
