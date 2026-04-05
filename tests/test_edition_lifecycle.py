@@ -69,6 +69,18 @@ def test_editions_no_warning_when_only_bundles(client, repo) -> None:
     assert d["warnings"] == []
 
 
+# preview_web — hugo-free mode
+
+
+def test_preview_web_returns_501_in_hugo_free(client, repo) -> None:
+    """Web preview must return 501 when no hugo.toml is present."""
+    bundle = state.CONTENT_DIR / "my-post"
+    bundle.mkdir()
+    (bundle / "index.md").write_text("---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n")
+    r = client.get("/preview/my-post/web")
+    assert r.status_code == 501
+
+
 # New edition creation
 
 

@@ -21,8 +21,9 @@ from patr.config import hugo_mode, load_newsletter_config
 def cmd_install(args) -> None:
     repo = Path(args.repo).resolve()
     state.REPO_ROOT = repo
-    if not (repo / "hugo.toml").exists() and not (repo / "config.toml").exists():
-        print(f"Error: {repo} doesn't look like a Hugo site (no hugo.toml found).")
+    if not hugo_mode():
+        print("Hugo-free mode: no installation needed.")
+        print(f"Run: patr serve --repo {repo}")
         return
 
     # Copy layouts

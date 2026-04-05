@@ -154,7 +154,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
           <button className={`btn btn-toggle${editorMode === 'write' ? ' active' : ''}`} onClick={() => setEditorMode('write')}>Write</button>
           <button className={`btn btn-toggle${editorMode === 'split' ? ' active' : ''}`} onClick={() => setEditorMode('split')}>Split</button>
           <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'email' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('email') }}>Preview Email</button>
-          <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'web' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('web') }}>Preview Web</button>
+          {!emailOnly && <button className={`btn btn-toggle${editorMode === 'preview' && viewMode === 'web' ? ' active' : ''}`} onClick={() => { setEditorMode('preview'); setViewMode('web') }}>Preview Web</button>}
         </>}
         <button className="btn btn-theme" onClick={onToggleFocus} title={focusMode ? 'Exit focus mode (Esc)' : 'Focus mode (F)'}>
           {focusMode ? '⊠' : '⛶'}
@@ -184,7 +184,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
             <div className={editorMode === 'split' ? 'split-preview' : 'full-preview'}>
               {editorMode === 'split' && (
                 <div className="split-preview-bar">
-                  <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                  {!emailOnly && <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />}
                   <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setPreviewKey(k => k + 1)}>↺ Refresh</button>
                 </div>
               )}

@@ -38,6 +38,7 @@ from patr.auth import (
 )
 from patr.config import (
     build_hugo,
+    hugo_mode,
     load_hugo_config,
     load_newsletter_config,
     save_hugo_patr_params,
@@ -370,6 +371,9 @@ def preview_email_pdf(slug):
 
 @app.route("/preview/<slug>/web")
 def preview_web(slug):
+    """Render Hugo web preview. Returns 501 in hugo-free mode."""
+    if not hugo_mode():
+        return "Web preview is not available in hugo-free mode.", 501
     _, post = load_edition(slug)
     if post is None:
         return "Not found", 404
