@@ -1,5 +1,6 @@
 """Tests for send_all draft guard and test_send behaviour."""
 
+import json
 import textwrap
 from unittest.mock import MagicMock, patch
 
@@ -55,6 +56,59 @@ def test_send_all_non_draft_passes_draft_check(client, repo) -> None:
     # Will fail further in (no sheet_id configured), but must not fail on draft check
     r = client.post("/api/send/my-ed")
     assert "draft" not in (r.get_json().get("error") or "").lower()
+
+
+def _parse_sse(data: bytes) -> list[dict]:
+    """Parse SSE response body into a list of event dicts."""
+    events = []
+    for chunk in data.decode().split("\n\n"):
+        chunk = chunk.strip()
+        if chunk.startswith("data: "):
+            events.append(json.loads(chunk[6:]))
+    return events
+
+
+def test_send_all_streams_sse_on_success(client, repo) -> None:
+    """A successful send_all returns a text/event-stream with progress + done events."""
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email"),
+        patch("patr.server.log_sent"),
+        patch(
+            "patr.server.fetch_contacts",
+            return_value=[{"name": "Alice", "email": "alice@example.com"}],
+        ),
+        patch("patr.server.get_already_sent", return_value=set()),
+        patch(
+            "patr.server.load_newsletter_config",
+            return_value={"name": "My Letter", "sheet_id": "sheet123"},
+        ),
+        patch(
+            "patr.server.load_hugo_config",
+            return_value={"baseURL": "https://real-newsletter.com"},
+        ),
+        patch("patr.server.time") as mock_time,
+    ):
+        mock_time.sleep = MagicMock()
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com", "name": "Me"
+        }
+        r = client.post("/api/send/my-ed")
+
+    assert r.status_code == 200
+    assert "text/event-stream" in r.content_type
+    events = _parse_sse(r.data)
+    progress = [e for e in events if e["type"] == "progress"]
+    done = next(e for e in events if e["type"] == "done")
+    assert len(progress) == 1
+    assert progress[0]["sent"] == 1
+    assert progress[0]["total"] == 1
+    assert done["sent"] == 1
+    assert done["failed"] == []
 
 
 def test_send_all_without_base_url_returns_400(client, repo) -> None:

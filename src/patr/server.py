@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -17,11 +18,13 @@ import yaml
 from bs4 import BeautifulSoup
 from flask import (
     Flask,
+    Response,
     jsonify,
     redirect,
     render_template,
     request,
     send_from_directory,
+    stream_with_context,
 )
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -669,6 +672,15 @@ def test_send(slug):
 
 @app.route("/api/send/<slug>", methods=["POST"])
 def send_all(slug):
+    """Send edition to all contacts, streaming progress as Server-Sent Events.
+
+    Pre-flight validation (draft check, baseURL, sheet_id, auth, contacts)
+    returns JSON errors with appropriate status codes. Once validation passes,
+    the response switches to text/event-stream and yields one SSE event per
+    contact: {"type": "progress", "sent": N, "total": N, "name": "..."} for
+    successes, {"type": "error", "email": "...", "error": "..."} for failures,
+    and a final {"type": "done", "sent": N, "failed": [...], "skipped": N}.
+    """
     _, post = load_edition(slug)
     if post is None:
         return jsonify({"error": "Not found"}), 404
@@ -690,8 +702,6 @@ def send_all(slug):
             ),
             400,
         )
-    # FIXME: One hug try except block is hard to debug? Should we split into
-    # multiple steps with separate error handling and messages?
     try:
         creds = get_auth()
         gmail = build("gmail", "v1", credentials=creds)
@@ -710,10 +720,17 @@ def send_all(slug):
                 jsonify({"error": "Already sent to all contacts for this edition"}),
                 400,
             )
-        subject = f"{post['title']} — {newsletter_name}"
-        footer_md = load_footer()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    subject = f"{post['title']} — {newsletter_name}"
+    footer_md = load_footer()
+    edition_dir = state.CONTENT_DIR / slug
+    total = len(pending)
+    skipped = len(contacts) - total
+
+    def generate():
         sent, failed = 0, []
-        edition_dir = state.CONTENT_DIR / slug
         for contact in pending:
             try:
                 html = build_email_html(
@@ -732,27 +749,18 @@ def send_all(slug):
                     subject,
                     html,
                 )
-                # log_sent is called after send_email. If log_sent fails here,
+                # log_sent is called immediately after send_email. If it fails,
                 # the email was sent but not recorded — re-running would send again.
                 log_sent(sheet_id, creds, contact["email"], slug)
                 sent += 1
-                # FIXME: Can we send a server-sent event here to update the UI
-                # in real time instead of waiting until the end? Would require
-                # some refactoring. For now, just a short sleep to avoid
-                # hitting Gmail rate limits.
+                yield f"data: {json.dumps({'type': 'progress', 'sent': sent, 'total': total, 'name': contact['name']})}\n\n"
                 time.sleep(0.9)
             except Exception as e:
                 failed.append({"email": contact["email"], "error": str(e)})
-        return jsonify(
-            {
-                "ok": True,
-                "sent": sent,
-                "failed": failed,
-                "skipped": len(contacts) - len(pending),
-            }
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+                yield f"data: {json.dumps({'type': 'error', 'email': contact['email'], 'error': str(e)})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'sent': sent, 'failed': failed, 'skipped': skipped})}\n\n"
+
+    return Response(stream_with_context(generate()), content_type="text/event-stream")
 
 
 @app.route("/<path:filename>")

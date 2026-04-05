@@ -199,9 +199,31 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
           onClose={() => setShowConfirm(false)}
           onConfirm={() => {
             setShowConfirm(false)
+            setStatus({ cls: 'ok', text: 'Sending…' })
             fetch(`/api/send/${edition.slug}`, { method: 'POST' })
-              .then(r => r.json())
-              .then(onSent)
+              .then(async r => {
+                if (!r.ok) { onSent(await r.json()); return }
+                const reader = r.body.getReader()
+                const decoder = new TextDecoder()
+                let buffer = ''
+                const read = async () => {
+                  const { done, value } = await reader.read()
+                  if (done) return
+                  buffer += decoder.decode(value, { stream: true })
+                  const parts = buffer.split('\n\n')
+                  buffer = parts.pop()
+                  for (const part of parts) {
+                    if (!part.startsWith('data: ')) continue
+                    const event = JSON.parse(part.slice(6))
+                    if (event.type === 'progress')
+                      setStatus({ cls: 'ok', text: `Sending… ${event.sent} / ${event.total}` })
+                    else if (event.type === 'done')
+                      onSent({ ok: true, sent: event.sent, failed: event.failed, skipped: event.skipped })
+                  }
+                  return read()
+                }
+                return read()
+              })
           }}
         />
       )}
