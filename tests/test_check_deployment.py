@@ -24,7 +24,7 @@ def client(repo):
         yield c
 
 
-def make_edition(repo, slug):
+def make_edition(repo, slug) -> None:
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
     (d / "index.md").write_text(
@@ -52,7 +52,7 @@ def git_run(uncommitted="", ahead=False):
 # baseURL not configured
 
 
-def test_no_base_url_returns_not_live(client, repo):
+def test_no_base_url_returns_not_live(client, repo) -> None:
     (repo / "hugo.toml").write_text("[params]\n")
     make_edition(repo, "my-ed")
     r = client.get("/api/check-deployment/my-ed")
@@ -62,7 +62,7 @@ def test_no_base_url_returns_not_live(client, repo):
     assert "reason" in d
 
 
-def test_example_com_base_url_returns_not_live(client, repo):
+def test_example_com_base_url_returns_not_live(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://example.com/"\n')
     make_edition(repo, "my-ed")
     r = client.get("/api/check-deployment/my-ed")
@@ -73,21 +73,23 @@ def test_example_com_base_url_returns_not_live(client, repo):
 # git status checks (no HTTP — baseURL present but we mock urlopen as unreachable)
 
 
-def test_uncommitted_changes_reported(client, repo):
+def test_uncommitted_changes_reported(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
-    with patch(
-        "subprocess.run",
-        git_run(uncommitted=" M content/newsletter/my-ed/index.md", ahead=False),
+    with (
+        patch(
+            "subprocess.run",
+            git_run(uncommitted=" M content/newsletter/my-ed/index.md", ahead=False),
+        ),
+        patch("urllib.request.urlopen", side_effect=Exception("offline")),
     ):
-        with patch("urllib.request.urlopen", side_effect=Exception("offline")):
-            r = client.get("/api/check-deployment/my-ed")
+        r = client.get("/api/check-deployment/my-ed")
     d = r.get_json()
     assert d["uncommitted"] is True
     assert d["live"] is False
 
 
-def test_no_uncommitted_changes(client, repo):
+def test_no_uncommitted_changes(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
     with patch("subprocess.run", git_run(uncommitted="")):
@@ -97,7 +99,7 @@ def test_no_uncommitted_changes(client, repo):
     assert d["uncommitted"] is False
 
 
-def test_unpushed_commits_reported(client, repo):
+def test_unpushed_commits_reported(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
     with patch("subprocess.run", git_run(ahead=True)):
@@ -107,7 +109,7 @@ def test_unpushed_commits_reported(client, repo):
     assert d["unpushed"] is True
 
 
-def test_no_unpushed_commits(client, repo):
+def test_no_unpushed_commits(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
     with patch("subprocess.run", git_run(ahead=False)):
@@ -120,7 +122,7 @@ def test_no_unpushed_commits(client, repo):
 # HTTP live check
 
 
-def test_live_url_reachable(client, repo):
+def test_live_url_reachable(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
     mock_resp = MagicMock()
@@ -133,19 +135,19 @@ def test_live_url_reachable(client, repo):
     assert "myblog.com" in d["url"]
 
 
-def test_live_url_unreachable(client, repo):
+def test_live_url_unreachable(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     make_edition(repo, "my-ed")
-    with patch("subprocess.run", git_run()):
-        with patch(
-            "urllib.request.urlopen", side_effect=Exception("connection refused")
-        ):
-            r = client.get("/api/check-deployment/my-ed")
+    with (
+        patch("subprocess.run", git_run()),
+        patch("urllib.request.urlopen", side_effect=Exception("connection refused")),
+    ):
+        r = client.get("/api/check-deployment/my-ed")
     d = r.get_json()
     assert d["live"] is False
 
 
-def test_check_deployment_404(client, repo):
+def test_check_deployment_404(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     r = client.get("/api/check-deployment/no-such-edition")
     assert r.status_code == 404

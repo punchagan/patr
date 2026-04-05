@@ -17,7 +17,7 @@ def fetch_contacts(sheet_id, creds):
     header = [h.strip().lower() for h in rows[0]]
     contacts = []
     for row in rows[1:]:
-        d = dict(zip(header, row + [""] * 4))
+        d = dict(zip(header, row + [""] * 4, strict=False))
         if (
             d.get("send", "").strip().lower() not in ("n", "no")
             and d.get("email", "").strip()
@@ -53,7 +53,7 @@ def get_already_sent(sheet_id, creds, slug):
     }
 
 
-def log_sent(sheet_id, creds, email, slug):
+def log_sent(sheet_id, creds, email, slug) -> None:
     """Append a row to the Sent Log tab."""
     service = build("sheets", "v4", credentials=creds)
     from datetime import datetime

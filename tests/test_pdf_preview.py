@@ -48,7 +48,7 @@ def _mock_playwright(pdf_bytes=b"%PDF-fake"):
     return mock_pw
 
 
-def test_pdf_endpoint_returns_pdf(client, edition):
+def test_pdf_endpoint_returns_pdf(client, edition) -> None:
     mock_pw = _mock_playwright(b"%PDF-fake")
     with patch("patr.server.sync_playwright", mock_pw):
         r = client.get("/preview/my-ed/email.pdf")
@@ -57,12 +57,12 @@ def test_pdf_endpoint_returns_pdf(client, edition):
     assert r.data == b"%PDF-fake"
 
 
-def test_pdf_endpoint_404_for_missing_edition(client, repo):
+def test_pdf_endpoint_404_for_missing_edition(client, repo) -> None:
     r = client.get("/preview/no-such-edition/email.pdf")
     assert r.status_code == 404
 
 
-def test_pdf_navigates_to_email_preview_url(client, edition):
+def test_pdf_navigates_to_email_preview_url(client, edition) -> None:
     """Playwright must load the email preview URL so images serve over HTTP."""
     mock_pw = _mock_playwright()
     with patch("patr.server.sync_playwright", mock_pw):
@@ -73,7 +73,7 @@ def test_pdf_navigates_to_email_preview_url(client, edition):
     assert url == "http://127.0.0.1:5000/preview/my-ed/email"
 
 
-def test_pdf_returns_501_when_no_browser(client, edition):
+def test_pdf_returns_501_when_no_browser(client, edition) -> None:
     """501 if no system browser is available."""
     mock_pw = MagicMock()
     mock_pw.return_value.__enter__.return_value.chromium.launch.side_effect = Exception(

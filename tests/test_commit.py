@@ -25,7 +25,7 @@ def client(repo):
         yield c
 
 
-def make_edition(repo, slug, title="Test Edition"):
+def make_edition(repo, slug, title="Test Edition") -> None:
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
     (d / "index.md").write_text(
@@ -58,12 +58,12 @@ STAGED = (1, "", "")  # returncode 1 = something staged
 NOTHING = (0, "", "")  # returncode 0 = nothing staged
 
 
-def test_commit_404_for_missing_edition(client):
+def test_commit_404_for_missing_edition(client) -> None:
     r = client.post("/api/edition/no-such/commit")
     assert r.status_code == 404
 
 
-def test_commit_nothing_staged_is_noop(client, repo):
+def test_commit_nothing_staged_is_noop(client, repo) -> None:
     make_edition(repo, "my-ed")
     with patch(
         "subprocess.run",
@@ -81,7 +81,7 @@ def test_commit_nothing_staged_is_noop(client, repo):
     assert not any("commit" in cmd for cmd in cmds)
 
 
-def test_commit_small_diff_with_wip_amends(client, repo):
+def test_commit_small_diff_with_wip_amends(client, repo) -> None:
     make_edition(repo, "my-ed")
     with patch(
         "subprocess.run",
@@ -102,7 +102,7 @@ def test_commit_small_diff_with_wip_amends(client, repo):
     assert not any(("commit" in cmd and "-m" in cmd) for cmd in cmds)
 
 
-def test_commit_large_diff_creates_new_commit(client, repo):
+def test_commit_large_diff_creates_new_commit(client, repo) -> None:
     make_edition(repo, "my-ed", title="My Edition")
     with patch(
         "subprocess.run",
@@ -123,7 +123,7 @@ def test_commit_large_diff_creates_new_commit(client, repo):
     assert any(("commit" in cmd and "wip: My Edition" in cmd) for cmd in cmds)
 
 
-def test_commit_non_wip_last_commit_creates_new_commit(client, repo):
+def test_commit_non_wip_last_commit_creates_new_commit(client, repo) -> None:
     make_edition(repo, "my-ed")
     with patch(
         "subprocess.run",

@@ -11,7 +11,7 @@ from patr import state
 
 
 @pytest.fixture(autouse=True)
-def isolate_patr_config(tmp_path, monkeypatch):
+def isolate_patr_config(tmp_path, monkeypatch) -> None:
     """Redirect CONFIG_DIR to a per-test temp directory."""
     config_dir = tmp_path / "patr_config"
     config_dir.mkdir()

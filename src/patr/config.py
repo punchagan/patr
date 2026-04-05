@@ -21,7 +21,7 @@ def load_newsletter_config():
     return config
 
 
-def save_hugo_patr_params(updates: dict):
+def save_hugo_patr_params(updates: dict) -> None:
     """Write [params.patr] keys into hugo.toml, preserving comments and formatting."""
     hugo_toml = state.REPO_ROOT / "hugo.toml"
     doc = tomlkit.parse(hugo_toml.read_text())

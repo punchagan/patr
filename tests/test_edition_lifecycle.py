@@ -31,7 +31,7 @@ def edition_file(repo, slug):
 # New edition creation
 
 
-def test_new_edition_creates_file(client, repo):
+def test_new_edition_creates_file(client, repo) -> None:
     r = client.post("/api/new-edition", json={"title": "My First Post"})
     assert r.status_code == 200
     d = r.get_json()
@@ -39,26 +39,26 @@ def test_new_edition_creates_file(client, repo):
     assert edition_file(repo, "my-first-post").exists()
 
 
-def test_new_edition_file_is_valid_yaml(client, repo):
+def test_new_edition_file_is_valid_yaml(client, repo) -> None:
     client.post("/api/new-edition", json={"title": "My First Post"})
     post = fm.load(edition_file(repo, "my-first-post"))
     assert post["title"] == "My First Post"
     assert post["draft"] is True
 
 
-def test_new_edition_title_with_quotes_is_valid_yaml(client, repo):
+def test_new_edition_title_with_quotes_is_valid_yaml(client, repo) -> None:
     client.post("/api/new-edition", json={"title": 'It\'s "complicated"'})
     post = fm.load(edition_file(repo, "it-s-complicated"))
     assert post["title"] == 'It\'s "complicated"'
 
 
-def test_new_edition_title_with_colon_is_valid_yaml(client, repo):
+def test_new_edition_title_with_colon_is_valid_yaml(client, repo) -> None:
     client.post("/api/new-edition", json={"title": "Part 1: The Beginning"})
     post = fm.load(edition_file(repo, "part-1-the-beginning"))
     assert post["title"] == "Part 1: The Beginning"
 
 
-def test_new_edition_duplicate_slug_returns_400(client, repo):
+def test_new_edition_duplicate_slug_returns_400(client, repo) -> None:
     client.post("/api/new-edition", json={"title": "My Post"})
     r = client.post("/api/new-edition", json={"title": "My Post"})
     assert r.status_code == 400
@@ -67,7 +67,7 @@ def test_new_edition_duplicate_slug_returns_400(client, repo):
     assert post["title"] == "My Post"
 
 
-def test_new_edition_empty_title_returns_400(client):
+def test_new_edition_empty_title_returns_400(client) -> None:
     r = client.post("/api/new-edition", json={"title": ""})
     assert r.status_code == 400
 
@@ -95,19 +95,19 @@ def edition(repo):
     return d
 
 
-def test_save_title_with_quotes(client, edition):
+def test_save_title_with_quotes(client, edition) -> None:
     client.post("/api/edition/test-ed/content", json={"title": 'He said "hello"'})
     post = fm.load(edition / "index.md")
     assert post["title"] == 'He said "hello"'
 
 
-def test_save_title_with_colon(client, edition):
+def test_save_title_with_colon(client, edition) -> None:
     client.post("/api/edition/test-ed/content", json={"title": "Chapter 1: Start"})
     post = fm.load(edition / "index.md")
     assert post["title"] == "Chapter 1: Start"
 
 
-def test_save_body_only_preserves_title_and_intro(client, edition):
+def test_save_body_only_preserves_title_and_intro(client, edition) -> None:
     client.post("/api/edition/test-ed/content", json={"body": "New body."})
     post = fm.load(edition / "index.md")
     assert post["title"] == "Original Title"
@@ -115,7 +115,7 @@ def test_save_body_only_preserves_title_and_intro(client, edition):
     assert "New body." in post.content
 
 
-def test_save_body_with_yaml_fence_survives(client, edition):
+def test_save_body_with_yaml_fence_survives(client, edition) -> None:
     # A horizontal rule (---) in the body must not corrupt the frontmatter
     body = "Intro paragraph.\n\n---\n\nAfter the rule."
     client.post("/api/edition/test-ed/content", json={"body": body})
@@ -127,20 +127,20 @@ def test_save_body_with_yaml_fence_survives(client, edition):
 # Content save: dangerous inputs
 
 
-def test_save_empty_title_does_not_wipe_title(client, edition):
+def test_save_empty_title_does_not_wipe_title(client, edition) -> None:
     client.post("/api/edition/test-ed/content", json={"title": ""})
     post = fm.load(edition / "index.md")
     assert post["title"] == "Original Title"
 
 
-def test_save_null_intro_does_not_crash(client, edition):
+def test_save_null_intro_does_not_crash(client, edition) -> None:
     r = client.post("/api/edition/test-ed/content", json={"intro": None})
     assert r.status_code == 200
     post = fm.load(edition / "index.md")
     assert "intro" not in post.metadata  # null clears the intro
 
 
-def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition):
+def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition) -> None:
     import io
 
     data = {"file": (io.BytesIO(b"data"), "../escape.jpg")}
@@ -161,20 +161,20 @@ def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition):
 # Unicode round-trips
 
 
-def test_unicode_title_round_trips(client, repo):
+def test_unicode_title_round_trips(client, repo) -> None:
     client.post("/api/new-edition", json={"title": "पत्र — Issue 1 🎉"})
     post = fm.load(edition_file(repo, "issue-1"))
     assert post["title"] == "पत्र — Issue 1 🎉"
 
 
-def test_unicode_body_round_trips(client, edition):
+def test_unicode_body_round_trips(client, edition) -> None:
     body = "Héllo wörld. 你好。🌍"
     client.post("/api/edition/test-ed/content", json={"body": body})
     post = fm.load(edition / "index.md")
     assert body in post.content
 
 
-def test_unicode_intro_round_trips(client, edition):
+def test_unicode_intro_round_trips(client, edition) -> None:
     intro = "Bonjour à tous. Это тест. 🙏"
     client.post("/api/edition/test-ed/content", json={"intro": intro})
     r = client.get("/api/edition/test-ed/content")
@@ -184,7 +184,7 @@ def test_unicode_intro_round_trips(client, edition):
 # Toggle draft edge cases
 
 
-def test_toggle_draft_when_no_draft_field(client, repo):
+def test_toggle_draft_when_no_draft_field(client, repo) -> None:
     d = repo / "content" / "newsletter" / "no-draft"
     d.mkdir()
     (d / "index.md").write_text(

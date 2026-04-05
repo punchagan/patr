@@ -25,7 +25,7 @@ def client(repo):
         yield c
 
 
-def make_edition(repo, slug, draft=False):
+def make_edition(repo, slug, draft=False) -> None:
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
     (d / "index.md").write_text(
@@ -56,7 +56,7 @@ def make_run(responses):
 # Normal happy path — all three git commands run
 
 
-def test_publish_runs_add_commit_push(client, repo):
+def test_publish_runs_add_commit_push(client, repo) -> None:
     make_edition(repo, "my-ed")
     ok = (0, "", "")
     with patch("subprocess.run", side_effect=make_run([ok, ok, ok])) as mock_run:
@@ -71,7 +71,7 @@ def test_publish_runs_add_commit_push(client, repo):
 # Bug: when commit says "nothing to commit", push is skipped
 
 
-def test_publish_still_pushes_when_nothing_to_commit(client, repo):
+def test_publish_still_pushes_when_nothing_to_commit(client, repo) -> None:
     """Regression: retry after a failed push must still run git push."""
     make_edition(repo, "my-ed")
     nothing_to_commit = (1, "nothing to commit, working tree clean", "")

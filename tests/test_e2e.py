@@ -147,7 +147,7 @@ def screenshot_edition(repo, context, base_url):
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 
-def test_screenshot(screenshot_edition, context, base_url):
+def test_screenshot(screenshot_edition, context, base_url) -> None:
     """Capture a screenshot of the editor for the README."""
     p = context.new_page()
     p.set_viewport_size({"width": 1280, "height": 800})
@@ -164,7 +164,7 @@ def test_screenshot(screenshot_edition, context, base_url):
     assert out.exists()
 
 
-def test_screenshot_email_preview(screenshot_edition, context, base_url):
+def test_screenshot_email_preview(screenshot_edition, context, base_url) -> None:
     """Capture a screenshot of the email preview for the README.
 
     Depends on test_screenshot having run first (uses editor.png as the
@@ -188,7 +188,7 @@ def test_screenshot_email_preview(screenshot_edition, context, base_url):
     assert out.exists()
 
 
-def test_pdf_single_page(context, base_url):
+def test_pdf_single_page(context, base_url) -> None:
     """PDF export must always fit on a single page, even with large images."""
     import re
     import shutil
@@ -227,26 +227,26 @@ def test_pdf_single_page(context, base_url):
     assert pages == 1, f"Expected 1 page PDF, got {pages}"
 
 
-def test_app_loads(page):
+def test_app_loads(page) -> None:
     assert page.locator(".sidebar").is_visible()
     assert page.locator(".main").is_visible()
     assert page.locator(".empty-state").is_visible()
 
 
-def test_create_edition(page):
+def test_create_edition(page) -> None:
     page.locator(".sidebar-header button", has_text="+").click()
     page.locator("input[placeholder='e.g. Spring Edition']").fill("My E2E Edition")
     page.locator("button.btn-primary", has_text="Create").click()
     page.wait_for_selector(".edition-item:has-text('My E2E Edition')")
 
 
-def test_edition_select_shows_editor(page, edition):
+def test_edition_select_shows_editor(page, edition) -> None:
     assert page.locator(".editor-title-input").is_visible()
     assert page.locator(".cm-content").is_visible()
     assert page.locator(".editor-toolbar").is_visible()
 
 
-def test_autosave(page, edition, base_url):
+def test_autosave(page, edition, base_url) -> None:
     editor = page.locator(".cm-content")
     editor.click()
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
@@ -263,7 +263,7 @@ def test_autosave(page, edition, base_url):
     assert "Hello autosave" in content["body"]
 
 
-def test_toolbar_bold(page, edition):
+def test_toolbar_bold(page, edition) -> None:
     page.locator(".cm-content").click()
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     page.locator(".editor-toolbar-btn", has_text="B").click()
@@ -273,7 +273,7 @@ def test_toolbar_bold(page, edition):
     )
 
 
-def test_toolbar_italic(page, edition):
+def test_toolbar_italic(page, edition) -> None:
     page.locator(".cm-content").click()
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     page.locator(".editor-toolbar-btn em", has_text="I").click()
@@ -282,19 +282,19 @@ def test_toolbar_italic(page, edition):
     )
 
 
-def test_mode_switch_split(page, edition):
+def test_mode_switch_split(page, edition) -> None:
     page.locator("button.btn-toggle", has_text="Split").click()
     page.wait_for_selector(".split-preview")
     assert page.locator(".editor-pane").is_visible()
 
 
-def test_mode_switch_preview_email(page, edition):
+def test_mode_switch_preview_email(page, edition) -> None:
     page.locator("button.btn-toggle", has_text="Preview Email").click()
     assert page.locator(".full-preview").is_visible()
     assert page.locator("a", has_text="Download PDF").is_visible()
 
 
-def test_focus_mode(page, edition):
+def test_focus_mode(page, edition) -> None:
     # Enter focus mode
     page.locator("button[title*='Focus mode']").click()
     assert not page.locator(".sidebar").is_visible()
@@ -306,7 +306,7 @@ def test_focus_mode(page, edition):
     assert page.locator(".sidebar").is_visible()
 
 
-def test_footer_editing(page):
+def test_footer_editing(page) -> None:
     page.locator(".edition-item.footer-item").click()
     page.wait_for_selector(".cm-content")
     assert page.locator(".cm-content").is_visible()
@@ -314,7 +314,7 @@ def test_footer_editing(page):
     assert not page.locator(".editor-title-input").is_visible()
 
 
-def test_mode_stored_in_hash(page, edition, base_url):
+def test_mode_stored_in_hash(page, edition, base_url) -> None:
     # Write mode: hash has no suffix
     assert page.evaluate("location.hash") == f"#{edition}"
 
@@ -335,7 +335,7 @@ def test_mode_stored_in_hash(page, edition, base_url):
     assert page.evaluate("location.hash") == f"#{edition}"
 
 
-def test_hash_restores_mode(context, edition, base_url):
+def test_hash_restores_mode(context, edition, base_url) -> None:
     # Use fresh pages so React initializes from the hash (not a hash-change on existing page)
     p = context.new_page()
     try:
@@ -358,12 +358,12 @@ def test_hash_restores_mode(context, edition, base_url):
 # ── Conflict detection ─────────────────────────────────────────────────────────
 
 
-def _trigger_focus(page):
+def _trigger_focus(page) -> None:
     """Simulate re-focusing the window (triggers the conflict check)."""
     page.evaluate("window.dispatchEvent(new Event('focus'))")
 
 
-def test_conflict_clean_editor_silently_reloads(page, edition):
+def test_conflict_clean_editor_silently_reloads(page, edition) -> None:
     """If editor is clean and file changes on disk, re-focusing reloads silently."""
     # Wait for editor to load
     page.wait_for_selector(".cm-content")
@@ -382,7 +382,7 @@ def test_conflict_clean_editor_silently_reloads(page, edition):
     assert not page.locator(".conflict-modal").is_visible()
 
 
-def test_conflict_dirty_editor_shows_modal(page, edition):
+def test_conflict_dirty_editor_shows_modal(page, edition) -> None:
     """If editor has unsaved changes and file changes on disk, show conflict modal."""
     page.wait_for_selector(".cm-content")
     # Type something (makes editor dirty, triggers autosave)
@@ -410,7 +410,7 @@ def test_conflict_dirty_editor_shows_modal(page, edition):
     page.wait_for_selector(".conflict-modal", timeout=4000)
 
 
-def test_conflict_keep_mine(page, edition, base_url):
+def test_conflict_keep_mine(page, edition, base_url) -> None:
     """'Keep mine' dismisses modal and saves the editor content."""
     page.wait_for_selector(".cm-content")
     editor = page.locator(".cm-content")
@@ -444,7 +444,7 @@ def test_conflict_keep_mine(page, edition, base_url):
     assert "Keep-mine-content" in content["body"]
 
 
-def test_conflict_keep_theirs(page, edition):
+def test_conflict_keep_theirs(page, edition) -> None:
     """'Keep theirs' dismisses modal and reloads disk content into editor."""
     page.wait_for_selector(".cm-content")
     editor = page.locator(".cm-content")

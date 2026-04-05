@@ -28,7 +28,7 @@ def _make_args(repo, add_menu=False, weight="10"):
     return args
 
 
-def test_index_md_uses_configured_name(hugo_repo, monkeypatch):
+def test_index_md_uses_configured_name(hugo_repo, monkeypatch) -> None:
     (hugo_repo / "hugo.toml").write_text(
         'baseURL = "https://example.com"\n\n[params.patr]\n  name = "Leaf Dispatch"\n'
     )
@@ -39,7 +39,7 @@ def test_index_md_uses_configured_name(hugo_repo, monkeypatch):
     assert "Newsletter" not in text
 
 
-def test_index_md_falls_back_to_newsletter(hugo_repo, monkeypatch):
+def test_index_md_falls_back_to_newsletter(hugo_repo, monkeypatch) -> None:
     (hugo_repo / "hugo.toml").write_text('baseURL = "https://example.com"\n')
     monkeypatch.setattr("builtins.input", lambda _: "n")
     cmd_install(_make_args(hugo_repo))
@@ -47,7 +47,7 @@ def test_index_md_falls_back_to_newsletter(hugo_repo, monkeypatch):
     assert 'title: "Newsletter"' in text
 
 
-def test_menu_entry_uses_configured_name(hugo_repo, monkeypatch):
+def test_menu_entry_uses_configured_name(hugo_repo, monkeypatch) -> None:
     (hugo_repo / "hugo.toml").write_text(
         'baseURL = "https://example.com"\n\n[params.patr]\n  name = "Leaf Dispatch"\n'
     )
@@ -59,7 +59,7 @@ def test_menu_entry_uses_configured_name(hugo_repo, monkeypatch):
     assert 'url = "/newsletter/"' in text
 
 
-def test_menu_entry_falls_back_to_newsletter(hugo_repo, monkeypatch):
+def test_menu_entry_falls_back_to_newsletter(hugo_repo, monkeypatch) -> None:
     (hugo_repo / "hugo.toml").write_text('baseURL = "https://example.com"\n')
     inputs = iter(["y", "10"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))

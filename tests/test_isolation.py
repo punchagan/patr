@@ -31,7 +31,9 @@ def test_get_auth_raises_without_real_token() -> None:
         get_auth()
 
 
-def test_load_newsletter_config_reads_from_isolated_config_dir(tmp_path, monkeypatch):
+def test_load_newsletter_config_reads_from_isolated_config_dir(
+    tmp_path, monkeypatch
+) -> None:
     """load_newsletter_config() reads sheet_id from CONFIG_DIR, not ~/.config/patr."""
     from patr.config import load_newsletter_config
 

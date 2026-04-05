@@ -42,20 +42,20 @@ def footer(repo):
     return d
 
 
-def test_get_footer_content_returns_body(client, footer):
+def test_get_footer_content_returns_body(client, footer) -> None:
     r = client.get("/api/edition/footer/content")
     assert r.status_code == 200
     assert "Unsubscribe" in r.get_json()["body"]
 
 
-def test_save_footer_content(client, footer):
+def test_save_footer_content(client, footer) -> None:
     r = client.post("/api/edition/footer/content", json={"body": "New footer content."})
     assert r.status_code == 200
     assert r.get_json()["ok"] is True
     assert "New footer content." in (footer / "index.md").read_text()
 
 
-def test_save_footer_preserves_frontmatter(client, footer):
+def test_save_footer_preserves_frontmatter(client, footer) -> None:
     r = client.post("/api/edition/footer/content", json={"body": "Updated."})
     assert r.status_code == 200
     text = (footer / "index.md").read_text()
@@ -63,7 +63,7 @@ def test_save_footer_preserves_frontmatter(client, footer):
     assert "render: never" in text
 
 
-def test_save_footer_ignores_empty_title(client, footer):
+def test_save_footer_ignores_empty_title(client, footer) -> None:
     client.post("/api/edition/footer/content", json={"title": "", "body": "Hi."})
     text = (footer / "index.md").read_text()
     assert "title: Footer" in text

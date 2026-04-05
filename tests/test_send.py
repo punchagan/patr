@@ -24,7 +24,7 @@ def client(repo):
         yield c
 
 
-def make_edition(repo, slug, draft):
+def make_edition(repo, slug, draft) -> None:
     d = repo / "content" / "newsletter" / slug
     d.mkdir()
     (d / "index.md").write_text(
@@ -40,14 +40,14 @@ def make_edition(repo, slug, draft):
     )
 
 
-def test_send_all_draft_returns_400(client, repo):
+def test_send_all_draft_returns_400(client, repo) -> None:
     make_edition(repo, "my-ed", draft=True)
     r = client.post("/api/send/my-ed")
     assert r.status_code == 400
     assert "draft" in r.get_json()["error"].lower()
 
 
-def test_send_all_non_draft_passes_draft_check(client, repo):
+def test_send_all_non_draft_passes_draft_check(client, repo) -> None:
     make_edition(repo, "my-ed", draft=False)
     (repo / "hugo.toml").write_text(
         "[params]\n"
@@ -57,7 +57,7 @@ def test_send_all_non_draft_passes_draft_check(client, repo):
     assert "draft" not in (r.get_json().get("error") or "").lower()
 
 
-def test_send_all_without_base_url_returns_400(client, repo):
+def test_send_all_without_base_url_returns_400(client, repo) -> None:
     make_edition(repo, "my-ed", draft=False)
     (repo / "hugo.toml").write_text("[params]\n")  # no baseURL
     r = client.post("/api/send/my-ed")
@@ -68,7 +68,7 @@ def test_send_all_without_base_url_returns_400(client, repo):
 # test_send — no sheet_id configured
 
 
-def test_test_send_succeeds_without_sheet_id(client, repo):
+def test_test_send_succeeds_without_sheet_id(client, repo) -> None:
     """Test send must return ok=True even when sheet_id is not configured.
 
     Previously: log_sent(None, ...) raised, the outer except caught it,

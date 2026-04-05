@@ -18,7 +18,7 @@ from patr import state
 from patr.config import load_newsletter_config
 
 
-def cmd_install(args):
+def cmd_install(args) -> None:
     repo = Path(args.repo).resolve()
     state.REPO_ROOT = repo
     if not (repo / "hugo.toml").exists() and not (repo / "config.toml").exists():
@@ -111,7 +111,7 @@ def cmd_install(args):
     print("Open the ⚙ settings panel to set your newsletter name and contacts sheet.")
 
 
-def cmd_migrate(args):
+def cmd_migrate(args) -> None:
     repo = Path(args.repo).resolve()
     content_dir = repo / "content" / "newsletter"
     static_images_dir = repo / "static" / "images" / "newsletter"
@@ -169,7 +169,7 @@ def cmd_migrate(args):
         print("Run with --apply to move files.")
 
 
-def cmd_serve(args):
+def cmd_serve(args) -> None:
     state.REPO_ROOT = Path(args.repo).resolve()
     state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
 
@@ -208,7 +208,7 @@ def cmd_serve(args):
                     )
                 raise SystemExit(0)
 
-        def open_browser():
+        def open_browser() -> None:
             time.sleep(1)
             webbrowser.open(f"http://127.0.0.1:{args.port}")
 
@@ -218,7 +218,7 @@ def cmd_serve(args):
     app.run(host="127.0.0.1", port=args.port, debug=True)
 
 
-def main():
+def main() -> None:
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
     os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
