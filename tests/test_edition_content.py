@@ -437,6 +437,38 @@ def test_flat_toggle_draft(flat_client, flat_repo) -> None:
     assert "draft: false" in text
 
 
+def test_flat_save_unicode(flat_client, flat_repo) -> None:
+    """Unicode content must survive the atomic write to slug.md without corruption."""
+    body = "Hello 🌍 — café, naïve, 日本語"
+    r = flat_client.post("/api/edition/test-edition/content", json={"body": body})
+    assert r.status_code == 200
+    saved = (flat_repo / "test-edition.md").read_text()
+    assert body in saved
+    assert "title:" in saved
+
+
+def test_flat_upload_image_deduplicates_filename(flat_client, flat_repo) -> None:
+    """Uploading a duplicate filename into the sibling dir must produce a unique name."""
+    sibling = flat_repo / "test-edition"
+    sibling.mkdir()
+    (sibling / "photo.png").write_bytes(b"existing")
+    data = {"file": (io.BytesIO(b"new data"), "photo.png")}
+    r = flat_client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] != "photo.png"
+
+
+def test_flat_intro_with_blank_lines_round_trips(flat_client) -> None:
+    intro = "First paragraph.\n\nSecond paragraph."
+    flat_client.post("/api/edition/test-edition/content", json={"intro": intro})
+    r = flat_client.get("/api/edition/test-edition/content")
+    assert r.get_json()["intro"].strip() == intro
+
+
 def test_flat_upload_image_creates_sibling_dir(flat_client, flat_repo) -> None:
     """Image upload for a flat edition must create slug/ sibling dir and put image there."""
     data = {"file": (io.BytesIO(b"fake png data"), "photo.png")}
