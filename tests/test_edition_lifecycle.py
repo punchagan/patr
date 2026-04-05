@@ -46,6 +46,22 @@ def test_get_editions_picks_up_flat_md_in_hugo_free_mode(tmp_path) -> None:
     assert editions[0]["title"] == "My Edition"
 
 
+# load_edition — flat .md files in hugo-free mode
+
+
+def test_load_edition_finds_flat_md_in_hugo_free_mode(tmp_path) -> None:
+    """load_edition must find slug.md when no bundle exists in hugo-free mode."""
+    state.REPO_ROOT = tmp_path
+    state.CONTENT_DIR = tmp_path
+    (tmp_path / "my-edition.md").write_text(
+        "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
+    )
+    from patr.content import load_edition
+    f, post = load_edition("my-edition")
+    assert f is not None
+    assert post["title"] == "My Edition"
+
+
 # get_editions — missing CONTENT_DIR
 
 

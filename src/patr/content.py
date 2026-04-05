@@ -65,13 +65,23 @@ def get_editions():
 
 
 def load_edition(slug):
-    f = state.CONTENT_DIR / slug / "index.md"
-    if not f.exists():
+    """Load an edition by slug, returning (path, post) or (None, None) if not found.
+
+    Checks for a page bundle (slug/index.md) first, then a flat file (slug.md)
+    in hugo-free mode.
+    """
+    bundle = state.CONTENT_DIR / slug / "index.md"
+    flat = state.CONTENT_DIR / f"{slug}.md"
+    if bundle.exists():
+        f = bundle
+    elif not hugo_mode() and flat.exists():
+        f = flat
+    else:
         return None, None
     try:
         return f, frontmatter.load(f)
     except Exception as e:
-        raise ValueError(f"Frontmatter parse error in {slug}/index.md: {e}") from e
+        raise ValueError(f"Frontmatter parse error in {slug}: {e}") from e
 
 
 def load_footer():
