@@ -1,8 +1,10 @@
 import base64
 import hashlib
+import os
 import re
 import secrets
 import subprocess
+import tempfile
 import time
 import tomllib
 import urllib.request
@@ -206,6 +208,13 @@ _PatrYamlDumper.add_representer(str, _str_representer)
 
 @app.route("/api/edition/<slug>/content", methods=["POST"])
 def save_edition_content(slug):
+    """Save title, intro, and/or body for an edition.
+
+    Accepts an optional ``mtime`` field; if the file has been modified since
+    that timestamp a 409 is returned with the current body and mtime so the
+    caller can handle the conflict. Content is written atomically via a temp
+    file + os.replace() to avoid data loss if encoding fails mid-write.
+    """
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -224,7 +233,17 @@ def save_edition_content(slug):
     fm_yaml = yaml.dump(
         post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
     )
-    f.write_text(f"---\n{fm_yaml}---\n\n{body.strip()}\n")
+    content = f"---\n{fm_yaml}---\n\n{body.strip()}\n"
+    # Write to a temp file in the same directory, then atomically replace.
+    # This prevents data loss if the process dies or encoding fails mid-write.
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=f.parent, suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_file:
+            tmp_file.write(content)
+        os.replace(tmp_path, f)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
     return jsonify({"ok": True, "mtime": f.stat().st_mtime})
 
 

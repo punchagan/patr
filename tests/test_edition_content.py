@@ -130,6 +130,18 @@ def test_save_content_clears_intro(client, repo) -> None:
     assert "intro:" not in text
 
 
+def test_save_content_unicode(client, repo) -> None:
+    """Unicode characters (e.g. emoji, non-ASCII) must be saved without wiping the file."""
+    index = repo / "content" / "newsletter" / "test-edition" / "index.md"
+    original = index.read_text()
+    body = "Hello 🌍 — café, naïve, 日本語"
+    r = client.post("/api/edition/test-edition/content", json={"body": body})
+    assert r.status_code == 200
+    saved = index.read_text()
+    assert body in saved
+    assert "title:" in saved  # frontmatter preserved
+
+
 def test_save_content_404(client) -> None:
     r = client.post("/api/edition/missing/content", json={"body": "x"})
     assert r.status_code == 404
