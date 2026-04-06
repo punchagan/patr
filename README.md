@@ -93,7 +93,7 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 ### Write
 
-The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically, and a git commit is created after a short pause so you can always recover previous versions.
+The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically. On each save a timestamped backup is written to `~/.local/share/patr/backups/`, and when Git is available a commit is also created — so you can always recover previous versions.
 
 Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar, action bar, title, and intro fields all hide, leaving just the editor. Press `Esc` or **⊠** to exit.
 

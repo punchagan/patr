@@ -185,7 +185,8 @@ Body content here. Reference images relatively: ![alt](photo.jpg)
 
 The UI is a React app (built with Vite, output committed to `static/dist/`). The editor uses **CodeMirror** (`@uiw/react-codemirror`) with the `@codemirror/lang-markdown` extension — raw markdown editing with syntax highlighting, no lossy AST round-trip.
 
-- `EditorPanel` loads content via `GET /api/edition/<slug>/content`, auto-saves via `POST` with a 1-second debounce, and auto-commits via `POST /api/edition/<slug>/commit` with a 5-second debounce (amends previous `wip:` commit if diff < 500 bytes, else new commit)
+- `EditorPanel` loads content via `GET /api/edition/<slug>/content`, auto-saves via `POST` with a 1-second debounce, and auto-commits via `POST /api/edition/<slug>/commit` with a 5-second debounce (amends previous `wip:` commit if diff < 500 bytes **and** author date < 5 min, else new commit)
+- On every save, `write_backup()` writes a timestamped backup to `~/.local/share/patr/backups/<repo-slug>/<edition-slug>/` — always-on, regardless of git availability. Same amend-vs-new logic as git: overwrites the latest backup if the diff is small and it is recent, otherwise writes a new `<YYYYmmddTHHMMSS>.md` file. Backups accumulate indefinitely.
 - Body content is kept in a ref (not React state) to avoid per-keystroke re-renders; `initialBody` state is only set on load
 - Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored alongside the edition (bundle dir for page bundles, sibling `slug/` dir for flat files); inserted as relative markdown `![](filename)`
 - Toolbar buttons insert/wrap markdown syntax at the cursor (no WYSIWYG schema)
@@ -221,23 +222,11 @@ The UI is a React app (built with Vite, output committed to `static/dist/`). The
 
 Runs `hugo -D --baseURL=http://127.0.0.1:{PORT}/` and redirects iframe to the built output. Serves `public/` via catch-all Flask route. Serves `static/images/` at `/images/`.
 
-## Known gaps / things to build
+### Backups
 
-Features not yet in the UI that users currently have to do by editing files directly:
-
-- **Edition deletion** — no delete button; user must remove the folder manually
-- **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
-
-### Git-free mode
-
-Currently Patr requires Git for version history (auto-commit on save, amend
-small edits). The goal is to make Git optional — useful for email-only
-newsletters where there's no Hugo site or git repo involved.
-
-**Proposed design:** on every save, write a timestamped backup of `index.md`
-into `~/.local/share/patr/backups/` outside the repo, keyed by a
-human-readable slug derived from `REPO_ROOT` (path separators replaced with
-`-`) and the edition slug:
+On every save, `write_backup()` writes a timestamped backup to
+`~/.local/share/patr/backups/<repo-slug>/<edition-slug>/` — always-on,
+regardless of git availability:
 
 ```
 ~/.local/share/patr/backups/
@@ -248,25 +237,20 @@ human-readable slug derived from `REPO_ROOT` (path separators replaced with
       ...
 ```
 
-This keeps backups completely outside the working tree — no `.gitignore` entry
-needed, no clutter alongside content files, and no accidental commits.
+The repo slug is derived from `REPO_ROOT` with path separators replaced by
+`-`. Backups use the same amend-vs-new logic as git auto-commit: overwrite the
+latest if the diff is small (< `COMMIT_DIFF_THRESHOLD` bytes) and it is recent
+(< `COMMIT_AGE_THRESHOLD` seconds), otherwise write a new timestamped file.
+Backups accumulate indefinitely. When Git is also available, the existing
+auto-commit path runs alongside — backups and git commits are independent.
 
-Apply the same rotation logic as the current git auto-commit:
-- If the previous backup was made within the debounce window **and** the diff
-  is small (< `COMMIT_DIFF_THRESHOLD` bytes), overwrite it in place (mirrors
-  `--amend` behaviour).
-- Otherwise write a new timestamped file (mirrors a new `wip:` commit).
+## Known gaps / things to build
 
-Retention: keep the last N backups (e.g. 20), dropping older ones on each
-write so the directory doesn't grow unbounded.
+Features not yet in the UI that users currently have to do by editing files directly:
 
-When Git is available the existing auto-commit path stays active and no
-`.patr-backups/` files are written — backups are only a fallback for the
-git-free case.
-
-This pairs with the broader goal of making Hugo + Git optional prerequisites
-(see README) so Patr can be used as a pure email newsletter tool pointed at
-any plain directory.
+- **Edition deletion** — no delete button; user must remove the folder manually
+- **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
+- **Git-free mode** — git auto-commit still requires Git; the goal is to make Git a fully optional prerequisite so Patr works as a pure email newsletter tool pointed at any plain directory
 
 ### Hugo-free mode
 
