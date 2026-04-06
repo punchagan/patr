@@ -437,10 +437,20 @@ def publish_edition(slug):
 
 
 COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit
+COMMIT_AGE_THRESHOLD = 300  # seconds (5 min); older wip commits get a new commit
 
 
 @app.route("/api/edition/<slug>/commit", methods=["POST"])
 def commit_edition(slug):
+    """Auto-commit the edition after a save.
+
+    Amends the previous wip commit if all three conditions hold: the diff since
+    HEAD is small (< COMMIT_DIFF_THRESHOLD bytes), the last commit is a wip
+    commit, and its author date is recent (< COMMIT_AGE_THRESHOLD seconds).
+    Otherwise creates a new wip commit.  The author-date threshold ensures a
+    new checkpoint is created roughly every 5 minutes of wall-clock time,
+    giving recoverable history even during long uninterrupted writing sessions.
+    """
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -470,15 +480,25 @@ def commit_edition(slug):
     if staged.returncode == 0:
         return jsonify({"ok": True, "committed": False})
 
-    last_msg = subprocess.run(
-        ["git", "log", "-1", "--format=%s"],
-        cwd=state.REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
+    should_amend = False
+    if diff_size < COMMIT_DIFF_THRESHOLD:
+        log = (
+            subprocess.run(
+                ["git", "log", "-1", "--format=%at%n%s"],
+                cwd=state.REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            .stdout.strip()
+            .splitlines()
+        )
+        last_author_time = int(log[0]) if log and log[0].isdigit() else 0
+        last_msg = log[1] if len(log) > 1 else ""
+        age = time.time() - last_author_time
+        should_amend = last_msg.startswith("wip:") and age < COMMIT_AGE_THRESHOLD
 
-    if diff_size < COMMIT_DIFF_THRESHOLD and last_msg.startswith("wip:"):
+    if should_amend:
         result = subprocess.run(
             ["git", "commit", "--amend", "--no-edit"],
             cwd=state.REPO_ROOT,
