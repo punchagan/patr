@@ -10,7 +10,7 @@ import tempfile
 import time
 import tomllib
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from email.utils import formataddr
 from importlib.metadata import metadata as pkg_metadata
 from pathlib import Path
@@ -181,8 +181,6 @@ def api_editions():
 
 @app.route("/api/new-edition", methods=["POST"])
 def new_edition():
-    from datetime import date
-
     data = request.json or {}
     title = data.get("title", "").strip()
     if not title:

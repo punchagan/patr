@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, datetime
 
 from googleapiclient.discovery import build
 
@@ -56,8 +56,6 @@ def get_already_sent(sheet_id, creds, slug):
 def log_sent(sheet_id, creds, email, slug) -> None:
     """Append a row to the Sent Log tab."""
     service = build("sheets", "v4", credentials=creds)
-    from datetime import datetime
-
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     # Ensure the sheet tab exists
     meta = service.spreadsheets().get(spreadsheetId=sheet_id).execute()
