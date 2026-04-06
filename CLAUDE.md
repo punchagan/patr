@@ -185,8 +185,10 @@ Body content here. Reference images relatively: ![alt](photo.jpg)
 
 The UI is a React app (built with Vite, output committed to `static/dist/`). The editor uses **CodeMirror** (`@uiw/react-codemirror`) with the `@codemirror/lang-markdown` extension — raw markdown editing with syntax highlighting, no lossy AST round-trip.
 
-- `EditorPanel` loads content via `GET /api/edition/<slug>/content`, auto-saves via `POST` with a 1-second debounce, and auto-commits via `POST /api/edition/<slug>/commit` with a 5-second debounce (amends previous `wip:` commit if diff < 500 bytes **and** author date < 5 min, else new commit)
+- `EditorPanel` loads content via `GET /api/edition/<slug>/content`, auto-saves via `POST` with a 1-second debounce, and auto-commits via `POST /api/edition/<slug>/commit` with a 5-second debounce (amends previous `wip:` commit if diff < 500 bytes **and** author date < 5 min, else new commit; no-op when `git_mode()` is False)
 - On every save, `write_backup()` writes a timestamped backup to `~/.local/share/patr/backups/<repo-slug>/<edition-slug>/` — always-on, regardless of git availability. Same amend-vs-new logic as git: overwrites the latest backup if the diff is small and it is recent, otherwise writes a new `<YYYYmmddTHHMMSS>.md` file. Backups accumulate indefinitely.
+- **Publish button** — hidden when `git_available` is False in the `check-deployment` response
+- `check-deployment` response includes `git_available`; live URL check always runs; git `uncommitted`/`unpushed` fields are `null` when git is unavailable
 - Body content is kept in a ref (not React state) to avoid per-keystroke re-renders; `initialBody` state is only set on load
 - Images are uploaded via `POST /api/edition/<slug>/upload-image`; stored alongside the edition (bundle dir for page bundles, sibling `slug/` dir for flat files); inserted as relative markdown `![](filename)`
 - Toolbar buttons insert/wrap markdown syntax at the cursor (no WYSIWYG schema)
@@ -278,4 +280,3 @@ Features not yet in the UI that users currently have to do by editing files dire
 
 - **Edition deletion** — no delete button; user must remove the folder manually
 - **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
-- **Git-free mode** — git auto-commit still requires Git; the goal is to make Git a fully optional prerequisite so Patr works as a pure email newsletter tool pointed at any plain directory
