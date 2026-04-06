@@ -601,25 +601,25 @@ def check_deployment(slug):
             }
         )
 
-    if not git_mode():
-        return jsonify(
-            {"uncommitted": None, "unpushed": None, "reason": "git not available"}
+    # Git status (uncommitted/unpushed) — only available when git is present
+    git_available = git_mode()
+    uncommitted = None
+    unpushed = None
+    if git_available:
+        edition_dir = state.CONTENT_DIR / slug
+        git_status = subprocess.run(
+            ["git", "status", "--porcelain=v1", "-b", "--", str(edition_dir)],
+            cwd=state.REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
         )
+        lines = git_status.stdout.split("\n") if git_status.stdout else []
+        branch_line = lines[0] if lines else ""
+        unpushed = "[ahead" in branch_line
+        uncommitted = any(line.strip() for line in lines[1:])
 
-    edition_dir = state.CONTENT_DIR / slug
-
-    status = subprocess.run(
-        ["git", "status", "--porcelain=v1", "-b", "--", str(edition_dir)],
-        cwd=state.REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    lines = status.stdout.split("\n") if status.stdout else []
-    branch_line = lines[0] if lines else ""
-    unpushed = "[ahead" in branch_line
-    uncommitted = any(line.strip() for line in lines[1:])
-
+    # Live check — always done via URL fetch, independent of git
     url = f"{base_url}/newsletter/{slug}/"
     try:
         req = urllib.request.urlopen(url, timeout=5)
@@ -630,12 +630,19 @@ def check_deployment(slug):
                 "live": False,
                 "uncommitted": uncommitted,
                 "unpushed": unpushed,
+                "git_available": git_available,
                 "url": url,
                 "reason": str(e),
             }
         )
     return jsonify(
-        {"live": live, "uncommitted": uncommitted, "unpushed": unpushed, "url": url}
+        {
+            "live": live,
+            "uncommitted": uncommitted,
+            "unpushed": unpushed,
+            "git_available": git_available,
+            "url": url,
+        }
     )
 
 

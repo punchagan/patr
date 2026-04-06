@@ -6,6 +6,7 @@ import EditorPanel from './EditorPanel'
 function useDeployStatus(edition) {
   const [deploymentLive, setDeploymentLive] = useState(false)
   const [emailOnly, setEmailOnly] = useState(false)
+  const [gitAvailable, setGitAvailable] = useState(true)
   const [status, setStatus] = useState(null)
 
   useEffect(() => {
@@ -17,17 +18,19 @@ function useDeployStatus(edition) {
         if (d.email_only) {
           setEmailOnly(true)
           setDeploymentLive(false)
+          setGitAvailable(d.git_available ?? true)
           setStatus(null)
         } else {
           setEmailOnly(false)
           setDeploymentLive(d.live)
+          setGitAvailable(d.git_available ?? true)
           if (d.live) setStatus({ cls: 'ok', text: 'Live ✓' })
           else setStatus({ cls: 'warn', text: d.reason ? `Not live: ${d.reason}` : 'Not deployed yet' })
         }
       })
   }, [edition?.slug])
 
-  return { deploymentLive, emailOnly, status, setStatus, setDeploymentLive }
+  return { deploymentLive, emailOnly, gitAvailable, status, setStatus, setDeploymentLive }
 }
 
 function PreviewFrame({ slug, viewMode, previewKey }) {
@@ -83,7 +86,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
   const [previewKey, setPreviewKey] = useState(0)
   const [showTestSend, setShowTestSend] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const { deploymentLive, emailOnly, status, setStatus, setDeploymentLive } = useDeployStatus(edition)
+  const { deploymentLive, emailOnly, gitAvailable, status, setStatus, setDeploymentLive } = useDeployStatus(edition)
   const isInitialLoad = useRef(true)
 
   useEffect(() => {
@@ -206,7 +209,7 @@ export default function MainPanel({ edition, editingFooter, theme, hasSheetId, g
           <button className="btn btn-draft-toggle" onClick={toggleDraft}>
             {draft ? 'Mark as Live' : 'Mark as Draft'}
           </button>
-          {!emailOnly && <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>}
+          {!emailOnly && gitAvailable && <button className="btn" onClick={doPublish} disabled={draft}>Publish</button>}
           <button className="btn" onClick={() => setShowTestSend(true)} disabled={!gmailConnected} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : undefined}>Test Send</button>
           <button className="btn btn-danger" onClick={() => setShowConfirm(true)} disabled={!canSend} title={!gmailConnected ? 'Connect Gmail in ⚙ Settings to enable sending' : !hasSheetId ? 'Add a contacts sheet ID in ⚙ Settings to enable sending' : undefined} >Send All</button>
         </div>

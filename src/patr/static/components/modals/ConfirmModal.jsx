@@ -14,15 +14,16 @@ export default function ConfirmModal({ slug, title, onClose, onConfirm }) {
 
   const loading = count === null || missingImages === null || deployment === null
   const emailOnly = deployment?.email_only
+  const gitAvailable = deployment?.git_available ?? true
   const hasMissingImages = missingImages?.length > 0
-  const notLive = !emailOnly && deployment && !deployment.live
-  const hasUncommitted = !emailOnly && deployment?.uncommitted
-  const hasUnpushed = !emailOnly && deployment?.unpushed
+  const notLive = !emailOnly && gitAvailable && deployment && !deployment.live
+  const hasUncommitted = !emailOnly && gitAvailable && deployment?.uncommitted
+  const hasUnpushed = !emailOnly && gitAvailable && deployment?.unpushed
   const blocked = hasMissingImages || notLive || hasUncommitted || hasUnpushed
 
   const warnings = []
   if (deployment && !emailOnly) {
-    if (!deployment.live)
+    if (gitAvailable && !deployment.live)
       warnings.push(`The edition isn't live yet${deployment.url ? ` (checked ${deployment.url})` : ''} — publish it before sending so images load for recipients.`)
     if (deployment.uncommitted)
       warnings.push('You have changes that haven\'t been saved yet — wait a moment for auto-save to finish, then try again.')

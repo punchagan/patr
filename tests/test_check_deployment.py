@@ -151,3 +151,21 @@ def test_check_deployment_404(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     r = client.get("/api/check-deployment/no-such-edition")
     assert r.status_code == 404
+
+
+def test_live_check_runs_without_git(client, repo) -> None:
+    """When git is unavailable, live check still runs and git_available=False is returned."""
+    (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
+    make_edition(repo, "my-ed")
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    with (
+        patch("patr.server.git_mode", return_value=False),
+        patch("urllib.request.urlopen", return_value=mock_resp),
+    ):
+        r = client.get("/api/check-deployment/my-ed")
+    d = r.get_json()
+    assert d["live"] is True
+    assert d["git_available"] is False
+    assert d["uncommitted"] is None
+    assert d["unpushed"] is None
