@@ -244,14 +244,6 @@ latest if the diff is small (< `COMMIT_DIFF_THRESHOLD` bytes) and it is recent
 Backups accumulate indefinitely. When Git is also available, the existing
 auto-commit path runs alongside — backups and git commits are independent.
 
-## Known gaps / things to build
-
-Features not yet in the UI that users currently have to do by editing files directly:
-
-- **Edition deletion** — no delete button; user must remove the folder manually
-- **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
-- **Git-free mode** — git auto-commit still requires Git; the goal is to make Git a fully optional prerequisite so Patr works as a pure email newsletter tool pointed at any plain directory
-
 ### Hugo-free mode
 
 Patr can run against any plain directory — no `hugo.toml`, no Hugo installed.
@@ -279,3 +271,11 @@ Hugo is detected via `hugo_mode()` (checks for `hugo.toml` in `REPO_ROOT`).
   are valid editions in hugo-free mode).
 - Images for flat file editions — stored in a sibling `slug/` directory,
   served via the existing `/newsletter/<slug>/<filename>` route.
+
+## Known gaps / things to build
+
+Features not yet in the UI that users currently have to do by editing files directly:
+
+- **Edition deletion** — no delete button; user must remove the folder manually
+- **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
+- **Git-free mode** — git auto-commit still requires Git; the goal is to make Git a fully optional prerequisite so Patr works as a pure email newsletter tool pointed at any plain directory
