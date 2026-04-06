@@ -1,10 +1,19 @@
 # Patr
 
-A local web UI for writing and sending Hugo-based newsletters via Gmail.
+A newsletter tool that runs on your machine.
+
+Patr is for people who want to write a newsletter without signing up for yet
+another service. Your editions live on your machine as plain markdown files —
+no proprietary format, no database. Sending goes through your **Gmail**
+account, with contacts managed in a **Google Sheet** you own. Optionally pair
+with **Hugo** to publish a web archive, and **Git** for version history and
+deployment.
 
 The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/document").
 
-> **Note:** This project was largely written with [Claude Code](https://claude.ai/code). The code has been tested and verified, but use at your own discretion.
+> **Note:** This project was largely written with [Claude
+> Code](https://claude.ai/code). The code has been tested and verified, but use
+> at your own discretion.
 
 ## Screenshots
 
@@ -19,9 +28,9 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — to install Patr (manages Python automatically)
-- [Git](https://git-scm.com/downloads) — for auto-commit on save and publishing editions
 - A GCP project with Gmail API, Google Sheets API, and OAuth 2.0 Desktop credentials (see below)
-- [Hugo](https://gohugo.io/installation/) — optional; only needed if you want a web archive of your newsletter
+- [Git](https://git-scm.com/downloads) *(optional)* — enables auto-commit on save and publishing to a static site
+- [Hugo](https://gohugo.io/installation/) *(optional)* — only needed for a web archive of your newsletter
 
 ### GCP credentials setup
 
