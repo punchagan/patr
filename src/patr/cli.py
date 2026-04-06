@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import socket
+import subprocess
 import threading
 import time
 import urllib.request
@@ -15,7 +16,7 @@ except ImportError:
     winreg = None
 
 from patr import state
-from patr.config import hugo_mode, load_newsletter_config
+from patr.config import git_mode, hugo_mode, load_newsletter_config
 
 
 def cmd_install(args) -> None:
@@ -75,6 +76,16 @@ def cmd_install(args) -> None:
             '---\ntitle: "Footer"\n_build:\n  render: never\n  list: never\n---\n'
         )
         print(f"✓ Created {footer_dir / 'index.md'}")
+
+    # Offer to initialize a git repo if git is available but dir isn't one
+    if shutil.which("git") and not git_mode():
+        print(
+            "\nThis directory is not a git repo. Initialize one for"
+            " auto-commit and version history?"
+        )
+        if input("[y/N] ").strip().lower() == "y":
+            subprocess.run(["git", "init"], cwd=repo, check=False)
+            print("✓ Git repository initialized")
 
     # Ask about menu entry
     add_menu = input("\nAdd newsletter to site menu? [y/N] ").strip().lower()

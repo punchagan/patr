@@ -11,6 +11,19 @@ def hugo_mode() -> bool:
     return (state.REPO_ROOT / "hugo.toml").exists()
 
 
+def git_mode() -> bool:
+    """Return True if git is installed and REPO_ROOT is inside a git repository."""
+    if not shutil.which("git"):
+        return False
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=state.REPO_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
 def load_hugo_config() -> dict:
     """Load hugo.toml as a dict. Returns {} when hugo.toml is absent (hugo-free mode)."""
     hugo_toml = state.REPO_ROOT / "hugo.toml"

@@ -114,6 +114,8 @@ ignore = [
     "S106", # Possible hardcoded password
     "S107", # Possible hardcoded password
     "S110", # `try`-`except`-`pass` detected, consider logging the exception
+    "S112", # `try`-`except`-`continue` detected, consider logging the exception
+    "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "S113", # Probable use of requests call without timeout
     "S310", # Audit URL open for permitted schemes. Allowing use of `file:` or custom schemes is often unexpected.
     "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes

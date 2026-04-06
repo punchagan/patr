@@ -40,6 +40,7 @@ from patr.auth import (
 )
 from patr.config import (
     build_hugo,
+    git_mode,
     hugo_mode,
     load_hugo_config,
     load_newsletter_config,
@@ -363,7 +364,7 @@ def preview_email_pdf(slug):
             try:
                 browser = p.chromium.launch(channel=channel)
                 break
-            except Exception:  # noqa: S112
+            except Exception:
                 continue
         else:
             return "No usable browser found. Install Chromium or Chrome.", 501
@@ -416,6 +417,8 @@ def toggle_draft(slug):
 
 @app.route("/api/publish/<slug>", methods=["POST"])
 def publish_edition(slug):
+    if not git_mode():
+        return jsonify({"error": "Git not available — publishing requires git"}), 501
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -502,6 +505,8 @@ def commit_edition(slug):
     new checkpoint is created roughly every 5 minutes of wall-clock time,
     giving recoverable history even during long uninterrupted writing sessions.
     """
+    if not git_mode():
+        return jsonify({"ok": True, "committed": False})
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -594,6 +599,11 @@ def check_deployment(slug):
                 "unpushed": None,
                 "reason": "baseURL not configured in hugo.toml",
             }
+        )
+
+    if not git_mode():
+        return jsonify(
+            {"uncommitted": None, "unpushed": None, "reason": "git not available"}
         )
 
     edition_dir = state.CONTENT_DIR / slug

@@ -22,8 +22,9 @@ def repo(tmp_path):
 def client(repo):
     server.app.config["TESTING"] = True
     server.app.config["PORT"] = 5000
-    with server.app.test_client() as c:
-        yield c
+    with patch("patr.server.git_mode", return_value=True):
+        with server.app.test_client() as c:
+            yield c
 
 
 def make_edition(repo, slug, title="Test Edition") -> None:

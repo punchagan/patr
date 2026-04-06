@@ -1,10 +1,17 @@
 """Tests for config.py — save_hugo_patr_params, hugo_mode, load_hugo_config."""
 
 import tomllib
+from unittest.mock import patch
 
 import pytest
 from patr import state
-from patr.config import hugo_mode, load_hugo_config, load_newsletter_config, save_hugo_patr_params
+from patr.config import (
+    git_mode,
+    hugo_mode,
+    load_hugo_config,
+    load_newsletter_config,
+    save_hugo_patr_params,
+)
 
 
 @pytest.fixture
@@ -66,6 +73,33 @@ def test_saves_multiple_keys_at_once(hugo_toml) -> None:
 # hugo_mode and load_hugo_config
 
 
+# git_mode
+
+
+def test_git_mode_false_when_git_not_installed(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    with patch("shutil.which", return_value=None):
+        assert git_mode() is False
+
+
+def test_git_mode_false_when_not_a_git_repo(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    with patch("shutil.which", return_value="/usr/bin/git"):
+        assert git_mode() is False
+
+
+def test_git_mode_true_when_git_installed_and_repo(tmp_path, monkeypatch) -> None:
+    import subprocess
+
+    monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
+    subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
+    with patch("shutil.which", return_value="/usr/bin/git"):
+        assert git_mode() is True
+
+
+# hugo_mode and load_hugo_config
+
+
 def test_hugo_mode_false_without_hugo_toml(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     assert hugo_mode() is False
@@ -82,14 +116,18 @@ def test_load_hugo_config_returns_empty_when_absent(tmp_path, monkeypatch) -> No
     assert load_hugo_config() == {}
 
 
-def test_load_newsletter_config_email_only_default_in_hugo_free(tmp_path, monkeypatch) -> None:
+def test_load_newsletter_config_email_only_default_in_hugo_free(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(state, "CONFIG_DIR", tmp_path / "config")
     cfg = load_newsletter_config()
     assert cfg["email_only"] is True
 
 
-def test_load_newsletter_config_no_email_only_default_in_hugo_mode(tmp_path, monkeypatch) -> None:
+def test_load_newsletter_config_no_email_only_default_in_hugo_mode(
+    tmp_path, monkeypatch
+) -> None:
     (tmp_path / "hugo.toml").write_text("[params.patr]\n")
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(state, "CONFIG_DIR", tmp_path / "config")
@@ -97,7 +135,9 @@ def test_load_newsletter_config_no_email_only_default_in_hugo_mode(tmp_path, mon
     assert "email_only" not in cfg
 
 
-def test_load_newsletter_config_reads_patr_toml_in_hugo_free(tmp_path, monkeypatch) -> None:
+def test_load_newsletter_config_reads_patr_toml_in_hugo_free(
+    tmp_path, monkeypatch
+) -> None:
     (tmp_path / "patr.toml").write_text('name = "My NL"\n')
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(state, "CONFIG_DIR", tmp_path / "config")
@@ -106,14 +146,18 @@ def test_load_newsletter_config_reads_patr_toml_in_hugo_free(tmp_path, monkeypat
     assert cfg["email_only"] is True  # default still applies
 
 
-def test_save_hugo_patr_params_writes_patr_toml_in_hugo_free(tmp_path, monkeypatch) -> None:
+def test_save_hugo_patr_params_writes_patr_toml_in_hugo_free(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     save_hugo_patr_params({"name": "My NL"})
     assert (tmp_path / "patr.toml").exists()
     assert "My NL" in (tmp_path / "patr.toml").read_text()
 
 
-def test_save_hugo_patr_params_writes_booleans_correctly_in_hugo_free(tmp_path, monkeypatch) -> None:
+def test_save_hugo_patr_params_writes_booleans_correctly_in_hugo_free(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     save_hugo_patr_params({"email_only": True})
     with open(tmp_path / "patr.toml", "rb") as f:
@@ -121,7 +165,9 @@ def test_save_hugo_patr_params_writes_booleans_correctly_in_hugo_free(tmp_path, 
     assert data["email_only"] is True  # bool, not string "True"
 
 
-def test_load_newsletter_config_email_only_always_true_in_hugo_free(tmp_path, monkeypatch) -> None:
+def test_load_newsletter_config_email_only_always_true_in_hugo_free(
+    tmp_path, monkeypatch
+) -> None:
     """email_only is always True in hugo-free mode regardless of patr.toml."""
     (tmp_path / "patr.toml").write_text("email_only = false\n")
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
@@ -130,7 +176,9 @@ def test_load_newsletter_config_email_only_always_true_in_hugo_free(tmp_path, mo
     assert cfg["email_only"] is True
 
 
-def test_save_hugo_patr_params_preserves_existing_patr_toml(tmp_path, monkeypatch) -> None:
+def test_save_hugo_patr_params_preserves_existing_patr_toml(
+    tmp_path, monkeypatch
+) -> None:
     (tmp_path / "patr.toml").write_text('name = "Old"\n')
     monkeypatch.setattr(state, "REPO_ROOT", tmp_path)
     save_hugo_patr_params({"email_only": False})
