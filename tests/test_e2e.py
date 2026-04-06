@@ -138,7 +138,7 @@ def screenshot_edition(repo, context, base_url):
     slug = "april-2025"
     edition_dir = state.CONTENT_DIR / slug
     (edition_dir / "index.md").write_text(
-        "---\ntitle: Hello from Patr\ndate: 2025-04-01\ndraft: true\n---\n\n"
+        "---\ntitle: Hello from Patr\ndate: 2025-04-01\ndraft: true\nintro: |\n  A short personal note before the main content — good for context or a quick hello.\n---\n\n"
         + _SCREENSHOT_BODY
     )
     yield slug
