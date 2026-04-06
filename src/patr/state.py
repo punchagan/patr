@@ -5,6 +5,7 @@ DATA_DIR = PATR_ROOT / "data"  # src/patr/data/
 REPO_ROOT = Path.cwd()
 CONTENT_DIR = REPO_ROOT / "content" / "newsletter"
 CONFIG_DIR = Path.home() / ".config" / "patr"
+BACKUPS_DIR = Path.home() / ".local" / "share" / "patr" / "backups"
 CREDENTIALS_FILE = CONFIG_DIR / "credentials.json"
 TOKEN_FILE = CONFIG_DIR / "token.json"
 SENDER_EMAIL_FILE = CONFIG_DIR / "sender_email.txt"

@@ -1,4 +1,5 @@
 import base64
+import difflib
 import hashlib
 import json
 import os
@@ -9,6 +10,7 @@ import tempfile
 import time
 import tomllib
 import urllib.request
+from datetime import UTC, datetime
 from email.utils import formataddr
 from importlib.metadata import metadata as pkg_metadata
 from pathlib import Path
@@ -270,6 +272,7 @@ def save_edition_content(slug):
     except Exception:
         os.unlink(tmp_path)
         raise
+    write_backup(slug, content)
     return jsonify({"ok": True, "mtime": f.stat().st_mtime})
 
 
@@ -438,6 +441,54 @@ def publish_edition(slug):
 
 COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit
 COMMIT_AGE_THRESHOLD = 300  # seconds (5 min); older wip commits get a new commit
+
+
+def _repo_slug():
+    """Derive a filesystem-safe slug from REPO_ROOT for backup directory naming.
+
+    Strips the leading slash and replaces all remaining path separators with
+    hyphens, e.g. ``/home/user/my-newsletter`` → ``home-user-my-newsletter``.
+    """
+    return str(state.REPO_ROOT).lstrip("/").replace("/", "-")
+
+
+def write_backup(slug, content):
+    """Write a timestamped backup of edition content to BACKUPS_DIR.
+
+    Backs up to ``~/.local/share/patr/backups/<repo-slug>/<edition-slug>/``
+    as ``<YYYYmmddTHHMMSS>.md`` files.  Overwrites the most recent backup in
+    place when the diff is small (< COMMIT_DIFF_THRESHOLD bytes) and the
+    backup is recent (< COMMIT_AGE_THRESHOLD seconds), mirroring git amend
+    behaviour.  Otherwise writes a new timestamped file.  Backups accumulate
+    indefinitely — no rotation.
+    """
+    backup_dir = state.BACKUPS_DIR / _repo_slug() / slug
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    existing = sorted(backup_dir.glob("*.md"))
+    target = None
+
+    if existing:
+        latest = existing[-1]
+        try:
+            ts = datetime.strptime(latest.stem, "%Y%m%dT%H%M%S").replace(tzinfo=UTC)
+            age = (datetime.now(tz=UTC) - ts).total_seconds()
+            prev = latest.read_text(encoding="utf-8")
+            diff = "".join(
+                difflib.unified_diff(
+                    prev.splitlines(keepends=True),
+                    content.splitlines(keepends=True),
+                )
+            )
+            if age < COMMIT_AGE_THRESHOLD and len(diff) < COMMIT_DIFF_THRESHOLD:
+                target = latest
+        except ValueError:
+            pass  # unparseable filename; fall through to new file
+
+    if target is None:
+        target = backup_dir / f"{datetime.now(tz=UTC).strftime('%Y%m%dT%H%M%S')}.md"
+
+    target.write_text(content, encoding="utf-8")
 
 
 @app.route("/api/edition/<slug>/commit", methods=["POST"])
