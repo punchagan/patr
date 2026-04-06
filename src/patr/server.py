@@ -577,6 +577,100 @@ def commit_edition(slug):
     return jsonify({"ok": True, "committed": True})
 
 
+@app.route("/api/edition/<slug>/versions")
+def list_versions(slug):
+    """Return a list of saved versions for an edition.
+
+    In git mode, reads ``git log`` entries for the edition file (newest first).
+    Each entry has ``id`` (commit hash) and ``label`` (human-readable date).
+
+    In backup mode, lists timestamped ``.md`` files from BACKUPS_DIR (newest
+    first).  Each entry has ``id`` (timestamp stem) and ``label``.
+
+    Returns 404 if the edition does not exist.
+    """
+    f, _ = load_edition(slug)
+    if f is None:
+        return jsonify({"error": "Not found"}), 404
+
+    if git_mode():
+        result = subprocess.run(
+            ["git", "log", "--format=%H %at%n%s", "--", str(f)],
+            cwd=state.REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        versions = []
+        lines = [ln for ln in result.stdout.splitlines() if ln.strip()]
+        i = 0
+        while i < len(lines):
+            parts = lines[i].split(" ", 1)
+            if len(parts) == 2:
+                commit_hash, epoch = parts[0], parts[1].strip()
+                try:
+                    dt = datetime.fromtimestamp(int(epoch), tz=UTC)
+                    label = dt.strftime("%b %-d, %H:%M")
+                except (ValueError, OSError):
+                    label = epoch
+                versions.append({"id": commit_hash, "label": label})
+            i += 2  # skip subject line
+        return jsonify({"versions": versions})
+
+    # Backup mode
+    backup_dir = state.BACKUPS_DIR / _repo_slug() / slug
+    if not backup_dir.exists():
+        return jsonify({"versions": []})
+
+    versions = []
+    for path in sorted(backup_dir.glob("*.md"), reverse=True):
+        ts = path.stem
+        try:
+            dt = datetime.strptime(ts, "%Y%m%dT%H%M%S").replace(tzinfo=UTC)
+            label = dt.strftime("%b %-d, %H:%M")
+        except ValueError:
+            label = ts
+        versions.append({"id": ts, "label": label})
+    return jsonify({"versions": versions})
+
+
+@app.route("/api/edition/<slug>/versions/<version_id>")
+def get_version_content(slug, version_id):
+    """Return the content of a specific saved version.
+
+    In git mode, ``version_id`` is a commit hash; runs ``git show``.
+    In backup mode, ``version_id`` is a timestamp stem; reads the backup file.
+
+    Returns 404 if the edition or version does not exist.
+    """
+    f, _ = load_edition(slug)
+    if f is None:
+        return jsonify({"error": "Not found"}), 404
+
+    if git_mode():
+        # Determine the path relative to REPO_ROOT for git show
+        try:
+            rel = f.relative_to(state.REPO_ROOT)
+        except ValueError:
+            return jsonify({"error": "Cannot resolve path"}), 500
+        result = subprocess.run(
+            ["git", "show", f"{version_id}:{rel}"],
+            cwd=state.REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return jsonify({"error": "Version not found"}), 404
+        return jsonify({"content": result.stdout})
+
+    # Backup mode
+    backup_file = state.BACKUPS_DIR / _repo_slug() / slug / f"{version_id}.md"
+    if not backup_file.exists():
+        return jsonify({"error": "Version not found"}), 404
+    return jsonify({"content": backup_file.read_text(encoding="utf-8")})
+
+
 @app.route("/api/check-deployment/<slug>")
 def check_deployment(slug):
     f, post = load_edition(slug)

@@ -104,6 +104,8 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically. On each save a timestamped backup is written to `~/.local/share/patr/backups/`, and when Git is available a commit is also created — so you can always recover previous versions.
 
+Click **History** in the action bar to browse previous versions, compare them to the current content, and restore an earlier one if needed.
+
 Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar, action bar, title, and intro fields all hide, leaving just the editor. Press `Esc` or **⊠** to exit.
 
 #### Intro
@@ -153,7 +155,6 @@ These things currently require editing files directly outside the app:
 
 - **Deleting an edition** — delete the edition's folder (or `.md` file) from your content directory
 - **Changing an edition's date** — edit the `date:` field in the edition's `index.md` (or `.md` file)
-- **Version history** — backups and git commits are created automatically on every save, but there's no UI to browse, compare, or restore previous versions
 <!-- help-end -->
 
 ## Configuration

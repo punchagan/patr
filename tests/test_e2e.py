@@ -509,3 +509,90 @@ def test_conflict_keep_theirs(page, edition) -> None:
         "document.querySelector('.cm-content').textContent.includes('Disk theirs.')",
         timeout=3000,
     )
+
+
+# ── History modal ─────────────────────────────────────────────────────────────
+
+
+def test_history_button_opens_modal(page, edition) -> None:
+    """History button in action bar opens the history modal."""
+    page.wait_for_selector(".action-bar")
+    page.locator(".action-bar button", has_text="History").click()
+    page.wait_for_selector(".modal-history")
+    assert page.locator("h3", has_text="Version history").is_visible()
+    page.locator(".modal-history ~ .modal-overlay, .history-modal-overlay button.btn", has_text="Close").first.click()
+    page.wait_for_function("!document.querySelector('.modal-history')", timeout=3000)
+
+
+def test_history_shows_backup_versions(page, edition, base_url) -> None:
+    """After saving content, the history modal lists at least one backup version."""
+    # Type something and wait for it to be saved (creates a backup)
+    editor = page.locator(".cm-content")
+    editor.click()
+    page.wait_for_function("document.activeElement.classList.contains('cm-content')")
+    editor.press_sequentially("History test content")
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
+
+    page.locator(".action-bar button", has_text="History").click()
+    page.wait_for_selector(".modal-history")
+    # There should be at least one version in the list
+    page.wait_for_function(
+        "document.querySelectorAll('.history-item').length > 0",
+        timeout=3000,
+    )
+    assert page.locator(".history-item").count() >= 1
+    page.locator(".history-modal-overlay button.btn", has_text="Close").click()
+    page.wait_for_function("!document.querySelector('.modal-history')", timeout=3000)
+
+
+def test_history_restore(page, edition, base_url) -> None:
+    """Selecting a backup version and restoring it overwrites the editor content."""
+    # Write first version and wait for backup
+    editor = page.locator(".cm-content")
+    editor.click()
+    page.wait_for_function("document.activeElement.classList.contains('cm-content')")
+    editor.press_sequentially("Version one")
+    page.wait_for_function(
+        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        timeout=5000,
+    )
+
+    # Directly inject a backup with different content so the diff is meaningful
+    import time
+    from datetime import UTC, datetime, timedelta
+
+    backup_dir = (
+        state.BACKUPS_DIR
+        / str(state.REPO_ROOT).lstrip("/").replace("/", "-")
+        / edition
+    )
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    old_ts = (datetime.now(tz=UTC) - timedelta(seconds=700)).strftime("%Y%m%dT%H%M%S")
+    old_content = "---\ntitle: Restore Test\ndate: 2024-01-01\ndraft: true\n---\n\nOld restored content.\n"
+    (backup_dir / f"{old_ts}.md").write_text(old_content, encoding="utf-8")
+
+    page.locator(".action-bar button", has_text="History").click()
+    page.wait_for_selector(".modal-history")
+    # Wait for version list to populate
+    page.wait_for_function(
+        "document.querySelectorAll('.history-item').length > 0",
+        timeout=3000,
+    )
+    # Click the last (oldest) version in the list
+    page.locator(".history-item").last.click()
+    # Wait for diff to appear
+    page.wait_for_selector(".conflict-diff-side", timeout=3000)
+
+    # Click Restore this version → confirmation → Restore
+    page.locator(".modal-history button.btn-primary", has_text="Restore this version").click()
+    page.locator(".modal-history button.btn-primary", has_text="Restore").click()
+
+    # Modal should close and editor should contain restored content
+    page.wait_for_function("!document.querySelector('.modal-history')", timeout=3000)
+    page.wait_for_function(
+        "document.querySelector('.cm-content').textContent.includes('Old restored content.')",
+        timeout=4000,
+    )
