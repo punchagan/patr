@@ -854,7 +854,7 @@ def sent_log():
 @app.route("/api/test-send/<slug>", methods=["POST"])
 def test_send(slug):
     f, post = load_edition(slug)
-    if post is None:
+    if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
