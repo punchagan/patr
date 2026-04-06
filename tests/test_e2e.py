@@ -229,6 +229,39 @@ def test_pdf_single_page(context, base_url) -> None:
     assert pages == 1, f"Expected 1 page PDF, got {pages}"
 
 
+def test_publish_button_hidden_without_git(page, edition) -> None:
+    """Publish button should not appear when the repo is not a git repository."""
+    page.wait_for_selector(".action-bar")
+    assert not page.locator("button", has_text="Publish").is_visible()
+
+
+def test_publish_button_visible_with_git(repo, context, base_url) -> None:
+    """Publish button appears when the repo is a git repository."""
+    import subprocess
+
+    subprocess.run(["git", "init"], cwd=repo, capture_output=True, check=True)
+    try:
+        p = context.new_page()
+        p.goto(base_url)
+        p.wait_for_selector(".sidebar")
+        p.locator(".sidebar-header button", has_text="+").click()
+        p.locator("input[placeholder='e.g. Spring Edition']").fill("Git Mode Test")
+        p.locator("button.btn-primary", has_text="Create").click()
+        p.locator(".edition-item:has-text('Git Mode Test')").click()
+        p.wait_for_selector(".action-bar")
+        # Wait for check-deployment to resolve
+        p.wait_for_function(
+            "!document.querySelector('.status-msg.info')",
+            timeout=5000,
+        )
+        assert p.locator("button", has_text="Publish").is_visible()
+        p.close()
+    finally:
+        import shutil
+
+        shutil.rmtree(repo / ".git")
+
+
 def test_app_loads(page) -> None:
     assert page.locator(".sidebar").is_visible()
     assert page.locator(".main").is_visible()

@@ -583,10 +583,19 @@ def check_deployment(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
 
+    # Compute git_available once — used in all responses below
+    git_available = git_mode()
+
     newsletter_config = load_newsletter_config()
     if newsletter_config.get("email_only"):
         return jsonify(
-            {"email_only": True, "live": None, "uncommitted": None, "unpushed": None}
+            {
+                "email_only": True,
+                "live": None,
+                "uncommitted": None,
+                "unpushed": None,
+                "git_available": git_available,
+            }
         )
 
     hugo_config = load_hugo_config()
@@ -597,12 +606,10 @@ def check_deployment(slug):
                 "live": False,
                 "uncommitted": None,
                 "unpushed": None,
+                "git_available": git_available,
                 "reason": "baseURL not configured in hugo.toml",
             }
         )
-
-    # Git status (uncommitted/unpushed) — only available when git is present
-    git_available = git_mode()
     uncommitted = None
     unpushed = None
     if git_available:
