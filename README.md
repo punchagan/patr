@@ -153,6 +153,7 @@ These things currently require editing files directly outside the app:
 
 - **Deleting an edition** — delete the edition's folder (or `.md` file) from your content directory
 - **Changing an edition's date** — edit the `date:` field in the edition's `index.md` (or `.md` file)
+- **Version history** — backups and git commits are created automatically on every save, but there's no UI to browse, compare, or restore previous versions
 <!-- help-end -->
 
 ## Configuration

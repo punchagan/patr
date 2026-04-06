@@ -280,3 +280,4 @@ Features not yet in the UI that users currently have to do by editing files dire
 
 - **Edition deletion** — no delete button; user must remove the folder manually
 - **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
+- **Version history UI** — backups accumulate in `~/.local/share/patr/backups/` and git commits are created on save, but there's no UI to browse, compare, or restore previous versions
