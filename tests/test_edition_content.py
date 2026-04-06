@@ -413,7 +413,9 @@ def test_flat_get_content_returns_fields(flat_client) -> None:
 
 def test_flat_save_writes_to_flat_file(flat_client, flat_repo) -> None:
     """Save must write back to slug.md, not slug/index.md, and atomically."""
-    r = flat_client.post("/api/edition/test-edition/content", json={"body": "New body."})
+    r = flat_client.post(
+        "/api/edition/test-edition/content", json={"body": "New body."}
+    )
     assert r.status_code == 200
     assert r.get_json()["ok"] is True
     text = (flat_repo / "test-edition.md").read_text()

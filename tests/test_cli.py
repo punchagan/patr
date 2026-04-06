@@ -14,7 +14,7 @@ def serve_args(repo, port=5000):
 @pytest.fixture(autouse=True)
 def no_flask(monkeypatch):
     """Prevent Flask from actually starting."""
-    import patr.server as server
+    from patr import server
 
     monkeypatch.setattr(server.app, "run", lambda **kw: None)
 
@@ -28,7 +28,7 @@ def no_browser(monkeypatch):
 def test_cmd_serve_hugo_free_sets_content_dir_to_repo_root(tmp_path, monkeypatch):
     """In hugo-free mode, CONTENT_DIR should be REPO_ROOT directly."""
     cmd_serve(serve_args(tmp_path))
-    assert state.CONTENT_DIR == tmp_path
+    assert tmp_path == state.CONTENT_DIR
 
 
 def test_cmd_serve_hugo_mode_sets_content_dir_to_newsletter(tmp_path, monkeypatch):
@@ -36,7 +36,7 @@ def test_cmd_serve_hugo_mode_sets_content_dir_to_newsletter(tmp_path, monkeypatc
     (tmp_path / "hugo.toml").write_text("[params]\n")
     (tmp_path / "layouts" / "newsletter").mkdir(parents=True)
     cmd_serve(serve_args(tmp_path))
-    assert state.CONTENT_DIR == tmp_path / "content" / "newsletter"
+    assert tmp_path / "content" / "newsletter" == state.CONTENT_DIR
 
 
 def test_cmd_serve_hugo_free_does_not_require_hugo_toml(tmp_path):

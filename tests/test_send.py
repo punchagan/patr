@@ -95,7 +95,8 @@ def test_send_all_streams_sse_on_success(client, repo) -> None:
     ):
         mock_time.sleep = MagicMock()
         mock_build.return_value.userinfo().get().execute.return_value = {
-            "email": "me@example.com", "name": "Me"
+            "email": "me@example.com",
+            "name": "Me",
         }
         r = client.post("/api/send/my-ed")
 

@@ -40,6 +40,7 @@ def test_get_editions_picks_up_flat_md_in_hugo_free_mode(tmp_path) -> None:
         "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
     )
     from patr.content import get_editions
+
     editions = get_editions()
     assert len(editions) == 1
     assert editions[0]["slug"] == "my-edition"
@@ -57,6 +58,7 @@ def test_load_edition_finds_flat_md_in_hugo_free_mode(tmp_path) -> None:
         "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
     )
     from patr.content import load_edition
+
     f, post = load_edition("my-edition")
     assert f is not None
     assert post["title"] == "My Edition"
@@ -67,6 +69,7 @@ def test_load_edition_finds_flat_md_in_hugo_free_mode(tmp_path) -> None:
 
 def test_get_editions_returns_empty_when_content_dir_missing(repo) -> None:
     from patr.content import get_editions
+
     state.CONTENT_DIR = repo / "nonexistent"
     assert get_editions() == []
 
@@ -96,7 +99,9 @@ def test_editions_warns_about_flat_md_files(client, repo) -> None:
 def test_editions_no_warning_when_only_bundles(client, repo) -> None:
     bundle = state.CONTENT_DIR / "my-post"
     bundle.mkdir()
-    (bundle / "index.md").write_text("---\ntitle: My Post\ndate: 2024-01-01\ndraft: false\n---\n")
+    (bundle / "index.md").write_text(
+        "---\ntitle: My Post\ndate: 2024-01-01\ndraft: false\n---\n"
+    )
     r = client.get("/api/editions")
     d = r.get_json()
     assert len(d["editions"]) == 1
@@ -128,7 +133,9 @@ def test_no_flat_md_warning_in_hugo_free_mode(hugo_free_client, tmp_path) -> Non
 # check-images — flat .md in hugo-free mode
 
 
-def test_check_images_finds_image_in_sibling_dir_for_flat_edition(hugo_free_client, tmp_path) -> None:
+def test_check_images_finds_image_in_sibling_dir_for_flat_edition(
+    hugo_free_client, tmp_path
+) -> None:
     """Images referenced from a flat edition must be found in the sibling slug/ dir."""
     (tmp_path / "my-post.md").write_text(
         "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n![alt](photo.jpg)\n"
@@ -144,11 +151,15 @@ def test_check_images_finds_image_in_sibling_dir_for_flat_edition(hugo_free_clie
 # preview_email — hugo-free mode
 
 
-def test_preview_email_omits_view_in_browser_in_hugo_free(hugo_free_client, tmp_path) -> None:
+def test_preview_email_omits_view_in_browser_in_hugo_free(
+    hugo_free_client, tmp_path
+) -> None:
     """Email preview must not show 'View in browser' link when no hugo.toml."""
     bundle = tmp_path / "my-post"
     bundle.mkdir()
-    (bundle / "index.md").write_text("---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n")
+    (bundle / "index.md").write_text(
+        "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n"
+    )
     r = hugo_free_client.get("/preview/my-post/email")
     assert r.status_code == 200
     assert b"View in browser" not in r.data
@@ -161,7 +172,9 @@ def test_preview_web_returns_501_in_hugo_free(hugo_free_client, tmp_path) -> Non
     """Web preview must return 501 when no hugo.toml is present."""
     bundle = tmp_path / "my-post"
     bundle.mkdir()
-    (bundle / "index.md").write_text("---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n")
+    (bundle / "index.md").write_text(
+        "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n"
+    )
     r = hugo_free_client.get("/preview/my-post/web")
     assert r.status_code == 501
 
