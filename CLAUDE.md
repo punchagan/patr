@@ -280,7 +280,6 @@ Features not yet in the UI that users currently have to do by editing files dire
 
 - **Edition deletion** — no delete button; user must remove the folder manually
 - **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
-- **Gmail quota warning** — Gmail caps personal accounts at 500 emails/day via API; the Send dialog should warn when the contact list exceeds ~400 recipients
 - **Scheduled sending** — send at a future time; the Gmail API has no scheduled send support (long-standing open feature request), so this would require a local background scheduler (e.g. APScheduler) running inside Patr
 - **Unsubscribe handling** — emails have no unsubscribe mechanism; could add a mailto: link or plain instruction at the bottom of every edition; recipients would still need to be removed from the sheet manually
 - **Multipart/alternative emails** — currently only HTML is sent; adding a plain-text part (generated from the markdown source) improves deliverability and accessibility

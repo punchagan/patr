@@ -149,6 +149,8 @@ To skip web publishing, enable **Email-only newsletter** in Settings. In this mo
 
 Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web (or email-only mode is enabled).
 
+> **Gmail send limits:** Personal Gmail accounts can send ~500 emails/day. If your list exceeds 400 recipients, Patr will warn you before sending.
+
 ### Not yet supported
 
 These things currently require editing files directly outside the app:
