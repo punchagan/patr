@@ -514,13 +514,22 @@ def test_conflict_keep_theirs(page, edition) -> None:
 # ── History modal ─────────────────────────────────────────────────────────────
 
 
+def open_overflow_history(page) -> None:
+    """Open the overflow menu and click History."""
+    page.locator(".action-bar .overflow-menu button").click()
+    page.locator(".overflow-dropdown button", has_text="History").click()
+
+
 def test_history_button_opens_modal(page, edition) -> None:
-    """History button in action bar opens the history modal."""
+    """History button in overflow menu opens the history modal."""
     page.wait_for_selector(".action-bar")
-    page.locator(".action-bar button", has_text="History").click()
+    open_overflow_history(page)
     page.wait_for_selector(".modal-history")
     assert page.locator("h3", has_text="Version history").is_visible()
-    page.locator(".modal-history ~ .modal-overlay, .history-modal-overlay button.btn", has_text="Close").first.click()
+    page.locator(
+        ".modal-history ~ .modal-overlay, .history-modal-overlay button.btn",
+        has_text="Close",
+    ).first.click()
     page.wait_for_function("!document.querySelector('.modal-history')", timeout=3000)
 
 
@@ -536,7 +545,7 @@ def test_history_shows_backup_versions(page, edition, base_url) -> None:
         timeout=5000,
     )
 
-    page.locator(".action-bar button", has_text="History").click()
+    open_overflow_history(page)
     page.wait_for_selector(".modal-history")
     # There should be at least one version in the list
     page.wait_for_function(
@@ -561,20 +570,17 @@ def test_history_restore(page, edition, base_url) -> None:
     )
 
     # Directly inject a backup with different content so the diff is meaningful
-    import time
     from datetime import UTC, datetime, timedelta
 
     backup_dir = (
-        state.BACKUPS_DIR
-        / str(state.REPO_ROOT).lstrip("/").replace("/", "-")
-        / edition
+        state.BACKUPS_DIR / str(state.REPO_ROOT).lstrip("/").replace("/", "-") / edition
     )
     backup_dir.mkdir(parents=True, exist_ok=True)
     old_ts = (datetime.now(tz=UTC) - timedelta(seconds=700)).strftime("%Y%m%dT%H%M%S")
     old_content = "---\ntitle: Restore Test\ndate: 2024-01-01\ndraft: true\n---\n\nOld restored content.\n"
     (backup_dir / f"{old_ts}.md").write_text(old_content, encoding="utf-8")
 
-    page.locator(".action-bar button", has_text="History").click()
+    open_overflow_history(page)
     page.wait_for_selector(".modal-history")
     # Wait for version list to populate
     page.wait_for_function(
@@ -587,7 +593,9 @@ def test_history_restore(page, edition, base_url) -> None:
     page.wait_for_selector(".conflict-diff-side", timeout=3000)
 
     # Click Restore this version → confirmation → Restore
-    page.locator(".modal-history button.btn-primary", has_text="Restore this version").click()
+    page.locator(
+        ".modal-history button.btn-primary", has_text="Restore this version"
+    ).click()
     page.locator(".modal-history button.btn-primary", has_text="Restore").click()
 
     # Modal should close and editor should contain restored content
@@ -604,10 +612,11 @@ def test_history_restore(page, edition, base_url) -> None:
 def test_delete_edition(page, edition) -> None:
     """Deleting an edition removes it from the sidebar and clears the main panel."""
     # Edition is selected; confirm it appears in the sidebar
-    page.wait_for_selector(f".edition-item.active")
+    page.wait_for_selector(".edition-item.active")
 
-    # Click the Delete button in the action bar
-    page.locator(".action-bar button", has_text="Delete").click()
+    # Click the Delete button in the overflow menu
+    page.locator(".action-bar .overflow-menu button").click()
+    page.locator(".overflow-dropdown button", has_text="Delete").click()
 
     # Confirmation modal should appear
     page.wait_for_selector(".modal-delete")
@@ -617,7 +626,7 @@ def test_delete_edition(page, edition) -> None:
 
     # Edition should be gone from the sidebar
     page.wait_for_function(
-        f"!document.querySelector('.edition-item.active')",
+        "!document.querySelector('.edition-item.active')",
         timeout=4000,
     )
     # The edition directory should no longer exist on disk

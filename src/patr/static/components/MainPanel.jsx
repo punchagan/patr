@@ -121,6 +121,44 @@ function ViewToggle({ viewMode, onViewModeChange }) {
   );
 }
 
+function OverflowMenu({ onHistory, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="overflow-menu" ref={ref}>
+      <button className="btn" onClick={() => setOpen((o) => !o)} title="More actions">
+        ⋯
+      </button>
+      {open && (
+        <div className="overflow-dropdown">
+          <button
+            className="btn overflow-item"
+            onClick={() => { setOpen(false); onHistory(); }}
+          >
+            History
+          </button>
+          <button
+            className="btn btn-danger overflow-item"
+            onClick={() => { setOpen(false); onDelete(); }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MainPanel({
   edition,
   editingFooter,
@@ -374,9 +412,6 @@ export default function MainPanel({
           {status && (
             <span className={`status-msg ${status.cls}`}>{status.text}</span>
           )}
-          <button className="btn" onClick={() => setShowHistory(true)}>
-            History
-          </button>
           <button className="btn btn-draft-toggle" onClick={toggleDraft}>
             {draft ? "Mark as Live" : "Mark as Draft"}
           </button>
@@ -411,12 +446,10 @@ export default function MainPanel({
           >
             Send All
           </button>
-          <button
-            className="btn btn-danger"
-            onClick={() => setShowDelete(true)}
-          >
-            Delete
-          </button>
+          <OverflowMenu
+            onHistory={() => setShowHistory(true)}
+            onDelete={() => setShowDelete(true)}
+          />
         </div>
       )}
 

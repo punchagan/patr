@@ -274,6 +274,29 @@ body.dark .btn-danger:hover:not(:disabled) { background: #2a0a0a; }
 
 .action-bar .spacer { flex: 1; }
 
+.overflow-menu { position: relative; }
+.overflow-dropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  min-width: 110px;
+  z-index: 100;
+  overflow: hidden;
+}
+.overflow-item {
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  width: 100%;
+}
+.overflow-item:not(:last-child) { border-bottom: 1px solid var(--border); }
+
 .status-msg {
   font-size: 12px;
   padding: 4px 10px;
