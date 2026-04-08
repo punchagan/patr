@@ -150,13 +150,27 @@ def screenshot_edition(repo, context, base_url):
 @pytest.mark.screenshots
 def test_screenshot(screenshot_edition, context, base_url) -> None:
     """Capture a screenshot of the editor for the README."""
+    import json
+
     p = context.new_page()
     p.set_viewport_size({"width": 1280, "height": 800})
     try:
+        # Mock deployment check so the status bar shows "Published ✓" not a warning.
+        p.route(
+            "**/api/check-deployment/**",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {"live": True, "email_only": False, "git_available": True}
+                ),
+            ),
+        )
         p.goto(base_url)
         p.wait_for_selector(".sidebar")
         p.locator(".edition-item:has-text('Hello from Patr')").click()
         p.wait_for_selector(".cm-content")
+        p.wait_for_selector(".status-msg.ok")  # wait for "Published ✓" to appear
         out = REPO_ROOT / "screenshots" / "editor.png"
         out.parent.mkdir(exist_ok=True)
         p.screenshot(path=str(out))
