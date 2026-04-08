@@ -104,9 +104,9 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically. On each save a timestamped backup is written to `~/.local/share/patr/backups/`, and when Git is available a commit is also created — so you can always recover previous versions.
 
-Click **History** in the action bar to browse previous versions, compare them to the current content, and restore an earlier one if needed.
+Open the **⋯** menu in the action bar and click **History** to browse previous versions, compare them to the current content, and restore an earlier one if needed.
 
-Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar, action bar, title, and intro fields all hide, leaving just the editor. Press `Esc` or **⊠** to exit.
+Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar, action bar, and intro field all hide, leaving just the editor. Press `Esc` or **⊠** to exit.
 
 #### Intro
 
@@ -135,15 +135,19 @@ Switch to **Split** to write and see the email preview side by side. Use **Previ
 
 To share a draft for review, use **Preview Email** and click **⬇ Download PDF** — the PDF can be emailed or shared directly.
 
+### Edit title or date
+
+Hover over an edition in the sidebar and click the **✎** pencil icon to edit its title or date inline. Press Enter or click away to save, Escape to cancel.
+
 ### Publish to the web
 
-When your edition is ready, click **Mark as Live**, then **Publish**. This pushes the edition to your website.
+When your edition is ready, click **Publish**. This marks the edition as live and pushes it to your website. To retract it, click **Unpublish**.
 
 ### Configure newsletter name and mailing list
 
 Open the **⚙ Settings** panel to set your newsletter name and connect Gmail. To enable sending, you'll also need to add your Google Sheets contacts sheet ID — paste the ID from the sheet's URL (the long string between `/d/` and `/edit`) into the **Contacts sheet ID** field.
 
-To skip web publishing, enable **Email-only newsletter** in Settings. In this mode, images are embedded directly in the email as base64, the **Publish** button is hidden, and **Send All** is available as soon as the edition is marked as live.
+To skip web publishing, enable **Email-only newsletter** in Settings. In this mode, images are embedded directly in the email as base64, the **Publish** button is hidden, and **Send All** is available immediately.
 
 ### Send
 
@@ -151,7 +155,7 @@ Use **Test Send** to send yourself a copy first. When you're happy with it, **Se
 
 > **Gmail send limits:** Personal Gmail accounts can send ~500 emails/day. If your list exceeds 400 recipients, Patr will warn you before sending.
 
-Use the **Delete** button in the action bar to delete an edition. Previous versions are still recoverable from `~/.local/share/patr/backups/`.
+Open the **⋯** menu in the action bar and click **Delete** to delete an edition. Previous versions are still recoverable from `~/.local/share/patr/backups/`.
 
 <!-- help-end -->
 
