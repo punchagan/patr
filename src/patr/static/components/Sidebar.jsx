@@ -116,11 +116,7 @@ export default function Sidebar({
               <div className="edition-title">{e.title}</div>
               <div className="edition-meta">
                 <span>{e.date}</span>
-                <span
-                  className={`badge ${e.draft ? "badge-draft" : "badge-live"}`}
-                >
-                  {e.draft ? "Draft" : "Live"}
-                </span>
+                {!e.draft && <span className="badge badge-live">Published</span>}
               </div>
             </div>
           ))

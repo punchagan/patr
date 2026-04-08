@@ -148,9 +148,7 @@ body {
   letter-spacing: 0.04em;
 }
 
-.badge-draft { background: #fff3cd; color: #856404; }
 .badge-live  { background: #d1e7dd; color: #0a5c36; }
-body.dark .badge-draft { background: #3a2e00; color: #f0c040; }
 body.dark .badge-live  { background: #0a2e1a; color: #4caf80; }
 
 /* Main panel */

@@ -31,11 +31,11 @@ function useDeployStatus(edition) {
           setEmailOnly(false);
           setDeploymentLive(d.live);
           setGitAvailable(d.git_available ?? true);
-          if (d.live) setStatus({ cls: "ok", text: "Live ✓" });
+          if (d.live) setStatus({ cls: "ok", text: "Published ✓" });
           else
             setStatus({
               cls: "warn",
-              text: d.reason ? `Not live: ${d.reason}` : "Not deployed yet",
+              text: d.reason ? `Not published: ${d.reason}` : "Not published yet",
             });
         }
       });
