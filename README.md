@@ -153,11 +153,6 @@ Use **Test Send** to send yourself a copy first. When you're happy with it, **Se
 
 Use the **Delete** button in the action bar to delete an edition. Previous versions are still recoverable from `~/.local/share/patr/backups/`.
 
-### Not yet supported
-
-These things currently require editing files directly outside the app:
-
-- **Changing an edition's date** — edit the `date:` field in the edition's `index.md` (or `.md` file)
 <!-- help-end -->
 
 ## Configuration

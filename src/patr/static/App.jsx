@@ -120,6 +120,7 @@ export default function App() {
         onNewEdition={() => setShowNewEdition(true)}
         onSettings={() => setShowSettings(true)}
         onHelp={() => setShowHelp(true)}
+        onEditionUpdated={onEditionUpdated}
       />
       <MainPanel
         edition={selectedEdition}

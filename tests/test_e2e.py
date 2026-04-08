@@ -276,7 +276,6 @@ def test_create_edition(page) -> None:
 
 
 def test_edition_select_shows_editor(page, edition) -> None:
-    assert page.locator(".editor-title-input").is_visible()
     assert page.locator(".cm-content").is_visible()
     assert page.locator(".editor-toolbar").is_visible()
 
@@ -334,7 +333,6 @@ def test_focus_mode(page, edition) -> None:
     page.locator("button[title*='Focus mode']").click()
     assert not page.locator(".sidebar").is_visible()
     assert not page.locator(".action-bar").is_visible()
-    assert not page.locator(".editor-title-input").is_visible()
     # Exit with Escape
     page.keyboard.press("Escape")
     page.wait_for_selector(".sidebar")
@@ -345,8 +343,8 @@ def test_footer_editing(page) -> None:
     page.locator(".edition-item.footer-item").click()
     page.wait_for_selector(".cm-content")
     assert page.locator(".cm-content").is_visible()
-    # Title and intro fields should not appear for footer
-    assert not page.locator(".editor-title-input").is_visible()
+    # Intro field should not appear for footer
+    assert not page.locator(".editor-intro-input").is_visible()
 
 
 def test_mode_stored_in_hash(page, edition, base_url) -> None:

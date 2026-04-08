@@ -139,6 +139,39 @@ body {
   color: var(--text-muted);
 }
 
+.edition-edit-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  color: var(--text-muted);
+  margin-left: auto;
+  line-height: 1;
+}
+.edition-item:hover .edition-edit-btn,
+.edition-item.active .edition-edit-btn { display: inline; }
+.edition-edit-btn:hover { color: var(--text); }
+body.dark .edition-edit-btn { color: var(--text-secondary); }
+body.dark .edition-edit-btn:hover { color: var(--text); }
+
+.edition-inline-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0;
+}
+.edition-inline-edit input {
+  font-size: 12px;
+  padding: 2px 5px;
+  border: 1px solid var(--active-accent);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+
 .badge {
   padding: 1px 6px;
   border-radius: 3px;

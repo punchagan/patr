@@ -236,7 +236,7 @@ _PatrYamlDumper.add_representer(str, _str_representer)
 
 @app.route("/api/edition/<slug>/content", methods=["POST"])
 def save_edition_content(slug):
-    """Save title, intro, and/or body for an edition.
+    """Save any combination of title, date, intro, and/or body for an edition.
 
     Accepts an optional ``mtime`` field; if the file has been modified since
     that timestamp a 409 is returned with the current body and mtime so the
@@ -251,6 +251,8 @@ def save_edition_content(slug):
         return jsonify({"body": post.content, "mtime": f.stat().st_mtime}), 409
     if "title" in data and data["title"].strip():
         post.metadata["title"] = data["title"].strip()
+    if data.get("date"):
+        post.metadata["date"] = date.fromisoformat(data["date"])
     if "intro" in data:
         intro = (data["intro"] or "").strip()
         if intro:

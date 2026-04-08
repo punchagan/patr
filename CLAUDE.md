@@ -278,7 +278,6 @@ Hugo is detected via `hugo_mode()` (checks for `hugo.toml` in `REPO_ROOT`).
 
 Features not yet in the UI that users currently have to do by editing files directly:
 
-- **Edition date editing** — date is set at creation and can't be changed from the UI; should be a field in EditorPanel
 - **Scheduled sending** — send at a future time; the Gmail API has no scheduled send support (long-standing open feature request), so this would require a local background scheduler (e.g. APScheduler) running inside Patr
 - **Unsubscribe handling** — emails have no unsubscribe mechanism; could add a mailto: link or plain instruction at the bottom of every edition; recipients would still need to be removed from the sheet manually
 - **Multipart/alternative emails** — currently only HTML is sent; adding a plain-text part (generated from the markdown source) improves deliverability and accessibility

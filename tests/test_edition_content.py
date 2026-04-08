@@ -124,6 +124,19 @@ def test_save_content_multiline_intro(client, repo) -> None:
     assert "    Indented line." in text  # original 2-space indent + 2-space yaml indent
 
 
+def test_save_content_updates_date(client, repo) -> None:
+    client.post("/api/edition/test-edition/content", json={"date": "2025-06-01"})
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "date: 2025-06-01" in text
+
+
+def test_save_content_date_preserves_other_frontmatter(client, repo) -> None:
+    client.post("/api/edition/test-edition/content", json={"date": "2025-06-01"})
+    text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()
+    assert "title: Test Edition" in text
+    assert "draft: true" in text
+
+
 def test_save_content_clears_intro(client, repo) -> None:
     client.post("/api/edition/test-edition/content", json={"intro": ""})
     text = (repo / "content" / "newsletter" / "test-edition" / "index.md").read_text()

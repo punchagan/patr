@@ -211,10 +211,9 @@ function EditorToolbar({ viewRef, slug }) {
 }
 
 const EditorPanel = forwardRef(function EditorPanel(
-  { slug, isFooter, focusMode, onTitleChange, onSaved },
+  { slug, isFooter, focusMode, onSaved },
   ref,
 ) {
-  const [title, setTitle] = useState("");
   const [intro, setIntro] = useState("");
   const [initialBody, setInitialBody] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
@@ -227,16 +226,12 @@ const EditorPanel = forwardRef(function EditorPanel(
   const saveTimer = useRef(null);
   const commitTimer = useRef(null);
   const slugRef = useRef(slug);
-  const titleRef = useRef(title);
   const introRef = useRef(intro);
   const bodyRef = useRef("");
   const viewRef = useRef(null);
   const mtimeRef = useRef(null);
   const dirtyRef = useRef(false);
 
-  useEffect(() => {
-    titleRef.current = title;
-  }, [title]);
   useEffect(() => {
     introRef.current = intro;
   }, [intro]);
@@ -311,7 +306,6 @@ const EditorPanel = forwardRef(function EditorPanel(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: titleRef.current,
           intro: introRef.current,
           body: bodyRef.current,
         }),
@@ -325,7 +319,6 @@ const EditorPanel = forwardRef(function EditorPanel(
     fetch(`/api/edition/${slug}/content`)
       .then((r) => r.json())
       .then((d) => {
-        setTitle(d.title || "");
         setIntro(d.intro || "");
         setInitialBody(d.body || "");
         bodyRef.current = d.body || "";
@@ -354,7 +347,6 @@ const EditorPanel = forwardRef(function EditorPanel(
     saveTimer.current = setTimeout(() => {
       setSaveStatus("Saving…");
       const payload = {
-        title: titleRef.current,
         intro: introRef.current,
         body: bodyRef.current,
       };
@@ -421,7 +413,6 @@ const EditorPanel = forwardRef(function EditorPanel(
             if (!dirtyRef.current) {
               // Clean editor — silently reload
               loading.current = true;
-              setTitle(d.title || "");
               setIntro(d.intro || "");
               setInitialBody(d.body || "");
               bodyRef.current = d.body || "";
@@ -463,13 +454,6 @@ const EditorPanel = forwardRef(function EditorPanel(
     },
     [scheduleSave],
   );
-
-  const handleTitleChange = (e) => {
-    setTitle(e.target.value);
-    titleRef.current = e.target.value;
-    onTitleChange?.(e.target.value);
-    scheduleSave();
-  };
 
   const handleIntroChange = (e) => {
     setIntro(e.target.value);
@@ -515,16 +499,6 @@ const EditorPanel = forwardRef(function EditorPanel(
       )}
       {!isFooter && !focusMode && (
         <>
-          <div className="editor-field">
-            <label>Title</label>
-            <input
-              type="text"
-              className="editor-title-input"
-              value={title}
-              onChange={handleTitleChange}
-              autoComplete="off"
-            />
-          </div>
           <div className="editor-field">
             <label>Intro</label>
             <textarea
