@@ -1,4 +1,4 @@
-"""Tests for publish_edition git flow."""
+"""Tests for publish_edition and unpublish_edition git flow."""
 
 import textwrap
 from unittest.mock import MagicMock, patch
@@ -91,3 +91,47 @@ def test_publish_still_pushes_when_nothing_to_commit(client, repo) -> None:
     assert r.status_code == 200
     cmds = [c.args[0] for c in mock_run.call_args_list]
     assert any("push" in cmd for cmd in cmds), "git push was never called"
+
+
+# Publish marks draft editions as live before pushing
+
+
+def test_publish_marks_draft_as_live(client, repo) -> None:
+    """Publish should set draft: false in frontmatter even when edition is a draft."""
+    make_edition(repo, "my-ed", draft=True)
+    ok = (0, "", "")
+    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])):
+        r = client.post("/api/publish/my-ed")
+    assert r.status_code == 200
+    text = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
+    assert "draft: false" in text
+
+
+def test_publish_draft_true_was_previously_rejected(client, repo) -> None:
+    """Publish should no longer reject draft editions — it marks them live."""
+    make_edition(repo, "my-ed", draft=True)
+    ok = (0, "", "")
+    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])):
+        r = client.post("/api/publish/my-ed")
+    assert r.status_code == 200, "draft editions should now be publishable"
+
+
+# Unpublish sets draft: true and pushes
+
+
+def test_unpublish_marks_as_draft_and_pushes(client, repo) -> None:
+    """Unpublish should set draft: true and run git add/commit/push."""
+    make_edition(repo, "my-ed", draft=False)
+    ok = (0, "", "")
+    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])) as mock_run:
+        r = client.post("/api/unpublish/my-ed")
+    assert r.status_code == 200
+    text = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
+    assert "draft: true" in text
+    cmds = [c.args[0] for c in mock_run.call_args_list]
+    assert any("push" in cmd for cmd in cmds)
+
+
+def test_unpublish_404_for_missing_edition(client, repo) -> None:
+    r = client.post("/api/unpublish/no-such-edition")
+    assert r.status_code == 404

@@ -204,7 +204,6 @@ body.dark .badge-live  { background: #0a2e1a; color: #4caf80; }
   color: #fff;
 }
 
-.btn-draft-toggle { font-size: 12px; }
 .btn-danger { border-color: #c53030; color: #c53030; }
 .btn-danger:hover:not(:disabled) { background: #fff5f5; }
 body.dark .btn-danger:hover:not(:disabled) { background: #2a0a0a; }

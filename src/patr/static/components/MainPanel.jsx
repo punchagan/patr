@@ -215,24 +215,31 @@ export default function MainPanel({
     history.replaceState(null, "", `#${edition.slug}${suffix}`);
   }, [edition?.slug, editorMode, viewMode]);
 
-  const toggleDraft = () => {
-    fetch(`/api/toggle-draft/${edition.slug}`, { method: "POST" })
-      .then((r) => r.json())
-      .then((d) => {
-        setDraft(d.draft);
-        onEditionUpdated(edition.slug);
-      });
-  };
-
   const doPublish = () => {
     setStatus({ cls: "info", text: "Publishing…" });
     fetch(`/api/publish/${edition.slug}`, { method: "POST" })
       .then((r) => r.json())
       .then((d) => {
         if (d.ok) {
+          setDraft(false);
           setStatus({ cls: "ok", text: "Published ✓" });
           setDeploymentLive(true);
+          onEditionUpdated(edition.slug);
         } else setStatus({ cls: "err", text: `Publish failed: ${d.error}` });
+      });
+  };
+
+  const doUnpublish = () => {
+    setStatus({ cls: "info", text: "Unpublishing…" });
+    fetch(`/api/unpublish/${edition.slug}`, { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) {
+          setDraft(true);
+          setStatus({ cls: "ok", text: "Unpublished ✓" });
+          setDeploymentLive(false);
+          onEditionUpdated(edition.slug);
+        } else setStatus({ cls: "err", text: `Unpublish failed: ${d.error}` });
       });
   };
 
@@ -258,7 +265,7 @@ export default function MainPanel({
   };
 
   const canSend =
-    !draft && (emailOnly || deploymentLive) && hasSheetId && gmailConnected;
+    (emailOnly || deploymentLive) && hasSheetId && gmailConnected;
 
   const showEditor = editorMode === "write" || editorMode === "split";
   const showPreview = editorMode === "split" || editorMode === "preview";
@@ -412,13 +419,12 @@ export default function MainPanel({
           {status && (
             <span className={`status-msg ${status.cls}`}>{status.text}</span>
           )}
-          <button className="btn btn-draft-toggle" onClick={toggleDraft}>
-            {draft ? "Mark as Live" : "Mark as Draft"}
-          </button>
           {!emailOnly && gitAvailable && (
-            <button className="btn" onClick={doPublish} disabled={draft}>
-              Publish
-            </button>
+            draft ? (
+              <button className="btn" onClick={doPublish}>Publish</button>
+            ) : (
+              <button className="btn" onClick={doUnpublish}>Unpublish</button>
+            )
           )}
           <button
             className="btn"

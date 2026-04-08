@@ -433,31 +433,60 @@ def toggle_draft(slug):
     return jsonify({"draft": new_draft})
 
 
-@app.route("/api/publish/<slug>", methods=["POST"])
-def publish_edition(slug):
-    if not git_mode():
-        return jsonify({"error": "Git not available — publishing requires git"}), 501
-    f, post = load_edition(slug)
-    if f is None or post is None:
-        return jsonify({"error": "Not found"}), 404
-    if post.get("draft", True):
-        return jsonify({"error": "Edition is still a draft"}), 400
+def _set_draft_and_push(f, post, draft: bool, commit_prefix: str):
+    """Set draft status in frontmatter then git add/commit/push.
 
-    edition_dir = state.CONTENT_DIR / slug
+    Writes the updated frontmatter to disk, then runs git add, commit, and
+    push for the edition directory.  Returns a Flask JSON response.
+    """
+    post.metadata["draft"] = draft
+    fm_yaml = yaml.dump(
+        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
+    )
+    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
+
     for cmd in [
-        ["git", "add", str(edition_dir)],
-        ["git", "commit", "-m", f"Publish: {post['title']}"],
+        ["git", "add", str(f.parent)],
+        ["git", "commit", "-m", f"{commit_prefix}: {post['title']}"],
         ["git", "push"],
     ]:
         result = subprocess.run(
             cmd, cwd=state.REPO_ROOT, capture_output=True, text=True, check=False
         )
         if result.returncode != 0:
-            # "nothing to commit" is not an error
             if "nothing to commit" in result.stdout + result.stderr:
                 continue
             return jsonify({"error": result.stderr or result.stdout}), 500
     return jsonify({"ok": True})
+
+
+@app.route("/api/publish/<slug>", methods=["POST"])
+def publish_edition(slug):
+    """Mark the edition as live and git push to deploy.
+
+    Sets ``draft: false`` in frontmatter then runs git add/commit/push.
+    Previously rejected draft editions; now handles marking live itself.
+    """
+    if not git_mode():
+        return jsonify({"error": "Git not available — publishing requires git"}), 501
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    return _set_draft_and_push(f, post, draft=False, commit_prefix="Publish")
+
+
+@app.route("/api/unpublish/<slug>", methods=["POST"])
+def unpublish_edition(slug):
+    """Mark the edition as draft and git push to retract from the live site.
+
+    Sets ``draft: true`` in frontmatter then runs git add/commit/push.
+    """
+    if not git_mode():
+        return jsonify({"error": "Git not available — unpublishing requires git"}), 501
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    return _set_draft_and_push(f, post, draft=True, commit_prefix="Unpublish")
 
 
 COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit
