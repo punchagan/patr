@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import subprocess
 import tempfile
 import time
@@ -273,6 +274,26 @@ def save_edition_content(slug):
         raise
     write_backup(slug, content)
     return jsonify({"ok": True, "mtime": f.stat().st_mtime})
+
+
+@app.route("/api/edition/<slug>", methods=["DELETE"])
+def delete_edition(slug):
+    """Delete an edition by removing its directory (bundle) or file (flat).
+
+    Backups in ~/.local/share/patr/backups/ are left intact and can be used
+    for manual recovery after deletion.
+    """
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    if f.parent != state.CONTENT_DIR:
+        shutil.rmtree(f.parent)
+    else:
+        f.unlink()
+        image_dir = edition_dir_for(f)
+        if image_dir.exists():
+            shutil.rmtree(image_dir)
+    return jsonify({"ok": True})
 
 
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}

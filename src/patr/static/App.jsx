@@ -133,6 +133,10 @@ export default function App() {
         initialEditorMode={initialEditorMode}
         initialViewMode={initialViewMode}
         onEditionUpdated={onEditionUpdated}
+        onEditionDeleted={() => {
+          setSelectedEdition(null);
+          loadEditions();
+        }}
       />
       {showSettings && (
         <SettingsModal

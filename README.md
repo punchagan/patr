@@ -151,11 +151,12 @@ Use **Test Send** to send yourself a copy first. When you're happy with it, **Se
 
 > **Gmail send limits:** Personal Gmail accounts can send ~500 emails/day. If your list exceeds 400 recipients, Patr will warn you before sending.
 
+Use the **Delete** button in the action bar to delete an edition. Previous versions are still recoverable from `~/.local/share/patr/backups/`.
+
 ### Not yet supported
 
 These things currently require editing files directly outside the app:
 
-- **Deleting an edition** — delete the edition's folder (or `.md` file) from your content directory
 - **Changing an edition's date** — edit the `date:` field in the edition's `index.md` (or `.md` file)
 <!-- help-end -->
 

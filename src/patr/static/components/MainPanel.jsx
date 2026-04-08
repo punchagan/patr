@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import TestSendModal from "./modals/TestSendModal";
 import ConfirmModal from "./modals/ConfirmModal";
 import HistoryModal from "./modals/HistoryModal";
+import DeleteEditionModal from "./modals/DeleteEditionModal";
 import EditorPanel from "./EditorPanel";
 
 function useDeployStatus(edition) {
@@ -130,6 +131,7 @@ export default function MainPanel({
   onToggleFocus,
   onToggleTheme,
   onEditionUpdated,
+  onEditionDeleted,
   initialEditorMode = "write",
   initialViewMode = "email",
 }) {
@@ -140,6 +142,7 @@ export default function MainPanel({
   const [showTestSend, setShowTestSend] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const {
     deploymentLive,
     emailOnly,
@@ -408,9 +411,29 @@ export default function MainPanel({
           >
             Send All
           </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => setShowDelete(true)}
+          >
+            Delete
+          </button>
         </div>
       )}
 
+      {showDelete && (
+        <DeleteEditionModal
+          title={edition.title}
+          onClose={() => setShowDelete(false)}
+          onConfirm={() => {
+            fetch(`/api/edition/${edition.slug}`, { method: "DELETE" })
+              .then((r) => r.json())
+              .then((d) => {
+                setShowDelete(false);
+                if (d.ok) onEditionDeleted?.();
+              });
+          }}
+        />
+      )}
       {showHistory && (
         <HistoryModal
           slug={edition.slug}

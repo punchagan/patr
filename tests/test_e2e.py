@@ -596,3 +596,30 @@ def test_history_restore(page, edition, base_url) -> None:
         "document.querySelector('.cm-content').textContent.includes('Old restored content.')",
         timeout=4000,
     )
+
+
+# ── Edition deletion ───────────────────────────────────────────────────────────
+
+
+def test_delete_edition(page, edition) -> None:
+    """Deleting an edition removes it from the sidebar and clears the main panel."""
+    # Edition is selected; confirm it appears in the sidebar
+    page.wait_for_selector(f".edition-item.active")
+
+    # Click the Delete button in the action bar
+    page.locator(".action-bar button", has_text="Delete").click()
+
+    # Confirmation modal should appear
+    page.wait_for_selector(".modal-delete")
+
+    # Confirm deletion
+    page.locator(".modal-delete button.btn-danger").click()
+
+    # Edition should be gone from the sidebar
+    page.wait_for_function(
+        f"!document.querySelector('.edition-item.active')",
+        timeout=4000,
+    )
+    # The edition directory should no longer exist on disk
+    edition_dir = state.CONTENT_DIR / edition
+    assert not edition_dir.exists()
