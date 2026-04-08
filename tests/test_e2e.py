@@ -29,7 +29,9 @@ def repo(tmp_path_factory):
     footer = nl / "footer"
     footer.mkdir()
     (footer / "index.md").write_text(
-        "---\ntitle: Footer\n_build:\n  render: never\n  list: never\n---\n\nTest footer.\n"
+        "---\ntitle: Footer\n_build:\n  render: never\n  list: never\n---\n\n"
+        "If you enjoyed this edition, consider sharing it with a friend — "
+        "it's the best way to help this newsletter grow. 🙏\n"
     )
     state.REPO_ROOT = tmp
     state.CONTENT_DIR = nl
