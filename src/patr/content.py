@@ -90,7 +90,7 @@ def edition_dir_for(f):
     For a page bundle (slug/index.md) this is f.parent (slug/).
     For a flat file (slug.md) this is a sibling directory with the same stem (slug/).
     """
-    return f.parent if f.name == "index.md" else f.with_suffix("")
+    return f.parent if f.parent != state.CONTENT_DIR else f.with_suffix("")
 
 
 def load_footer():
