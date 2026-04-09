@@ -5,6 +5,20 @@ import HistoryModal from "./modals/HistoryModal";
 import DeleteEditionModal from "./modals/DeleteEditionModal";
 import EditorPanel from "./EditorPanel";
 
+/** Ask for notification permission in response to a user gesture. */
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+/** Show a desktop notification if permission has been granted. */
+function showNotification(title, body) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body });
+  }
+}
+
 function useDeployStatus(edition) {
   const [deploymentLive, setDeploymentLive] = useState(false);
   const [emailOnly, setEmailOnly] = useState(false);
@@ -270,8 +284,10 @@ export default function MainPanel({
       if (d.skipped) msg += `, ${d.skipped} already sent`;
       if (d.failed?.length) msg += `, ${d.failed.length} failed`;
       setStatus({ cls: d.failed?.length ? "warn" : "ok", text: msg });
+      showNotification("Patr — Send complete", msg);
     } else {
       setStatus({ cls: "err", text: `Error: ${d.error}` });
+      showNotification("Patr — Send failed", `Error: ${d.error}`);
     }
     onEditionUpdated(edition.slug);
   };
@@ -510,6 +526,7 @@ export default function MainPanel({
           onClose={() => setShowConfirm(false)}
           onConfirm={() => {
             setShowConfirm(false);
+            requestNotificationPermission();
             setStatus({ cls: "ok", text: "Sending…" });
             fetch(`/api/send/${edition.slug}`, { method: "POST" }).then(
               async (r) => {

@@ -82,6 +82,10 @@ export default function ConfirmModal({ slug, title, onClose, onConfirm }) {
           {w}
         </div>
       ))}
+      <small style={{ color: "var(--text-secondary)", opacity: 0.7 }}>
+        If your browser asks for permission, you can allow notifications to be
+        alerted when sending finishes — or watch the progress in the status bar.
+      </small>
       <div className="modal-actions">
         <button className="btn" onClick={onClose}>
           Cancel
