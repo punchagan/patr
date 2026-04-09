@@ -44,7 +44,10 @@ function EditionItem({ e, isSelected, onSelect, onEditionUpdated }) {
   };
 
   const onKeyDown = (ev) => {
-    if (ev.key === "Enter") { ev.preventDefault(); save(); }
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      save();
+    }
     if (ev.key === "Escape") setEditing(false);
   };
 
@@ -84,7 +87,13 @@ function EditionItem({ e, isSelected, onSelect, onEditionUpdated }) {
       <div className="edition-meta">
         <span>{e.date}</span>
         {!e.draft && <span className="badge badge-live">Published</span>}
-        <button className="edition-edit-btn" onClick={startEdit} title="Edit title / date">✎</button>
+        <button
+          className="edition-edit-btn"
+          onClick={startEdit}
+          title="Edit title / date"
+        >
+          ✎
+        </button>
       </div>
     </div>
   );

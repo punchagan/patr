@@ -5,7 +5,47 @@ import SettingsModal from "./components/modals/SettingsModal";
 import NewEditionModal from "./components/modals/NewEditionModal";
 import HelpModal from "./components/modals/HelpModal";
 
+function DuplicateTabWarning() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        gap: "1rem",
+        fontFamily: "sans-serif",
+        color: "var(--text, #333)",
+      }}
+    >
+      <h2 style={{ margin: 0 }}>Patr is already open</h2>
+      <p style={{ margin: 0, color: "var(--text-secondary, #666)" }}>
+        Please switch to the existing tab to avoid conflicts.
+      </p>
+    </div>
+  );
+}
+
 export default function App() {
+  const [isDuplicateTab, setIsDuplicateTab] = useState(false);
+
+  useEffect(() => {
+    if (!navigator.locks) return;
+    navigator.locks.request(
+      "patr_single_instance",
+      { ifAvailable: true },
+      async (lock) => {
+        if (!lock) {
+          setIsDuplicateTab(true);
+          return;
+        }
+        // Hold the lock for the lifetime of this tab.
+        await new Promise(() => {});
+      },
+    );
+  }, []);
+
   const [editions, setEditions] = useState([]);
   const [editionWarnings, setEditionWarnings] = useState([]);
   const [selectedEdition, setSelectedEdition] = useState(null);
@@ -100,6 +140,8 @@ export default function App() {
       if (updated) setSelectedEdition(updated);
     });
   };
+
+  if (isDuplicateTab) return <DuplicateTabWarning />;
 
   return (
     <div className="layout">

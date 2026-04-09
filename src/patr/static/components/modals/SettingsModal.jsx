@@ -1,129 +1,279 @@
-import React, { useState, useEffect } from 'react'
-import Modal from './Modal'
+import React, { useState, useEffect } from "react";
+import Modal from "./Modal";
 
-export default function SettingsModal({ unconfigured, gmailConnected, onGmailConnected, onClose }) {
-  const [name, setName] = useState('')
-  const [emailOnly, setEmailOnly] = useState(false)
-  const [sheet, setSheet] = useState('')
-  const [contactsResult, setContactsResult] = useState('')
-  const [sentLog, setSentLog] = useState(null)
-  const [needsCredentials, setNeedsCredentials] = useState(false)
+export default function SettingsModal({
+  unconfigured,
+  gmailConnected,
+  onGmailConnected,
+  onClose,
+}) {
+  const [name, setName] = useState("");
+  const [emailOnly, setEmailOnly] = useState(false);
+  const [sheet, setSheet] = useState("");
+  const [contactsResult, setContactsResult] = useState("");
+  const [sentLog, setSentLog] = useState(null);
+  const [needsCredentials, setNeedsCredentials] = useState(false);
 
   useEffect(() => {
-    fetch('/api/settings').then(r => r.json()).then(d => {
-      setName(d.newsletter_name || '')
-      setEmailOnly(!!d.email_only)
-      setSheet(d.has_sheet_id ? '(saved)' : '')
-    })
-    fetch('/api/auth-status').then(r => r.json()).then(d => {
-      setNeedsCredentials(!!d.needs_credentials)
-      onGmailConnected(!!d.connected)
-    })
-  }, [])
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        setName(d.newsletter_name || "");
+        setEmailOnly(!!d.email_only);
+        setSheet(d.has_sheet_id ? "(saved)" : "");
+      });
+    fetch("/api/auth-status")
+      .then((r) => r.json())
+      .then((d) => {
+        setNeedsCredentials(!!d.needs_credentials);
+        onGmailConnected(!!d.connected);
+      });
+  }, []);
 
   const save = () => {
-    const payload = { email_only: emailOnly }
-    if (name) payload.newsletter_name = name
-    if (sheet && sheet !== '(saved)') payload.sheet_id = sheet
-    fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const payload = { email_only: emailOnly };
+    if (name) payload.newsletter_name = name;
+    if (sheet && sheet !== "(saved)") payload.sheet_id = sheet;
+    fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }).then(() => onClose())
-  }
+    }).then(() => onClose());
+  };
 
-  const disconnect = () => fetch('/oauth/disconnect', { method: 'POST' })
-    .then(() => fetch('/api/auth-status').then(r => r.json()))
-    .then(d => { setNeedsCredentials(!!d.needs_credentials); onGmailConnected(!!d.connected) })
+  const disconnect = () =>
+    fetch("/oauth/disconnect", { method: "POST" })
+      .then(() => fetch("/api/auth-status").then((r) => r.json()))
+      .then((d) => {
+        setNeedsCredentials(!!d.needs_credentials);
+        onGmailConnected(!!d.connected);
+      });
 
   const testContacts = () => {
-    setContactsResult('Checking…')
-    fetch('/api/contacts/count').then(r => r.json()).then(d => {
-      setContactsResult(d.error ? `Error: ${d.error}` : `✓ ${d.count} contact${d.count !== 1 ? 's' : ''} with Send=y`)
-    })
-  }
+    setContactsResult("Checking…");
+    fetch("/api/contacts/count")
+      .then((r) => r.json())
+      .then((d) => {
+        setContactsResult(
+          d.error
+            ? `Error: ${d.error}`
+            : `✓ ${d.count} contact${d.count !== 1 ? "s" : ""} with Send=y`,
+        );
+      });
+  };
 
   const checkSentLog = () => {
-    setSentLog('Loading…')
-    fetch('/api/sent-log').then(r => r.json()).then(d => {
-      if (d.error) { setSentLog(`Error: ${d.error}`); return }
-      if (!d.rows || d.rows.length <= 1) { setSentLog('(no entries yet)'); return }
-      const [header, ...rows] = d.rows
-      let text = [header.join(' | '), ...rows.slice(-10).map(r => r.join(' | '))].join('\n')
-      if (rows.length > 10) text = `(showing last 10 of ${rows.length})\n` + text
-      setSentLog(text)
-    })
-  }
+    setSentLog("Loading…");
+    fetch("/api/sent-log")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) {
+          setSentLog(`Error: ${d.error}`);
+          return;
+        }
+        if (!d.rows || d.rows.length <= 1) {
+          setSentLog("(no entries yet)");
+          return;
+        }
+        const [header, ...rows] = d.rows;
+        let text = [
+          header.join(" | "),
+          ...rows.slice(-10).map((r) => r.join(" | ")),
+        ].join("\n");
+        if (rows.length > 10)
+          text = `(showing last 10 of ${rows.length})\n` + text;
+        setSentLog(text);
+      });
+  };
 
   return (
     <Modal onClose={onClose}>
       <h3>Settings</h3>
       {unconfigured && (
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--text-secondary)",
+            margin: "0 0 12px",
+          }}
+        >
           Configure your newsletter to get started.
         </p>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
         <label style={{ fontSize: 13 }}>
           Newsletter name
           <input
             type="text"
             value={name}
-            onChange={e => setName(e.target.value)}
-            style={{ display: 'block', width: '100%', marginTop: 4, padding: '6px 8px', fontSize: 13, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', boxSizing: 'border-box' }}
+            onChange={(e) => setName(e.target.value)}
+            style={{
+              display: "block",
+              width: "100%",
+              marginTop: 4,
+              padding: "6px 8px",
+              fontSize: 13,
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              color: "var(--text-primary)",
+              boxSizing: "border-box",
+            }}
           />
         </label>
-        <label style={{ fontSize: 13, display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={emailOnly} onChange={e => setEmailOnly(e.target.checked)} style={{ marginTop: 2 }} />
+        <label
+          style={{
+            fontSize: 13,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={emailOnly}
+            onChange={(e) => setEmailOnly(e.target.checked)}
+            style={{ marginTop: 2 }}
+          />
           <span>
             Email-only newsletter
-            <span style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-              Images are embedded directly in emails. No live website needed — "View in browser" link is omitted.
+            <span
+              style={{
+                display: "block",
+                fontSize: 11,
+                color: "var(--text-secondary)",
+                marginTop: 2,
+              }}
+            >
+              Images are embedded directly in emails. No live website needed —
+              "View in browser" link is omitted.
             </span>
           </span>
         </label>
         <label style={{ fontSize: 13 }}>
-          Contacts sheet ID{' '}
-          <span style={{ color: 'var(--text-placeholder)', fontSize: 11 }}>(stored locally, never in repo)</span>
-          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+          Contacts sheet ID{" "}
+          <span style={{ color: "var(--text-placeholder)", fontSize: 11 }}>
+            (stored locally, never in repo)
+          </span>
+          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
             <input
               type="text"
               value={sheet}
-              onChange={e => setSheet(e.target.value)}
-              style={{ flex: 1, padding: '6px 8px', fontSize: 13, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', boxSizing: 'border-box' }}
+              onChange={(e) => setSheet(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "6px 8px",
+                fontSize: 13,
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                color: "var(--text-primary)",
+                boxSizing: "border-box",
+              }}
             />
-            <button className="btn" onClick={testContacts} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Test</button>
+            <button
+              className="btn"
+              onClick={testContacts}
+              style={{ fontSize: 12, whiteSpace: "nowrap" }}
+            >
+              Test
+            </button>
           </div>
-          {contactsResult && <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>{contactsResult}</span>}
+          {contactsResult && (
+            <span
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                marginTop: 4,
+                display: "block",
+              }}
+            >
+              {contactsResult}
+            </span>
+          )}
         </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, flex: 1 }}>
             Gmail
-            {needsCredentials
-              ? <span style={{ color: 'var(--text-secondary)', marginLeft: 8, fontSize: 12 }}>No credentials.json</span>
-              : gmailConnected
-                ? <span style={{ color: 'var(--ok)', marginLeft: 8, fontSize: 12 }}>Connected ✓</span>
-                : <span style={{ color: 'var(--err)', marginLeft: 8, fontSize: 12 }}>Not connected</span>
-            }
+            {needsCredentials ? (
+              <span
+                style={{
+                  color: "var(--text-secondary)",
+                  marginLeft: 8,
+                  fontSize: 12,
+                }}
+              >
+                No credentials.json
+              </span>
+            ) : gmailConnected ? (
+              <span style={{ color: "var(--ok)", marginLeft: 8, fontSize: 12 }}>
+                Connected ✓
+              </span>
+            ) : (
+              <span
+                style={{ color: "var(--err)", marginLeft: 8, fontSize: 12 }}
+              >
+                Not connected
+              </span>
+            )}
           </span>
-          {!needsCredentials && (gmailConnected
-            ? <button className="btn" onClick={disconnect} style={{ fontSize: 12 }}>Disconnect</button>
-            : <a className="btn" href="/oauth/start" style={{ fontSize: 12 }}>Connect Gmail</a>
-          )}
+          {!needsCredentials &&
+            (gmailConnected ? (
+              <button
+                className="btn"
+                onClick={disconnect}
+                style={{ fontSize: 12 }}
+              >
+                Disconnect
+              </button>
+            ) : (
+              <a className="btn" href="/oauth/start" style={{ fontSize: 12 }}>
+                Connect Gmail
+              </a>
+            ))}
         </div>
         <div>
-          <button className="btn" onClick={checkSentLog} style={{ fontSize: 12 }}>Check Sent Log</button>
+          <button
+            className="btn"
+            onClick={checkSentLog}
+            style={{ fontSize: 12 }}
+          >
+            Check Sent Log
+          </button>
           {sentLog && (
-            <pre style={{ marginTop: 8, fontSize: 11, maxHeight: 160, overflowY: 'auto', background: 'var(--bg-secondary)', padding: 8, borderRadius: 4, whiteSpace: 'pre-wrap' }}>
+            <pre
+              style={{
+                marginTop: 8,
+                fontSize: 11,
+                maxHeight: 160,
+                overflowY: "auto",
+                background: "var(--bg-secondary)",
+                padding: 8,
+                borderRadius: 4,
+                whiteSpace: "pre-wrap",
+              }}
+            >
               {sentLog}
             </pre>
           )}
         </div>
       </div>
       <div className="modal-actions">
-        <button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={save}>Save</button>
+        <button className="btn" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" onClick={save}>
+          Save
+        </button>
       </div>
     </Modal>
-  )
+  );
 }

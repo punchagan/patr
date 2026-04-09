@@ -35,7 +35,9 @@ function useDeployStatus(edition) {
           else
             setStatus({
               cls: "warn",
-              text: d.reason ? `Not published: ${d.reason}` : "Not published yet",
+              text: d.reason
+                ? `Not published: ${d.reason}`
+                : "Not published yet",
             });
         }
       });
@@ -136,20 +138,30 @@ function OverflowMenu({ onHistory, onDelete }) {
 
   return (
     <div className="overflow-menu" ref={ref}>
-      <button className="btn" onClick={() => setOpen((o) => !o)} title="More actions">
+      <button
+        className="btn"
+        onClick={() => setOpen((o) => !o)}
+        title="More actions"
+      >
         ⋯
       </button>
       {open && (
         <div className="overflow-dropdown">
           <button
             className="btn overflow-item"
-            onClick={() => { setOpen(false); onHistory(); }}
+            onClick={() => {
+              setOpen(false);
+              onHistory();
+            }}
           >
             History
           </button>
           <button
             className="btn btn-danger overflow-item"
-            onClick={() => { setOpen(false); onDelete(); }}
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
           >
             Delete
           </button>
@@ -264,8 +276,7 @@ export default function MainPanel({
     onEditionUpdated(edition.slug);
   };
 
-  const canSend =
-    (emailOnly || deploymentLive) && hasSheetId && gmailConnected;
+  const canSend = (emailOnly || deploymentLive) && hasSheetId && gmailConnected;
 
   const showEditor = editorMode === "write" || editorMode === "split";
   const showPreview = editorMode === "split" || editorMode === "preview";
@@ -419,13 +430,17 @@ export default function MainPanel({
           {status && (
             <span className={`status-msg ${status.cls}`}>{status.text}</span>
           )}
-          {!emailOnly && gitAvailable && (
-            draft ? (
-              <button className="btn" onClick={doPublish}>Publish</button>
+          {!emailOnly &&
+            gitAvailable &&
+            (draft ? (
+              <button className="btn" onClick={doPublish}>
+                Publish
+              </button>
             ) : (
-              <button className="btn" onClick={doUnpublish}>Unpublish</button>
-            )
-          )}
+              <button className="btn" onClick={doUnpublish}>
+                Unpublish
+              </button>
+            ))}
           <button
             className="btn"
             onClick={() => setShowTestSend(true)}

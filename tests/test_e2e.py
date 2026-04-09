@@ -384,24 +384,45 @@ def test_mode_stored_in_hash(page, edition, base_url) -> None:
     assert page.evaluate("location.hash") == f"#{edition}"
 
 
-def test_hash_restores_mode(context, edition, base_url) -> None:
-    # Use fresh pages so React initializes from the hash (not a hash-change on existing page)
-    p = context.new_page()
+def test_hash_restores_mode(browser, edition, base_url) -> None:
+    # Use fresh pages so React initializes from the hash (not a hash-change on
+    # existing page). Each page needs its own browser context so the Web Lock
+    # held by the shared `page` fixture doesn't trigger the duplicate-tab guard.
+    ctx = browser.new_context()
+    ctx.set_default_timeout(8000)
     try:
+        p = ctx.new_page()
         p.goto(f"{base_url}/#{edition}/email")
         p.wait_for_selector(".full-preview")
         assert p.locator(".btn-toggle.active", has_text="Preview Email").is_visible()
-    finally:
         p.close()
 
-    p = context.new_page()
-    try:
+        p = ctx.new_page()
         p.goto(f"{base_url}/#{edition}/split")
         p.wait_for_selector(".cm-content")
         p.wait_for_selector(".preview-frame")
         assert p.locator(".btn-toggle.active", has_text="Split").is_visible()
-    finally:
         p.close()
+    finally:
+        ctx.close()
+
+
+def test_duplicate_tab_shows_warning(browser, base_url) -> None:
+    """Second tab in the same browser context triggers the duplicate-tab guard."""
+    ctx = browser.new_context()
+    ctx.set_default_timeout(8000)
+    try:
+        p1 = ctx.new_page()
+        p1.goto(base_url)
+        p1.wait_for_selector(".sidebar")
+
+        p2 = ctx.new_page()
+        p2.goto(base_url)
+        p2.wait_for_selector("h2")
+        assert "already open" in p2.locator("h2").inner_text().lower()
+        p2.close()
+    finally:
+        ctx.close()
 
 
 # ── Conflict detection ─────────────────────────────────────────────────────────

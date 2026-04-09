@@ -2,7 +2,6 @@
 
 import textwrap
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -54,7 +53,9 @@ def make_backup(backup_root, repo_root, slug, content, age_seconds=10):
     repo_slug = str(repo_root).lstrip("/").replace("/", "-")
     ed = backup_root / repo_slug / slug
     ed.mkdir(parents=True, exist_ok=True)
-    ts = (datetime.now(tz=UTC) - timedelta(seconds=age_seconds)).strftime("%Y%m%dT%H%M%S")
+    ts = (datetime.now(tz=UTC) - timedelta(seconds=age_seconds)).strftime(
+        "%Y%m%dT%H%M%S"
+    )
     path = ed / f"{ts}.md"
     path.write_text(content, encoding="utf-8")
     return ts
@@ -93,10 +94,13 @@ def test_versions_lists_backups_in_git_free_mode(client, repo, backup_root) -> N
 
 def test_versions_lists_git_commits_in_git_mode(client, repo, backup_root) -> None:
     make_edition(repo, "my-ed")
-    edition_path = repo / "content" / "newsletter" / "my-ed" / "index.md"
-    fake_log = f"abc123 1712345678\nwip: save\ndef456 1712340000\nwip: save\n"
+    repo / "content" / "newsletter" / "my-ed" / "index.md"
+    fake_log = "abc123 1712345678\nwip: save\ndef456 1712340000\nwip: save\n"
     mock_run = MagicMock(return_value=MagicMock(stdout=fake_log, returncode=0))
-    with patch("patr.server.git_mode", return_value=True), patch("subprocess.run", mock_run):
+    with (
+        patch("patr.server.git_mode", return_value=True),
+        patch("subprocess.run", mock_run),
+    ):
         r = client.get("/api/edition/my-ed/versions")
     d = r.get_json()
     assert r.status_code == 200
@@ -113,7 +117,9 @@ def test_version_content_404_for_unknown_edition(client, repo) -> None:
     assert r.status_code == 404
 
 
-def test_version_content_returns_backup_in_git_free_mode(client, repo, backup_root) -> None:
+def test_version_content_returns_backup_in_git_free_mode(
+    client, repo, backup_root
+) -> None:
     make_edition(repo, "my-ed")
     ts = make_backup(backup_root, repo, "my-ed", CONTENT_V1, age_seconds=30)
     with patch("patr.server.git_mode", return_value=False):
@@ -132,7 +138,10 @@ def test_version_content_404_for_missing_backup(client, repo, backup_root) -> No
 def test_version_content_returns_git_content(client, repo, backup_root) -> None:
     make_edition(repo, "my-ed")
     mock_run = MagicMock(return_value=MagicMock(stdout=CONTENT_V1, returncode=0))
-    with patch("patr.server.git_mode", return_value=True), patch("subprocess.run", mock_run):
+    with (
+        patch("patr.server.git_mode", return_value=True),
+        patch("subprocess.run", mock_run),
+    ):
         r = client.get("/api/edition/my-ed/versions/abc123")
     assert r.status_code == 200
     assert r.get_json()["content"] == CONTENT_V1
@@ -141,6 +150,9 @@ def test_version_content_returns_git_content(client, repo, backup_root) -> None:
 def test_version_content_404_when_git_show_fails(client, repo, backup_root) -> None:
     make_edition(repo, "my-ed")
     mock_run = MagicMock(return_value=MagicMock(stdout="", returncode=128))
-    with patch("patr.server.git_mode", return_value=True), patch("subprocess.run", mock_run):
+    with (
+        patch("patr.server.git_mode", return_value=True),
+        patch("subprocess.run", mock_run),
+    ):
         r = client.get("/api/edition/my-ed/versions/badref")
     assert r.status_code == 404
