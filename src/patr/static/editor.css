@@ -144,6 +144,13 @@
   opacity: 1;
 }
 
+.editor-word-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  opacity: 0.6;
+}
+
 /* Conflict modal */
 .conflict-modal .modal-conflict {
   max-width: 92vw;

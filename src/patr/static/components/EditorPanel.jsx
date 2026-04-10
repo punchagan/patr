@@ -74,6 +74,39 @@ const dimMarksPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
+// Leaf nodes that are pure syntax — don't contribute to word count.
+const SKIP_LEAF_NODES = new Set([
+  ...MARK_NODES,
+  "URL",
+  "CodeText",
+  "HardBreak",
+]);
+// Subtrees to skip entirely (images, code blocks).
+const SKIP_SUBTREES = new Set([
+  "Image",
+  "FencedCode",
+  "CodeBlock",
+  "InlineCode",
+]);
+
+/**
+ * Count words by walking the lezer syntax tree. Skips syntax markers,
+ * URLs, code blocks, and images — counts only readable prose text.
+ */
+function countWordsFromView(view) {
+  const tree = syntaxTree(view.state);
+  const doc = view.state.doc;
+  let text = "";
+  tree.iterate({
+    enter(node) {
+      if (SKIP_SUBTREES.has(node.name)) return false;
+      if (node.type.isLeaf && !SKIP_LEAF_NODES.has(node.name))
+        text += doc.sliceString(node.from, node.to) + " ";
+    },
+  });
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 async function uploadImage(file, slug) {
   const formData = new FormData();
   formData.append("file", file);
@@ -217,6 +250,7 @@ const EditorPanel = forwardRef(function EditorPanel(
   const [intro, setIntro] = useState("");
   const [initialBody, setInitialBody] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
+  const [wordCount, setWordCount] = useState(0);
   const [isDark, setIsDark] = useState(() =>
     document.body.classList.contains("dark"),
   );
@@ -401,6 +435,11 @@ const EditorPanel = forwardRef(function EditorPanel(
     [scheduleSave],
   );
 
+  // Update word count after CodeMirror processes a freshly loaded body.
+  useEffect(() => {
+    if (viewRef.current) setWordCount(countWordsFromView(viewRef.current));
+  }, [initialBody]);
+
   // Check for external file changes when the window regains focus
   useEffect(() => {
     if (!slug) return;
@@ -450,6 +489,7 @@ const EditorPanel = forwardRef(function EditorPanel(
     (val) => {
       if (loading.current) return;
       bodyRef.current = val;
+      if (viewRef.current) setWordCount(countWordsFromView(viewRef.current));
       scheduleSave();
     },
     [scheduleSave],
@@ -549,6 +589,11 @@ const EditorPanel = forwardRef(function EditorPanel(
       <div className={`editor-save-status${saveStatus ? " visible" : ""}`}>
         {saveStatus}
       </div>
+      {wordCount > 0 && (
+        <div className="editor-word-count">
+          {wordCount} words · ~{Math.ceil(wordCount / 200)} min read
+        </div>
+      )}
     </div>
   );
 });
