@@ -21,7 +21,8 @@ function DuplicateTabWarning() {
     >
       <h2 style={{ margin: 0 }}>Patr is already open</h2>
       <p style={{ margin: 0, color: "var(--text-secondary, #666)" }}>
-        Please switch to the existing tab to avoid conflicts.
+        Please switch to the existing tab. This tab will reload automatically
+        when that one closes.
       </p>
     </div>
   );
@@ -32,18 +33,30 @@ export default function App() {
 
   useEffect(() => {
     if (!navigator.locks) return;
+    const bc = new BroadcastChannel("patr_tab");
+
     navigator.locks.request(
       "patr_single_instance",
       { ifAvailable: true },
       async (lock) => {
         if (!lock) {
           setIsDuplicateTab(true);
+          // Reload when the primary tab closes so this tab can take over.
+          bc.onmessage = (e) => {
+            if (e.data === "primary_closing") window.location.reload();
+          };
           return;
         }
+        // Notify duplicate tabs before this tab closes.
+        window.addEventListener("beforeunload", () =>
+          bc.postMessage("primary_closing"),
+        );
         // Hold the lock for the lifetime of this tab.
         await new Promise(() => {});
       },
     );
+
+    return () => bc.close();
   }, []);
 
   const [editions, setEditions] = useState([]);

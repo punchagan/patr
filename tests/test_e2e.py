@@ -425,6 +425,27 @@ def test_duplicate_tab_shows_warning(browser, base_url) -> None:
         ctx.close()
 
 
+def test_duplicate_tab_promotes_on_primary_close(browser, base_url) -> None:
+    """Closing the primary tab causes the duplicate to reload and become primary."""
+    ctx = browser.new_context()
+    ctx.set_default_timeout(10000)
+    try:
+        p1 = ctx.new_page()
+        p1.goto(base_url)
+        p1.wait_for_selector(".sidebar")
+
+        p2 = ctx.new_page()
+        p2.goto(base_url)
+        p2.wait_for_selector("h2")
+        assert "already open" in p2.locator("h2").inner_text().lower()
+
+        # Closing the primary tab broadcasts "primary_closing"; p2 should reload.
+        p1.close(run_before_unload=True)
+        p2.wait_for_selector(".sidebar")
+    finally:
+        ctx.close()
+
+
 # ── Conflict detection ─────────────────────────────────────────────────────────
 
 
