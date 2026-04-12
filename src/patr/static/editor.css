@@ -131,26 +131,6 @@
   opacity: 0.25;
 }
 
-.editor-save-status {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: right;
-  min-height: 16px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.editor-save-status.visible {
-  opacity: 1;
-}
-
-.editor-word-count {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: right;
-  opacity: 0.6;
-}
-
 /* Conflict modal */
 .conflict-modal .modal-conflict {
   max-width: 92vw;

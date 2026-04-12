@@ -395,6 +395,17 @@ body.dark .btn-danger:hover:not(:disabled) {
   border-bottom: 1px solid var(--border);
 }
 
+.action-bar-wordcount {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.action-bar-savestatus {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .status-msg {
   font-size: 12px;
   padding: 4px 10px;

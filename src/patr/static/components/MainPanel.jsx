@@ -45,14 +45,14 @@ function useDeployStatus(edition) {
           setEmailOnly(false);
           setDeploymentLive(d.live);
           setGitAvailable(d.git_available ?? true);
-          if (d.live) setStatus({ cls: "ok", text: "Published ✓" });
-          else
+          if (!d.live)
             setStatus({
               cls: "warn",
               text: d.reason
                 ? `Not published: ${d.reason}`
                 : "Not published yet",
             });
+          else setStatus(null);
         }
       });
   }, [edition?.slug]);
@@ -205,6 +205,8 @@ export default function MainPanel({
   const [previewKey, setPreviewKey] = useState(0);
   const [showTestSend, setShowTestSend] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [editorSaveStatus, setEditorSaveStatus] = useState("");
+  const [wordCount, setWordCount] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const {
@@ -400,6 +402,8 @@ export default function MainPanel({
               slug={edition.slug}
               focusMode={focusMode}
               onSaved={() => setPreviewKey((k) => k + 1)}
+              onSaveStatusChange={setEditorSaveStatus}
+              onWordCountChange={setWordCount}
             />
           </div>
           {showPreview && (
@@ -442,6 +446,14 @@ export default function MainPanel({
 
       {edition && !focusMode && (
         <div className="action-bar">
+          {wordCount > 0 && (
+            <span className="action-bar-wordcount">
+              {wordCount} words · ~{Math.ceil(wordCount / 200)} min
+            </span>
+          )}
+          {editorSaveStatus && (
+            <span className="action-bar-savestatus">{editorSaveStatus}</span>
+          )}
           <div className="spacer" />
           {status && (
             <span className={`status-msg ${status.cls}`}>{status.text}</span>

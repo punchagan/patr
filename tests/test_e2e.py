@@ -306,7 +306,7 @@ def test_autosave(page, edition, base_url) -> None:
         "document.querySelector('.cm-content').textContent.includes('Hello autosave')"
     )
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
     content = page.request.get(f"{base_url}/api/edition/{edition}/content").json()
@@ -483,7 +483,7 @@ def test_conflict_dirty_editor_shows_modal(page, edition) -> None:
     editor.press_sequentially("My local edit")
     # Wait for autosave to fire and persist mtime
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
 
@@ -509,7 +509,7 @@ def test_conflict_keep_mine(page, edition, base_url) -> None:
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     editor.press_sequentially("Keep-mine-content")
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
 
@@ -528,7 +528,7 @@ def test_conflict_keep_mine(page, edition, base_url) -> None:
     page.wait_for_function("!document.querySelector('.conflict-modal')", timeout=3000)
     # Editor content (mine) should be saved
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
     content = page.request.get(f"{base_url}/api/edition/{edition}/content").json()
@@ -543,7 +543,7 @@ def test_conflict_keep_theirs(page, edition) -> None:
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     editor.press_sequentially("Keep-theirs-mine")
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
 
@@ -597,7 +597,7 @@ def test_history_shows_backup_versions(page, edition, base_url) -> None:
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     editor.press_sequentially("History test content")
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
 
@@ -621,7 +621,7 @@ def test_history_restore(page, edition, base_url) -> None:
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")
     editor.press_sequentially("Version one")
     page.wait_for_function(
-        "document.querySelector('.editor-save-status')?.textContent === 'Saved'",
+        "document.querySelector('.action-bar-savestatus')?.textContent === 'Saved'",
         timeout=5000,
     )
 

@@ -90,20 +90,31 @@ const SKIP_SUBTREES = new Set([
 ]);
 
 /**
- * Count words by walking the lezer syntax tree. Skips syntax markers,
- * URLs, code blocks, and images — counts only readable prose text.
+ * Count words using the lezer syntax tree. Plain text in lezer-markdown is
+ * not represented as leaf nodes — it's the gap between named nodes. So the
+ * approach is inverted: start with the full document text and blank out the
+ * ranges that should NOT be counted (syntax markers, URLs, code, images).
  */
 function countWordsFromView(view) {
-  const tree = syntaxTree(view.state);
   const doc = view.state.doc;
-  let text = "";
-  tree.iterate({
+  const ranges = []; // ranges to remove, collected from the tree
+  syntaxTree(view.state).iterate({
     enter(node) {
-      if (SKIP_SUBTREES.has(node.name)) return false;
-      if (node.type.isLeaf && !SKIP_LEAF_NODES.has(node.name))
-        text += doc.sliceString(node.from, node.to) + " ";
+      if (SKIP_SUBTREES.has(node.name)) {
+        ranges.push([node.from, node.to]);
+        return false; // skip children
+      }
+      if (SKIP_LEAF_NODES.has(node.name)) {
+        ranges.push([node.from, node.to]);
+      }
     },
   });
+  // Remove ranges in reverse order so earlier indices stay valid.
+  ranges.sort(([a], [b]) => b - a);
+  let text = doc.toString();
+  for (const [from, to] of ranges) {
+    text = text.slice(0, from) + " " + text.slice(to);
+  }
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
@@ -244,7 +255,7 @@ function EditorToolbar({ viewRef, slug }) {
 }
 
 const EditorPanel = forwardRef(function EditorPanel(
-  { slug, isFooter, focusMode, onSaved },
+  { slug, isFooter, focusMode, onSaved, onSaveStatusChange, onWordCountChange },
   ref,
 ) {
   const [intro, setIntro] = useState("");
@@ -447,7 +458,17 @@ const EditorPanel = forwardRef(function EditorPanel(
     [scheduleSave],
   );
 
-  // Update word count after CodeMirror processes a freshly loaded body.
+  useEffect(() => {
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus]);
+
+  useEffect(() => {
+    onWordCountChange?.(wordCount);
+  }, [wordCount]);
+
+  // Update word count when a new body loads. CodeMirror is a child component
+  // so its internal value-update effect runs before this one, meaning the
+  // view already has the new document by the time this fires.
   useEffect(() => {
     if (viewRef.current) setWordCount(countWordsFromView(viewRef.current));
   }, [initialBody]);
@@ -598,14 +619,6 @@ const EditorPanel = forwardRef(function EditorPanel(
           />
         </div>
       </div>
-      <div className={`editor-save-status${saveStatus ? " visible" : ""}`}>
-        {saveStatus}
-      </div>
-      {wordCount > 0 && (
-        <div className="editor-word-count">
-          {wordCount} words · ~{Math.ceil(wordCount / 200)} min read
-        </div>
-      )}
     </div>
   );
 });
