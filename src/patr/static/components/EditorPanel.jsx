@@ -325,6 +325,18 @@ const EditorPanel = forwardRef(function EditorPanel(
     };
   }, []);
 
+  // Warn before closing the tab if a save is still pending.
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (dirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   // Load content when slug changes, flush pending save for previous slug
   useEffect(() => {
     if (!slug) return;
