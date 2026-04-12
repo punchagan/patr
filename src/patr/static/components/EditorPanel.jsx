@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
-import { EditorView } from "@codemirror/view";
+import { EditorView, scrollPastEnd } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
 import {
   HighlightStyle,
@@ -603,6 +603,7 @@ const EditorPanel = forwardRef(function EditorPanel(
               extensions={[
                 markdown(),
                 EditorView.lineWrapping,
+                scrollPastEnd(),
                 EditorView.contentAttributes.of({ spellcheck: "true" }),
                 syntaxHighlighting(markdownHighlight),
                 dimMarksPlugin,
