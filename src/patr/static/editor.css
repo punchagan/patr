@@ -5,7 +5,6 @@
   flex: 1;
   overflow: hidden;
   padding: 24px 32px;
-  gap: 16px;
   background: var(--surface);
 }
 
@@ -55,6 +54,17 @@
 
 .editor-intro-input:focus {
   border-color: var(--active-accent);
+}
+
+.editor-content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  gap: 16px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .editor-toolbar {

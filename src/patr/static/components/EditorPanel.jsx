@@ -570,8 +570,8 @@ const EditorPanel = forwardRef(function EditorPanel(
           onDismiss={handleDismiss}
         />
       )}
-      {!isFooter && !focusMode && (
-        <>
+      <div className="editor-content-area">
+        {!isFooter && !focusMode && (
           <div className="editor-field">
             <label>Intro</label>
             <textarea
@@ -581,42 +581,42 @@ const EditorPanel = forwardRef(function EditorPanel(
               onChange={handleIntroChange}
             />
           </div>
-        </>
-      )}
-      <div
-        className="editor-field"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <label>Body</label>
-        <EditorToolbar viewRef={viewRef} slug={slug} />
-        <div className="editor-body-wrap">
-          <CodeMirror
-            value={initialBody}
-            onChange={handleBodyChange}
-            onCreateEditor={(view) => {
-              viewRef.current = view;
-            }}
-            extensions={[
-              markdown(),
-              EditorView.lineWrapping,
-              EditorView.contentAttributes.of({ spellcheck: "true" }),
-              syntaxHighlighting(markdownHighlight),
-              dimMarksPlugin,
-            ]}
-            theme={isDark ? "dark" : "light"}
-            placeholder="Write something…"
-            basicSetup={{
-              lineNumbers: false,
-              foldGutter: false,
-              highlightActiveLine: false,
-            }}
-            style={{ fontSize: 14, height: "100%" }}
-          />
+        )}
+        <div
+          className="editor-field"
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <label>Body</label>
+          <EditorToolbar viewRef={viewRef} slug={slug} />
+          <div className="editor-body-wrap">
+            <CodeMirror
+              value={initialBody}
+              onChange={handleBodyChange}
+              onCreateEditor={(view) => {
+                viewRef.current = view;
+              }}
+              extensions={[
+                markdown(),
+                EditorView.lineWrapping,
+                EditorView.contentAttributes.of({ spellcheck: "true" }),
+                syntaxHighlighting(markdownHighlight),
+                dimMarksPlugin,
+              ]}
+              theme={isDark ? "dark" : "light"}
+              placeholder="Write something…"
+              basicSetup={{
+                lineNumbers: false,
+                foldGutter: false,
+                highlightActiveLine: false,
+              }}
+              style={{ fontSize: 14, height: "100%" }}
+            />
+          </div>
         </div>
       </div>
     </div>
