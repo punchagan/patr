@@ -37,7 +37,7 @@
 
 .editor-intro-input {
   width: 100%;
-  font-size: 14px;
+  font-size: 16px;
   font-style: italic;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -48,8 +48,8 @@
   resize: vertical;
   min-height: 60px;
   box-sizing: border-box;
-  font-family: inherit;
-  line-height: 1.5;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.6;
 }
 
 .editor-intro-input:focus {
