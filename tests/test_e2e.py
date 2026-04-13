@@ -140,7 +140,7 @@ def screenshot_edition(repo, context, base_url):
     slug = "april-2025"
     edition_dir = state.CONTENT_DIR / slug
     (edition_dir / "index.md").write_text(
-        "---\ntitle: Hello from Patr\ndate: 2025-04-01\ndraft: true\nintro: |\n  A short personal note before the main content — good for context or a quick hello.\n---\n\n"
+        "---\ntitle: Hello from Patr\ndate: 2025-04-01\ndraft: false\nintro: |\n  A short personal note before the main content — good for context or a quick hello.\n---\n\n"
         + _SCREENSHOT_BODY
     )
     yield slug
@@ -172,7 +172,7 @@ def test_screenshot(screenshot_edition, context, base_url) -> None:
         p.wait_for_selector(".sidebar")
         p.locator(".edition-item:has-text('Hello from Patr')").click()
         p.wait_for_selector(".cm-content")
-        p.wait_for_selector(".status-msg.ok")  # wait for "Published ✓" to appear
+        p.wait_for_selector(".badge-live")  # wait for Published badge to appear
         out = REPO_ROOT / "screenshots" / "editor.png"
         out.parent.mkdir(exist_ok=True)
         p.screenshot(path=str(out))
