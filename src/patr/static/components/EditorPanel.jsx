@@ -74,6 +74,25 @@ const dimMarksPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
+/**
+ * Keeps the cursor line vertically centred while typing. On each document
+ * change, scrolls the cursor position to the middle of the editor viewport
+ * via a requestAnimationFrame so the dispatch doesn't happen inside an
+ * ongoing update cycle.
+ */
+const typewriterPlugin = ViewPlugin.fromClass(class {
+  update(update) {
+    if (!update.docChanged) return;
+    const head = update.state.selection.main.head;
+    requestAnimationFrame(() => {
+      if (!update.view.dom.isConnected) return;
+      update.view.dispatch({
+        effects: EditorView.scrollIntoView(head, { y: "center" }),
+      });
+    });
+  }
+});
+
 // Leaf nodes that are pure syntax — don't contribute to word count.
 const SKIP_LEAF_NODES = new Set([
   ...MARK_NODES,
@@ -607,6 +626,7 @@ const EditorPanel = forwardRef(function EditorPanel(
                 EditorView.contentAttributes.of({ spellcheck: "true" }),
                 syntaxHighlighting(markdownHighlight),
                 dimMarksPlugin,
+                typewriterPlugin,
               ]}
               theme={isDark ? "dark" : "light"}
               placeholder="Write something…"
