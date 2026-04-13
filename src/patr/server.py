@@ -50,6 +50,7 @@ from patr.config import (
 from patr.contacts import fetch_contacts, get_already_sent, log_sent
 from patr.content import (
     build_email_html,
+    build_email_plain,
     edition_dir_for,
     get_editions,
     load_edition,
@@ -939,8 +940,16 @@ def test_send(slug):
                 email_only=email_only,
                 edition_dir=edition_dir,
             )
+            plain = build_email_plain(
+                slug,
+                post,
+                footer_md,
+                hugo_config,
+                recipient_name=r["name"],
+                email_only=email_only,
+            )
             send_email(
-                gmail, sender, formataddr((r["name"], r["email"])), subject, html
+                gmail, sender, formataddr((r["name"], r["email"])), subject, html, plain
             )
             sheet_id = newsletter_config.get("sheet_id")
             if sheet_id is not None:
@@ -1023,12 +1032,21 @@ def send_all(slug):
                     email_only=email_only,
                     edition_dir=edition_dir,
                 )
+                plain = build_email_plain(
+                    slug,
+                    post,
+                    footer_md,
+                    hugo_config,
+                    recipient_name=contact["name"],
+                    email_only=email_only,
+                )
                 send_email(
                     gmail,
                     sender,
                     formataddr((contact["name"], contact["email"])),
                     subject,
                     html,
+                    plain,
                 )
                 # log_sent is called immediately after send_email. If it fails,
                 # the email was sent but not recorded — re-running would send again.

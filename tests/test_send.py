@@ -147,6 +147,31 @@ def test_test_send_succeeds_without_sheet_id(client, repo) -> None:
     assert r.get_json()["ok"] is True
 
 
+def test_test_send_includes_plain_text_part(client, repo) -> None:
+    """Emails must include a text/plain part alongside the HTML part."""
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    captured = {}
+
+    def fake_send(gmail, sender, to, subject, html, plain):
+        captured["plain"] = plain
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email", side_effect=fake_send),
+        patch("patr.server.load_newsletter_config", return_value={"name": "My Letter"}),
+    ):
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com"
+        }
+        client.post("/api/test-send/my-ed", json={})
+
+    assert "plain" in captured, "send_email was not called with a plain argument"
+    assert "Body." in captured["plain"]
+
+
 def test_test_send_uses_name_email_format(client, repo) -> None:
     """To header should be formatted as 'Name <email>' not bare email."""
     make_edition(repo, "my-ed", draft=False)
@@ -154,7 +179,7 @@ def test_test_send_uses_name_email_format(client, repo) -> None:
 
     captured = {}
 
-    def fake_send(gmail, sender, to, subject, html):
+    def fake_send(gmail, sender, to, subject, html, plain):
         captured["to"] = to
 
     with (
@@ -181,7 +206,7 @@ def test_test_send_uses_name_email_format_for_sender(client, repo) -> None:
 
     captured = {}
 
-    def fake_send(gmail, sender, to, subject, html):
+    def fake_send(gmail, sender, to, subject, html, plain):
         captured["sender"] = sender
 
     with (
@@ -206,7 +231,7 @@ def test_test_send_self_recipient_resolves_to_sender_email(client, repo) -> None
 
     captured = {}
 
-    def fake_send(gmail, sender, to, subject, html):
+    def fake_send(gmail, sender, to, subject, html, plain):
         captured["to"] = to
 
     with (

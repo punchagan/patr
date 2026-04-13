@@ -1,9 +1,9 @@
-"""Tests for content rendering — render_md, absolutify_urls, build_email_html."""
+"""Tests for content rendering — render_md, absolutify_urls, build_email_html, build_email_plain."""
 
 import base64
 
 import frontmatter
-from patr.content import absolutify_urls, build_email_html, render_md
+from patr.content import absolutify_urls, build_email_html, build_email_plain, render_md
 
 HUGO_CONFIG = {"baseURL": "https://example.com"}
 
@@ -430,3 +430,45 @@ def test_footer_img_constrained_smaller_than_body_imgs() -> None:
     style = str(img.get("style", ""))
     assert "max-width" in style
     assert "200px" in style
+
+
+# build_email_plain
+
+
+def test_build_email_plain_contains_body() -> None:
+    post = make_post(body="Hello **world**.")
+    text = build_email_plain("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "Hello **world**." in text
+
+
+def test_build_email_plain_contains_greeting() -> None:
+    post = make_post()
+    text = build_email_plain(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="Alice"
+    )
+    assert text.startswith("Hi Alice,")
+
+
+def test_build_email_plain_contains_footer() -> None:
+    post = make_post()
+    text = build_email_plain("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert FOOTER_MD in text
+    assert "---" in text
+
+
+def test_build_email_plain_contains_view_in_browser_link() -> None:
+    post = make_post()
+    text = build_email_plain("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "https://example.com/newsletter/test-ed/" in text
+
+
+def test_build_email_plain_email_only_omits_view_in_browser() -> None:
+    post = make_post()
+    text = build_email_plain("test-ed", post, FOOTER_MD, HUGO_CONFIG, email_only=True)
+    assert "View in browser" not in text
+
+
+def test_build_email_plain_contains_intro() -> None:
+    post = make_post(intro="A brief intro.")
+    text = build_email_plain("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "A brief intro." in text

@@ -249,3 +249,34 @@ def build_email_html(
         return css_inline.inline(embed_images(html, edition_dir))
     html = absolutify_urls(html, base_url, page_url) if absolute_urls else html
     return css_inline.inline(html)
+
+
+def build_email_plain(
+    slug,
+    post,
+    footer_md,
+    hugo_config,
+    recipient_name=None,
+    email_only=False,
+):
+    """Build a plain-text alternative for an email.
+
+    Uses raw markdown so the text is readable without stripping syntax.
+    Structure mirrors build_email_html: greeting, optional intro, body,
+    separator, footer, and an optional view-in-browser link.
+    """
+    base_url = hugo_config.get("baseURL", "").rstrip("/")
+    page_url = f"{base_url}/newsletter/{slug}/"
+    name = (recipient_name or "").strip()
+    greeting = f"Hi {name}," if name else "Hi,"
+
+    parts = [greeting, ""]
+    intro = (post.get("intro") or "").strip()
+    if intro:
+        parts += [intro, ""]
+    parts.append(post.content.strip())
+    if footer_md and footer_md.strip():
+        parts += ["", "---", "", footer_md.strip()]
+    if not email_only and page_url:
+        parts += ["", f"View in browser: {page_url}"]
+    return "\n".join(parts)

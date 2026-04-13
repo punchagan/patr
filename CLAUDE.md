@@ -280,5 +280,4 @@ Features not yet in the UI that users currently have to do by editing files dire
 
 - **Scheduled sending** — send at a future time; the Gmail API has no scheduled send support (long-standing open feature request), so this would require a local background scheduler (e.g. APScheduler) running inside Patr
 - **Unsubscribe handling** — emails have no unsubscribe mechanism; could add a mailto: link or plain instruction at the bottom of every edition; recipients would still need to be removed from the sheet manually
-- **Multipart/alternative emails** — currently only HTML is sent; adding a plain-text part (generated from the markdown source) improves deliverability and accessibility
 - **SMTP + local CSV as alternative backend** — for non-Gmail users; SMTP (via app password) replaces OAuth, local CSV replaces Google Sheets; CSV contacts would need a simple UI inside Patr and auto-backups
