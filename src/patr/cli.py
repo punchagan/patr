@@ -262,6 +262,7 @@ def main() -> None:
         cmd_install(args)
     elif args.command == "migrate":
         cmd_migrate(args)
-    else:
-        # Default to serve (also handles no subcommand for backwards compat)
+    elif args.command == "serve":
         cmd_serve(args)
+    else:
+        parser.print_help()
