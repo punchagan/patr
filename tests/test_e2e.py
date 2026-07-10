@@ -313,6 +313,31 @@ def test_autosave(page, edition, base_url) -> None:
     assert "Hello autosave" in content["body"]
 
 
+def test_selection_word_count(page, edition) -> None:
+    editor = page.locator(".cm-content")
+    editor.click()
+    page.wait_for_function("document.activeElement.classList.contains('cm-content')")
+    text = "hello world one two three"
+    editor.press_sequentially(text)
+    page.wait_for_function(
+        "document.querySelector('.action-bar-wordcount')?.textContent.includes('5 words')"
+    )
+    assert "selected" not in page.locator(".action-bar-wordcount").text_content()
+
+    # Select "world one two" (chars 6-19) via plain cursor movement.
+    start = text.index("world")
+    selected = "world one two"
+    page.keyboard.press("Home")
+    for _ in range(start):
+        page.keyboard.press("ArrowRight")
+    for _ in range(len(selected)):
+        page.keyboard.press("Shift+ArrowRight")
+    page.wait_for_function(
+        "document.querySelector('.action-bar-wordcount')?.textContent.includes('selected')"
+    )
+    assert "3 selected" in page.locator(".action-bar-wordcount").text_content()
+
+
 def test_toolbar_bold(page, edition) -> None:
     page.locator(".cm-content").click()
     page.wait_for_function("document.activeElement.classList.contains('cm-content')")

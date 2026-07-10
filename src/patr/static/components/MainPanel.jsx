@@ -207,6 +207,7 @@ export default function MainPanel({
   const [showConfirm, setShowConfirm] = useState(false);
   const [editorSaveStatus, setEditorSaveStatus] = useState("");
   const [wordCount, setWordCount] = useState(0);
+  const [selectionWordCount, setSelectionWordCount] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const {
@@ -403,7 +404,10 @@ export default function MainPanel({
               focusMode={focusMode}
               onSaved={() => setPreviewKey((k) => k + 1)}
               onSaveStatusChange={setEditorSaveStatus}
-              onWordCountChange={setWordCount}
+              onWordCountChange={(total, selection) => {
+                setWordCount(total);
+                setSelectionWordCount(selection);
+              }}
             />
           </div>
           {showPreview && (
@@ -449,6 +453,7 @@ export default function MainPanel({
           {wordCount > 0 && (
             <span className="action-bar-wordcount">
               {wordCount} words · ~{Math.ceil(wordCount / 200)} min
+              {selectionWordCount > 0 && ` · ${selectionWordCount} selected`}
             </span>
           )}
           {editorSaveStatus && (
