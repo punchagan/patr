@@ -105,6 +105,7 @@ export default function Sidebar({
   selectedSlug,
   editingFooter,
   hidden,
+  updateAvailable,
   onSelect,
   onFooter,
   onNewEdition,
@@ -112,6 +113,7 @@ export default function Sidebar({
   onHelp,
   onEditionUpdated,
 }) {
+  const [updateDismissed, setUpdateDismissed] = useState(false);
   const [width, setWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
     return stored >= MIN_WIDTH && stored <= MAX_WIDTH ? stored : 260;
@@ -175,6 +177,18 @@ export default function Sidebar({
           </button>
         </span>
       </div>
+      {updateAvailable && !updateDismissed && (
+        <div className="update-banner">
+          A newer version of Patr is available.
+          <button
+            className="update-banner-dismiss"
+            aria-label="Dismiss"
+            onClick={() => setUpdateDismissed(true)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="edition-list">
         {warnings?.map((w, i) => (
           <div

@@ -67,6 +67,7 @@ export default function App() {
   );
   const [hasSheetId, setHasSheetId] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [editingFooter, setEditingFooter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showNewEdition, setShowNewEdition] = useState(false);
@@ -113,8 +114,8 @@ export default function App() {
     return mode === "split"
       ? "split"
       : mode === "email" || mode === "web"
-      ? "preview"
-      : "write";
+        ? "preview"
+        : "write";
   });
   const [initialViewMode] = useState(() => {
     const mode = location.hash.slice(1).split("/")[1] || "";
@@ -128,6 +129,9 @@ export default function App() {
     fetch("/api/auth-status")
       .then((r) => r.json())
       .then((d) => setGmailConnected(!!d.connected));
+    fetch("/api/check-update")
+      .then((r) => r.json())
+      .then((d) => setUpdateAvailable(!!d.update_available));
     if (document.body.dataset.unconfigured) setShowSettings(true);
 
     const hashSlug = location.hash.slice(1).split("/")[0];
@@ -164,6 +168,7 @@ export default function App() {
         selectedSlug={editingFooter ? null : selectedEdition?.slug}
         editingFooter={editingFooter}
         hidden={focusMode}
+        updateAvailable={updateAvailable}
         onSelect={(e) => {
           setSelectedEdition(e);
           setEditingFooter(false);
