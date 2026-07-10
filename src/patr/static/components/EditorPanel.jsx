@@ -156,6 +156,11 @@ function countWordsFromView(view) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+// countWordsFromView walks the full syntax tree and rebuilds the whole
+// document string on every call — debounce it so a burst of keystrokes
+// triggers one recompute instead of one per keystroke.
+const WORD_COUNT_DEBOUNCE_MS = 300;
+
 async function uploadImage(file, slug) {
   const formData = new FormData();
   formData.append("file", file);
@@ -308,6 +313,7 @@ const EditorPanel = forwardRef(function EditorPanel(
   const loading = useRef(false);
   const saveTimer = useRef(null);
   const commitTimer = useRef(null);
+  const wordCountTimer = useRef(null);
   const slugRef = useRef(slug);
   const introRef = useRef(intro);
   const bodyRef = useRef("");
@@ -371,6 +377,7 @@ const EditorPanel = forwardRef(function EditorPanel(
     return () => {
       clearTimeout(saveTimer.current);
       clearTimeout(commitTimer.current);
+      clearTimeout(wordCountTimer.current);
     };
   }, []);
 
@@ -560,7 +567,10 @@ const EditorPanel = forwardRef(function EditorPanel(
     (val) => {
       if (loading.current) return;
       bodyRef.current = val;
-      if (viewRef.current) setWordCount(countWordsFromView(viewRef.current));
+      clearTimeout(wordCountTimer.current);
+      wordCountTimer.current = setTimeout(() => {
+        if (viewRef.current) setWordCount(countWordsFromView(viewRef.current));
+      }, WORD_COUNT_DEBOUNCE_MS);
       scheduleSave();
     },
     [scheduleSave],
