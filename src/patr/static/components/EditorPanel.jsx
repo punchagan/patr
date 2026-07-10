@@ -93,6 +93,23 @@ const typewriterPlugin = ViewPlugin.fromClass(class {
   }
 });
 
+// A stable reference is essential: @uiw/react-codemirror reconfigures (and
+// rebuilds every plugin in) the whole editor state whenever this array's
+// *identity* changes. None of these extensions depend on props or state, so
+// this must be defined once at module scope rather than as an inline array
+// literal in JSX — otherwise every re-render of EditorPanel (which happens
+// on every keystroke, via wordCount/saveStatus state) forces a full editor
+// reconfigure. See patr#4 ("Memory leak in the UI?").
+const editorExtensions = [
+  markdown(),
+  EditorView.lineWrapping,
+  scrollPastEnd(),
+  EditorView.contentAttributes.of({ spellcheck: "true" }),
+  syntaxHighlighting(markdownHighlight),
+  dimMarksPlugin,
+  typewriterPlugin,
+];
+
 // Leaf nodes that are pure syntax — don't contribute to word count.
 const SKIP_LEAF_NODES = new Set([
   ...MARK_NODES,
@@ -619,15 +636,7 @@ const EditorPanel = forwardRef(function EditorPanel(
               onCreateEditor={(view) => {
                 viewRef.current = view;
               }}
-              extensions={[
-                markdown(),
-                EditorView.lineWrapping,
-                scrollPastEnd(),
-                EditorView.contentAttributes.of({ spellcheck: "true" }),
-                syntaxHighlighting(markdownHighlight),
-                dimMarksPlugin,
-                typewriterPlugin,
-              ]}
+              extensions={editorExtensions}
               theme={isDark ? "dark" : "light"}
               placeholder="Write something…"
               basicSetup={{
