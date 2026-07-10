@@ -320,6 +320,7 @@ const EditorPanel = forwardRef(function EditorPanel(
   const [initialBody, setInitialBody] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [wordCount, setWordCount] = useState(0);
+  const [selectionWordCount, setSelectionWordCount] = useState(0);
   const [isDark, setIsDark] = useState(() =>
     document.body.classList.contains("dark"),
   );
@@ -329,6 +330,7 @@ const EditorPanel = forwardRef(function EditorPanel(
   const saveTimer = useRef(null);
   const commitTimer = useRef(null);
   const wordCountTimer = useRef(null);
+  const selectionWordCountTimer = useRef(null);
   const slugRef = useRef(slug);
   const introRef = useRef(intro);
   const bodyRef = useRef("");
@@ -393,6 +395,7 @@ const EditorPanel = forwardRef(function EditorPanel(
       clearTimeout(saveTimer.current);
       clearTimeout(commitTimer.current);
       clearTimeout(wordCountTimer.current);
+      clearTimeout(selectionWordCountTimer.current);
     };
   }, []);
 
@@ -523,8 +526,8 @@ const EditorPanel = forwardRef(function EditorPanel(
   }, [saveStatus]);
 
   useEffect(() => {
-    onWordCountChange?.(wordCount);
-  }, [wordCount]);
+    onWordCountChange?.(wordCount, selectionWordCount);
+  }, [wordCount, selectionWordCount]);
 
   // Update word count when a new body loads. CodeMirror is a child component
   // so its internal value-update effect runs before this one, meaning the
@@ -590,6 +593,18 @@ const EditorPanel = forwardRef(function EditorPanel(
     },
     [scheduleSave],
   );
+
+  // Recompute the selection word count on cursor/selection moves (not just
+  // typing) — debounced for the same reason handleBodyChange debounces the
+  // whole-document count: it's a syntax-tree walk over the selected range.
+  const handleViewUpdate = useCallback((update) => {
+    if (loading.current) return;
+    if (!update.selectionSet && !update.docChanged) return;
+    clearTimeout(selectionWordCountTimer.current);
+    selectionWordCountTimer.current = setTimeout(() => {
+      setSelectionWordCount(countSelectionWords(update.view));
+    }, WORD_COUNT_DEBOUNCE_MS);
+  }, []);
 
   const handleIntroChange = (e) => {
     setIntro(e.target.value);
@@ -663,6 +678,7 @@ const EditorPanel = forwardRef(function EditorPanel(
               onCreateEditor={(view) => {
                 viewRef.current = view;
               }}
+              onUpdate={handleViewUpdate}
               extensions={editorExtensions}
               theme={isDark ? "dark" : "light"}
               placeholder="Write something…"
