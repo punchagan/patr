@@ -130,32 +130,45 @@ const SKIP_SUBTREES = new Set([
 ]);
 
 /**
- * Count words using the lezer syntax tree. Plain text in lezer-markdown is
- * not represented as leaf nodes — it's the gap between named nodes. So the
- * approach is inverted: start with the full document text and blank out the
- * ranges that should NOT be counted (syntax markers, URLs, code, images).
+ * Count words in [from, to) using the lezer syntax tree. Plain text in
+ * lezer-markdown is not represented as leaf nodes — it's the gap between
+ * named nodes. So the approach is inverted: start with the range's text and
+ * blank out the parts that should NOT be counted (syntax markers, URLs,
+ * code, images).
  */
-function countWordsFromView(view) {
-  const doc = view.state.doc;
+function countWordsInRange(view, from, to) {
   const ranges = []; // ranges to remove, collected from the tree
   syntaxTree(view.state).iterate({
+    from,
+    to,
     enter(node) {
       if (SKIP_SUBTREES.has(node.name)) {
-        ranges.push([node.from, node.to]);
+        ranges.push([Math.max(node.from, from), Math.min(node.to, to)]);
         return false; // skip children
       }
       if (SKIP_LEAF_NODES.has(node.name)) {
-        ranges.push([node.from, node.to]);
+        ranges.push([Math.max(node.from, from), Math.min(node.to, to)]);
       }
     },
   });
   // Remove ranges in reverse order so earlier indices stay valid.
   ranges.sort(([a], [b]) => b - a);
-  let text = doc.toString();
-  for (const [from, to] of ranges) {
-    text = text.slice(0, from) + " " + text.slice(to);
+  let text = view.state.doc.sliceString(from, to);
+  for (const [rFrom, rTo] of ranges) {
+    text = text.slice(0, rFrom - from) + " " + text.slice(rTo - from);
   }
   return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function countWordsFromView(view) {
+  return countWordsInRange(view, 0, view.state.doc.length);
+}
+
+// Word count of the current selection, or 0 when nothing is selected.
+export function countSelectionWords(view) {
+  const sel = view.state.selection.main;
+  if (sel.empty) return 0;
+  return countWordsInRange(view, sel.from, sel.to);
 }
 
 // countWordsFromView walks the full syntax tree and rebuilds the whole
