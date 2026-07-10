@@ -168,11 +168,23 @@ def test_screenshot(screenshot_edition, context, base_url) -> None:
                 ),
             ),
         )
+        # Mock the update check so the "newer version available" banner shows.
+        p.route(
+            "**/api/check-update",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {"update_available": True, "local": "abc123", "latest": "def456"}
+                ),
+            ),
+        )
         p.goto(base_url)
         p.wait_for_selector(".sidebar")
         p.locator(".edition-item:has-text('Hello from Patr')").click()
         p.wait_for_selector(".cm-content")
         p.wait_for_selector(".badge-live")  # wait for Published badge to appear
+        p.wait_for_selector(".update-banner")  # wait for update nudge to appear
         out = REPO_ROOT / "screenshots" / "editor.png"
         out.parent.mkdir(exist_ok=True)
         p.screenshot(path=str(out))
