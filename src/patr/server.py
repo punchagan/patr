@@ -57,6 +57,7 @@ from patr.content import (
     load_footer,
 )
 from patr.gmail import send_email
+from patr.updates import check_for_update
 from playwright.sync_api import sync_playwright
 
 app = Flask(__name__)
@@ -795,6 +796,11 @@ def check_deployment(slug):
             "url": url,
         }
     )
+
+
+@app.route("/api/check-update")
+def check_update():
+    return jsonify(check_for_update())
 
 
 @app.route("/api/help")
