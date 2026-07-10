@@ -19,7 +19,10 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
   `prettier` to format JS and CSS files in the source.
 - **Always run all tests before committing.** Run `uv run pytest` (includes E2E
   tests). If tests time out, re-run with `uv run pytest -x` to stop at the
-  first failure and diagnose before retrying.
+  first failure and diagnose before retrying. Also run the JS test suite with
+  `npm run test` (Vitest + jsdom + React Testing Library) if any files under
+  `src/patr/static/` changed — component tests live alongside the component
+  as `*.test.jsx`.
 - **Update screenshots when the UI changes.** Screenshot tests are excluded
   from the default test run. Run them manually with `uv run pytest -m
   screenshots` when the UI changes, then commit the updated screenshots
@@ -85,6 +88,7 @@ patr/
         Sidebar.jsx      # Edition list + auth bar
         MainPanel.jsx    # Write/Split/Preview modes, action bar
         EditorPanel.jsx  # CodeMirror markdown editor, auto-save, auto-commit, image upload
+        EditorPanel.test.jsx  # Vitest/RTL component test
         modals/          # SettingsModal, NewEditionModal, TestSendModal, ConfirmModal
       dist/              # Built output (committed; npm not needed on install)
     data/
@@ -196,6 +200,8 @@ The UI is a React app (built with Vite, output committed to `static/dist/`). The
 - Active mode is stored in the URL hash fragment: `#slug` (write), `#slug/split`, `#slug/email`, `#slug/web`
 - **Preview Email** mode has a **Download PDF** button (`/preview/<slug>/email.pdf`) — rendered by Playwright (system Chromium/Chrome) as a single-page PDF
 - To rebuild the frontend: `npm run build` in the repo root (requires Node + npm, one-time dev setup)
+- To run frontend tests: `npm run test` (Vitest + jsdom + React Testing Library; config at `vitest.config.js`)
+- CodeMirror's `extensions` prop must be a referentially-stable array (module-level constant, not an inline literal) — `@uiw/react-codemirror` fully reconfigures the editor state whenever that array's identity changes, which is expensive on every re-render and was the cause of patr#4 ("Memory leak in the UI?")
 
 ### Hugo Templates
 
