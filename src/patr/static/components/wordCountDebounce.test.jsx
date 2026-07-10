@@ -50,10 +50,7 @@ describe("EditorPanel word count", () => {
     const onWordCountChange = vi.fn();
 
     render(
-      <EditorPanel
-        slug="test-edition"
-        onWordCountChange={onWordCountChange}
-      />,
+      <EditorPanel slug="test-edition" onWordCountChange={onWordCountChange} />,
     );
 
     // Let the initial content-load fetch resolve.
@@ -69,8 +66,14 @@ describe("EditorPanel word count", () => {
     onWordCountChange.mockClear();
 
     // Simulate three rapid keystrokes.
-    for (const text of ["hello world", "hello world one", "hello world one two"]) {
-      fakeView.setState(EditorState.create({ doc: text, extensions: [markdown()] }));
+    for (const text of [
+      "hello world",
+      "hello world one",
+      "hello world one two",
+    ]) {
+      fakeView.setState(
+        EditorState.create({ doc: text, extensions: [markdown()] }),
+      );
       forceParsing(fakeView, text.length, 5000);
       act(() => {
         latestOnChange(text);

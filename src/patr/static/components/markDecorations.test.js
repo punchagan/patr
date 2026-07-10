@@ -9,10 +9,9 @@ import { buildMarkDecorations } from "./EditorPanel";
 // never dimmed regardless of viewport), lines 2-20 are candidates for
 // dimming.
 const LINE_COUNT = 20;
-const doc = Array.from(
-  { length: LINE_COUNT },
-  (_, i) => `# Heading ${i}`,
-).join("\n");
+const doc = Array.from({ length: LINE_COUNT }, (_, i) => `# Heading ${i}`).join(
+  "\n",
+);
 
 // The lezer parser only parses as far as it's been asked to (real usage
 // drives this incrementally via the live EditorView's idle-time

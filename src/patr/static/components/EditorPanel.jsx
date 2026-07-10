@@ -82,18 +82,20 @@ const dimMarksPlugin = ViewPlugin.fromClass(
  * via a requestAnimationFrame so the dispatch doesn't happen inside an
  * ongoing update cycle.
  */
-const typewriterPlugin = ViewPlugin.fromClass(class {
-  update(update) {
-    if (!update.docChanged) return;
-    const head = update.state.selection.main.head;
-    requestAnimationFrame(() => {
-      if (!update.view.dom.isConnected) return;
-      update.view.dispatch({
-        effects: EditorView.scrollIntoView(head, { y: "center" }),
+const typewriterPlugin = ViewPlugin.fromClass(
+  class {
+    update(update) {
+      if (!update.docChanged) return;
+      const head = update.state.selection.main.head;
+      requestAnimationFrame(() => {
+        if (!update.view.dom.isConnected) return;
+        update.view.dispatch({
+          effects: EditorView.scrollIntoView(head, { y: "center" }),
+        });
       });
-    });
-  }
-});
+    }
+  },
+);
 
 // A stable reference is essential: @uiw/react-codemirror reconfigures (and
 // rebuilds every plugin in) the whole editor state whenever this array's
