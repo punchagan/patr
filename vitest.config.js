@@ -6,5 +6,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/patr/static/**/*.test.{js,jsx}"],
+    setupFiles: ["./vitest.setup.js"],
   },
 });
