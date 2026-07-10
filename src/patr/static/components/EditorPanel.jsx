@@ -46,12 +46,14 @@ const MARK_NODES = new Set([
 ]);
 const dimMark = Decoration.mark({ class: "cm-md-mark" });
 
-function buildMarkDecorations(view) {
+export function buildMarkDecorations(view) {
   const builder = new RangeSetBuilder();
   const cursorLine = view.state.doc.lineAt(
     view.state.selection.main.head,
   ).number;
   syntaxTree(view.state).iterate({
+    from: view.viewport.from,
+    to: view.viewport.to,
     enter(node) {
       if (!MARK_NODES.has(node.name)) return;
       if (view.state.doc.lineAt(node.from).number !== cursorLine)

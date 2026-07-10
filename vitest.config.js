@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    include: ['src/patr/static/**/*.test.jsx'],
+    include: ['src/patr/static/**/*.test.{js,jsx}'],
   },
 });
