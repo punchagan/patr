@@ -111,6 +111,102 @@ def test_send_all_streams_sse_on_success(client, repo) -> None:
     assert done["sent"] == 1
     assert done["failed"] == []
 
+    # A fully successful send (no failures) marks the edition sent: full in
+    # its own frontmatter — local metadata so the UI can show a "Sent"
+    # indicator without hitting the Sheets API just to know whether an
+    # edition has gone out at all, and whether everyone got it.
+    content = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
+    assert "sent: full" in content
+
+
+def test_send_all_marks_partial_when_some_contacts_fail(client, repo) -> None:
+    """A batch with at least one success and one failure is sent: partial,
+    not full — the edition isn't fully covered yet."""
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    def fake_send(gmail, sender, to, subject, html, plain):
+        if "bob" in to:
+            raise RuntimeError("boom")
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email", side_effect=fake_send),
+        patch("patr.server.log_sent"),
+        patch(
+            "patr.server.fetch_contacts",
+            return_value=[
+                {"name": "Alice", "email": "alice@example.com"},
+                {"name": "Bob", "email": "bob@example.com"},
+            ],
+        ),
+        patch("patr.server.get_already_sent", return_value=set()),
+        patch(
+            "patr.server.load_newsletter_config",
+            return_value={"name": "My Letter", "sheet_id": "sheet123"},
+        ),
+        patch(
+            "patr.server.load_hugo_config",
+            return_value={"baseURL": "https://real-newsletter.com"},
+        ),
+        patch("patr.server.time") as mock_time,
+    ):
+        mock_time.sleep = MagicMock()
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com",
+            "name": "Me",
+        }
+        r = client.post("/api/send/my-ed")
+
+    events = _parse_sse(r.data)
+    done = next(e for e in events if e["type"] == "done")
+    assert done["sent"] == 1
+    assert len(done["failed"]) == 1
+
+    content = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
+    assert "sent: partial" in content
+
+
+def test_send_all_does_not_mark_sent_when_all_contacts_fail(client, repo) -> None:
+    """If every send fails, the edition must not be marked as sent."""
+    make_edition(repo, "my-ed", draft=False)
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email", side_effect=RuntimeError("boom")),
+        patch("patr.server.log_sent"),
+        patch(
+            "patr.server.fetch_contacts",
+            return_value=[{"name": "Alice", "email": "alice@example.com"}],
+        ),
+        patch("patr.server.get_already_sent", return_value=set()),
+        patch(
+            "patr.server.load_newsletter_config",
+            return_value={"name": "My Letter", "sheet_id": "sheet123"},
+        ),
+        patch(
+            "patr.server.load_hugo_config",
+            return_value={"baseURL": "https://real-newsletter.com"},
+        ),
+        patch("patr.server.time") as mock_time,
+    ):
+        mock_time.sleep = MagicMock()
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com",
+            "name": "Me",
+        }
+        r = client.post("/api/send/my-ed")
+
+    events = _parse_sse(r.data)
+    done = next(e for e in events if e["type"] == "done")
+    assert done["sent"] == 0
+
+    content = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
+    assert "sent:" not in content
+
 
 def test_send_all_without_base_url_returns_400(client, repo) -> None:
     make_edition(repo, "my-ed", draft=False)

@@ -440,6 +440,24 @@ def preview_web(slug):
     return redirect(f"/newsletter/{slug}/")
 
 
+def _mark_edition_sent(f, post, status: str) -> None:
+    """Set sent: "partial"|"full" in the edition's frontmatter.
+
+    Local metadata only — a simple status flag, not send history (dates,
+    recipient counts, etc. still live in the Sheet's Sent Log tab). Lets
+    the UI show a "Sent"/"Partially sent" indicator without an extra
+    Sheets API round trip just to answer "has this edition gone out at
+    all". Never downgrades "full" back to "partial".
+    """
+    if post.get("sent") == status or post.get("sent") == "full":
+        return
+    post.metadata["sent"] = status
+    fm_yaml = yaml.dump(
+        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
+    )
+    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
+
+
 @app.route("/api/toggle-draft/<slug>", methods=["POST"])
 def toggle_draft(slug):
     f, post = load_edition(slug)
@@ -1093,12 +1111,19 @@ def send_all(slug):
                 # log_sent is called immediately after send_email. If it fails,
                 # the email was sent but not recorded — re-running would send again.
                 log_sent(sheet_id, creds, contact["email"], slug)
+                if sent == 0:
+                    # Marked immediately (not just at the end) so a batch
+                    # interrupted partway through — tab closed, connection
+                    # drop — still leaves an accurate "partial" record.
+                    _mark_edition_sent(f, post, "partial")
                 sent += 1
                 yield f"data: {json.dumps({'type': 'progress', 'sent': sent, 'total': total, 'name': contact['name']})}\n\n"
                 time.sleep(0.9)
             except Exception as e:
                 failed.append({"email": contact["email"], "error": str(e)})
                 yield f"data: {json.dumps({'type': 'error', 'email': contact['email'], 'error': str(e)})}\n\n"
+        if sent > 0 and not failed:
+            _mark_edition_sent(f, post, "full")
         yield f"data: {json.dumps({'type': 'done', 'sent': sent, 'failed': failed, 'skipped': skipped})}\n\n"
 
     return Response(stream_with_context(generate()), content_type="text/event-stream")
