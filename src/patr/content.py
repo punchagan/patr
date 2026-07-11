@@ -57,6 +57,7 @@ def get_editions():
                 "title": post.get("title", slug),
                 "date": str(post.get("date", ""))[:10],
                 "draft": post.get("draft", False),
+                "sent": post.get("sent"),
                 "path": str(f.resolve()),
             }
         )

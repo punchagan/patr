@@ -64,6 +64,28 @@ def test_load_edition_finds_flat_md_in_hugo_free_mode(tmp_path) -> None:
     assert post["title"] == "My Edition"
 
 
+# get_editions — sent status
+
+
+def test_get_editions_includes_sent_status(tmp_path) -> None:
+    state.REPO_ROOT = tmp_path
+    state.CONTENT_DIR = tmp_path / "content" / "newsletter"
+    state.CONTENT_DIR.mkdir(parents=True)
+    (state.CONTENT_DIR / "sent-ed").mkdir()
+    (state.CONTENT_DIR / "sent-ed" / "index.md").write_text(
+        "---\ntitle: Sent\ndate: 2024-01-01\ndraft: false\nsent: full\n---\nBody\n"
+    )
+    (state.CONTENT_DIR / "unsent-ed").mkdir()
+    (state.CONTENT_DIR / "unsent-ed" / "index.md").write_text(
+        "---\ntitle: Unsent\ndate: 2024-01-02\ndraft: false\n---\nBody\n"
+    )
+    from patr.content import get_editions
+
+    editions = {e["slug"]: e for e in get_editions()}
+    assert editions["sent-ed"]["sent"] == "full"
+    assert editions["unsent-ed"]["sent"] is None
+
+
 # get_editions — missing CONTENT_DIR
 
 
