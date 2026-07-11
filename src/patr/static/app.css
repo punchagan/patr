@@ -253,6 +253,24 @@ body.dark .badge-live {
   color: #4caf80;
 }
 
+.badge-sent {
+  background: #d6e4f0;
+  color: #1b4f72;
+}
+body.dark .badge-sent {
+  background: #12283a;
+  color: #6fa8dc;
+}
+
+.badge-sent-partial {
+  background: #fff3cd;
+  color: #7a5c00;
+}
+body.dark .badge-sent-partial {
+  background: #332701;
+  color: #e0b93d;
+}
+
 /* Main panel */
 .main {
   flex: 1;

@@ -87,6 +87,10 @@ function EditionItem({ e, isSelected, onSelect, onEditionUpdated }) {
       <div className="edition-meta">
         <span>{e.date}</span>
         {!e.draft && <span className="badge badge-live">Published</span>}
+        {e.sent === "full" && <span className="badge badge-sent">Sent</span>}
+        {e.sent === "partial" && (
+          <span className="badge badge-sent-partial">Partially sent</span>
+        )}
         <button
           className="edition-edit-btn"
           onClick={startEdit}
