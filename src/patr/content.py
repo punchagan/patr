@@ -156,6 +156,11 @@ def render_md(text):
     # Mirror Hugo's render hook: wrap <img> with <figure>/<figcaption>
     soup = BeautifulSoup(html, "html.parser")
     for img in soup.find_all("img"):
+        # Gmail's mobile auto-fit reacts to a fixed-pixel image width (HTML
+        # attribute, or its native resolution if no attribute is set) wider
+        # than the screen by zooming the whole message, shrinking text.
+        # width="100%" keeps it fluid; explicit title-attr width still wins.
+        img["width"] = "100%"
         title = str(img.get("title", ""))
         if title:
             clean, attrs = _parse_title_attrs(title)

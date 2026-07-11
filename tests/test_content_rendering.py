@@ -44,7 +44,7 @@ def test_render_md_attr_list_syntax_not_processed() -> None:
 def test_render_md_plain_title_stays_as_title() -> None:
     html = render_md('![A cat](photo.jpg "A cute cat")')
     assert 'title="A cute cat"' in html
-    assert "width" not in html
+    assert 'width="100%"' in html
     assert "style" not in html
 
 
@@ -399,6 +399,27 @@ def test_normal_mode_still_has_view_in_browser() -> None:
     post = make_post()
     html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
     assert "View in browser" in html
+
+
+# image width — fluid HTML width avoids Gmail mobile auto-fit
+
+
+def test_render_md_image_gets_fluid_width() -> None:
+    """Images default to width="100%" so Gmail's mobile auto-fit doesn't
+    treat them as wider-than-screen and shrink the whole message."""
+    html = render_md("![a photo](photo.jpg)")
+    soup = BeautifulSoup(html, "html.parser")
+    img = soup.find("img")
+    assert img["width"] == "100%"
+
+
+def test_render_md_explicit_width_overrides_fluid_default() -> None:
+    """An explicit width from the title-attr syntax still wins over the
+    default fluid width."""
+    html = render_md("![A cat](photo.jpg \"Title {width='100'}\")")
+    soup = BeautifulSoup(html, "html.parser")
+    img = soup.find("img")
+    assert img["width"] == "100"
 
 
 # shared CSS — must hold for both production email and preview
