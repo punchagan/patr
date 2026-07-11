@@ -47,7 +47,12 @@ from patr.config import (
     load_newsletter_config,
     save_hugo_patr_params,
 )
-from patr.contacts import fetch_contacts, get_already_sent, log_sent
+from patr.contacts import (
+    fetch_contacts,
+    get_already_sent,
+    get_sent_log_entries,
+    log_sent,
+)
 from patr.content import (
     build_email_html,
     build_email_plain,
@@ -769,6 +774,25 @@ def get_version_content(slug, version_id):
     if not backup_file.exists():
         return jsonify({"error": "Version not found"}), 404
     return jsonify({"content": backup_file.read_text(encoding="utf-8")})
+
+
+@app.route("/api/edition/<slug>/sent-log")
+def edition_sent_log(slug):
+    """Return per-contact send details for this edition from the Sheet's
+    Sent Log tab, for the sidebar's Sent/Partially sent badge to link to."""
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    newsletter_config = load_newsletter_config()
+    sheet_id = newsletter_config.get("sheet_id")
+    if not sheet_id:
+        return jsonify({"error": "sheet_id not configured"}), 400
+    try:
+        creds = get_auth()
+        entries = get_sent_log_entries(sheet_id, creds, slug)
+        return jsonify({"entries": entries})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/check-deployment/<slug>")
