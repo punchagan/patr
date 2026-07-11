@@ -250,7 +250,7 @@ def build_email_html(
 
     html = f"""<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><style>{_EMAIL_CSS_PATH.read_text()}</style></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>{_EMAIL_CSS_PATH.read_text()}</style></head>
 <body>
   <table width="100%" border="0" cellpadding="0" cellspacing="0">
     <tr>

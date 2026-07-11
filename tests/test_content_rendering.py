@@ -3,6 +3,7 @@
 import base64
 
 import frontmatter
+from bs4 import BeautifulSoup
 from patr.content import absolutify_urls, build_email_html, build_email_plain, render_md
 
 HUGO_CONFIG = {"baseURL": "https://example.com"}
@@ -116,6 +117,18 @@ def test_email_html_contains_greeting() -> None:
         "test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="Alice"
     )
     assert "Hi Alice," in html
+
+
+def test_email_html_has_viewport_meta_tag() -> None:
+    """Mobile clients (notably Gmail) need an explicit viewport meta tag to
+    render the email at true device width instead of falling back to a wide
+    virtual viewport and auto-scaling the whole message down."""
+    post = make_post()
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    soup = BeautifulSoup(html, "html.parser")
+    viewport = soup.find("meta", attrs={"name": "viewport"})
+    assert viewport is not None
+    assert viewport["content"] == "width=device-width, initial-scale=1.0"
 
 
 def test_email_html_default_greeting() -> None:
