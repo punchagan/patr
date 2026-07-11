@@ -1034,11 +1034,14 @@ def send_all(slug):
     f, post = load_edition(slug)
     if post is None:
         return jsonify({"error": "Not found"}), 404
-    if post.get("draft", True):
-        return jsonify({"error": "Cannot send a draft edition"}), 400
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
     email_only = bool(newsletter_config.get("email_only", False))
+    # "draft" means "not live on the site yet" — a web-publish concept that
+    # doesn't apply once email_only is on, and there's no UI path to ever
+    # un-draft an edition in that mode (Publish/Unpublish are hidden).
+    if not email_only and post.get("draft", True):
+        return jsonify({"error": "Cannot send a draft edition"}), 400
     if not email_only:
         base_url = hugo_config.get("baseURL", "").rstrip("/")
         if not base_url or "example.com" in base_url:

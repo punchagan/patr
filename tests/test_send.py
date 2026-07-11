@@ -42,6 +42,12 @@ def make_edition(repo, slug, draft) -> None:
 
 
 def test_send_all_draft_returns_400(client, repo) -> None:
+    # Explicit non-email-only (Hugo/web-publish) mode: draft blocks sending
+    # here, since "draft" means "not live on the site yet" — a concept that
+    # exists in this mode. repo has no hugo.toml by default, which would
+    # default email_only to True (hugo-free mode) and skip this check
+    # entirely, so add one to pin the mode being tested.
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
     make_edition(repo, "my-ed", draft=True)
     r = client.post("/api/send/my-ed")
     assert r.status_code == 400
@@ -55,6 +61,18 @@ def test_send_all_non_draft_passes_draft_check(client, repo) -> None:
     )  # minimal config so load_hugo_config doesn't crash
     # Will fail further in (no sheet_id configured), but must not fail on draft check
     r = client.post("/api/send/my-ed")
+    assert "draft" not in (r.get_json().get("error") or "").lower()
+
+
+def test_send_all_draft_allowed_in_email_only_mode(client, repo) -> None:
+    """ "draft" is a web-publish concept — irrelevant once email_only is on,
+    so a draft edition must not be rejected for that reason in this mode."""
+    make_edition(repo, "my-ed", draft=True)
+    with patch(
+        "patr.server.load_newsletter_config",
+        return_value={"name": "My Letter", "email_only": True},
+    ):
+        r = client.post("/api/send/my-ed")
     assert "draft" not in (r.get_json().get("error") or "").lower()
 
 
