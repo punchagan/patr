@@ -16,7 +16,10 @@ except ImportError:
     winreg = None
 
 from patr import state
+from patr.auth import get_auth
 from patr.config import git_mode, hugo_mode, load_newsletter_config
+from patr.contacts import get_all_sent_slugs
+from patr.content import get_editions, load_edition, write_edition_frontmatter
 
 
 def cmd_install(args) -> None:
@@ -181,6 +184,59 @@ def cmd_migrate(args) -> None:
         print("Run with --apply to move files.")
 
 
+def cmd_import_sent_log(args) -> None:
+    """Backfill local `sent: full` metadata for editions that appear in the
+    Google Sheet's Sent Log tab but have no local sent status yet.
+
+    Historical sends can't be reconstructed as partial vs. full (the
+    contact list may have changed since), so any match is marked "full".
+    Editions that already have a local sent status (e.g. "partial") are
+    left untouched.
+    """
+    state.REPO_ROOT = Path(args.repo).resolve()
+    state.CONTENT_DIR = (
+        state.REPO_ROOT / "content" / "newsletter" if hugo_mode() else state.REPO_ROOT
+    )
+    dry_run = not args.apply
+
+    newsletter_config = load_newsletter_config()
+    sheet_id = newsletter_config.get("sheet_id")
+    if not sheet_id:
+        print("Error: sheet_id not configured in ~/.config/patr/config.toml")
+        return
+
+    creds = get_auth()
+    sent_slugs = get_all_sent_slugs(sheet_id, creds)
+
+    if dry_run:
+        print("Dry run — pass --apply to write changes.\n")
+
+    marked = 0
+    skipped = 0
+    for edition in get_editions():
+        slug = edition["slug"]
+        if slug not in sent_slugs:
+            continue
+        if edition.get("sent"):
+            print(f"  skip  {slug} (already marked {edition['sent']!r})")
+            skipped += 1
+            continue
+
+        verb = "mark" if not dry_run else "would mark"
+        print(f"  {verb}  {slug} → sent: full")
+        if not dry_run:
+            f, post = load_edition(slug)
+            post.metadata["sent"] = "full"
+            write_edition_frontmatter(f, post)
+        marked += 1
+
+    print(
+        f"\n{'Would mark' if dry_run else 'Marked'} {marked} edition(s) as sent, skipped {skipped}."
+    )
+    if dry_run and marked:
+        print("Run with --apply to write changes.")
+
+
 def cmd_serve(args) -> None:
     state.REPO_ROOT = Path(args.repo).resolve()
     if hugo_mode():
@@ -256,12 +312,26 @@ def main() -> None:
         "--apply", action="store_true", help="Actually move files (default: dry run)"
     )
 
+    # import-sent-log
+    import_sent_log_parser = sub.add_parser(
+        "import-sent-log",
+        help="Backfill local sent metadata from the Google Sheet's Sent Log",
+    )
+    import_sent_log_parser.add_argument(
+        "--repo", required=True, help="Path to Hugo site root"
+    )
+    import_sent_log_parser.add_argument(
+        "--apply", action="store_true", help="Actually write changes (default: dry run)"
+    )
+
     args = parser.parse_args()
 
     if args.command == "install":
         cmd_install(args)
     elif args.command == "migrate":
         cmd_migrate(args)
+    elif args.command == "import-sent-log":
+        cmd_import_sent_log(args)
     elif args.command == "serve":
         cmd_serve(args)
     else:
