@@ -106,6 +106,7 @@ export default function Sidebar({
   editingFooter,
   hidden,
   updateAvailable,
+  updateSafe,
   onSelect,
   onFooter,
   onNewEdition,
@@ -114,6 +115,47 @@ export default function Sidebar({
   onEditionUpdated,
 }) {
   const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [applyingUpdate, setApplyingUpdate] = useState(false);
+  const [applyUpdateError, setApplyUpdateError] = useState(null);
+  const pollTimer = useRef(null);
+
+  useEffect(() => {
+    return () => clearInterval(pollTimer.current);
+  }, []);
+
+  const pollUntilBackUp = useCallback(() => {
+    pollTimer.current = setInterval(() => {
+      fetch("/api/editions")
+        .then(() => {
+          clearInterval(pollTimer.current);
+          location.reload();
+        })
+        .catch(() => {
+          // Server is still restarting — keep polling.
+        });
+    }, 1000);
+  }, []);
+
+  const handleUpdateNow = () => {
+    if (!confirm("Make sure your work is saved. Update now?")) return;
+    setApplyingUpdate(true);
+    setApplyUpdateError(null);
+    fetch("/api/apply-update", { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) {
+          pollUntilBackUp();
+        } else {
+          setApplyingUpdate(false);
+          setApplyUpdateError(d.error || "Update failed");
+        }
+      })
+      .catch(() => {
+        // The server may have restarted mid-response — assume it worked.
+        pollUntilBackUp();
+      });
+  };
+
   const [width, setWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
     return stored >= MIN_WIDTH && stored <= MAX_WIDTH ? stored : 260;
@@ -179,7 +221,21 @@ export default function Sidebar({
       </div>
       {updateAvailable && !updateDismissed && (
         <div className="update-banner">
-          A newer version of Patr is available.
+          <span>
+            {applyUpdateError
+              ? `Update failed: ${applyUpdateError}`
+              : "A newer version of Patr is available."}
+          </span>
+          {updateSafe && (
+            <button
+              className="btn"
+              onClick={handleUpdateNow}
+              disabled={applyingUpdate}
+              style={{ fontSize: 11, padding: "2px 7px" }}
+            >
+              {applyingUpdate ? "Updating…" : "Update now"}
+            </button>
+          )}
           <button
             className="update-banner-dismiss"
             aria-label="Dismiss"

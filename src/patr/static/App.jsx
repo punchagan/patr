@@ -68,6 +68,7 @@ export default function App() {
   const [hasSheetId, setHasSheetId] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateSafe, setUpdateSafe] = useState(false);
   const [editingFooter, setEditingFooter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showNewEdition, setShowNewEdition] = useState(false);
@@ -131,7 +132,10 @@ export default function App() {
       .then((d) => setGmailConnected(!!d.connected));
     fetch("/api/check-update")
       .then((r) => r.json())
-      .then((d) => setUpdateAvailable(!!d.update_available));
+      .then((d) => {
+        setUpdateAvailable(!!d.update_available);
+        setUpdateSafe(!!d.safe_to_auto_update);
+      });
     if (document.body.dataset.unconfigured) setShowSettings(true);
 
     const hashSlug = location.hash.slice(1).split("/")[0];
@@ -169,6 +173,7 @@ export default function App() {
         editingFooter={editingFooter}
         hidden={focusMode}
         updateAvailable={updateAvailable}
+        updateSafe={updateSafe}
         onSelect={(e) => {
           setSelectedEdition(e);
           setEditingFooter(false);

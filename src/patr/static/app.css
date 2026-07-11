@@ -138,8 +138,10 @@ body {
   background: var(--warning-bg, #fffbe6);
   border-bottom: 1px solid var(--border);
 }
+.update-banner span {
+  flex: 1;
+}
 .update-banner-dismiss {
-  margin-left: auto;
   background: none;
   border: none;
   cursor: pointer;
