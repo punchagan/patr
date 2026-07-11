@@ -1,4 +1,4 @@
-"""Tests for GET /api/check-update."""
+"""Tests for GET /api/check-update and POST /api/apply-update."""
 
 from unittest.mock import patch
 
@@ -36,3 +36,20 @@ def test_check_update_reports_up_to_date(client) -> None:
         r = client.get("/api/check-update")
     assert r.status_code == 200
     assert r.get_json()["update_available"] is False
+
+
+def test_apply_update_success(client) -> None:
+    with patch("patr.server.apply_update", return_value={"ok": True}):
+        r = client.post("/api/apply-update")
+    assert r.status_code == 200
+    assert r.get_json() == {"ok": True}
+
+
+def test_apply_update_failure(client) -> None:
+    with patch(
+        "patr.server.apply_update",
+        return_value={"ok": False, "error": "not safe to auto-update"},
+    ):
+        r = client.post("/api/apply-update")
+    assert r.status_code == 200
+    assert r.get_json() == {"ok": False, "error": "not safe to auto-update"}
