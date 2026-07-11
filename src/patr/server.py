@@ -54,12 +54,14 @@ from patr.contacts import (
     log_sent,
 )
 from patr.content import (
+    PatrYamlDumper,
     build_email_html,
     build_email_plain,
     edition_dir_for,
     get_editions,
     load_edition,
     load_footer,
+    write_edition_frontmatter,
 )
 from patr.gifs import download_gif
 from patr.gmail import send_email
@@ -201,7 +203,7 @@ def new_edition():
     edition_dir.mkdir(parents=True)
     fm = yaml.dump(
         {"title": title, "date": date.today(), "draft": True},  # noqa: DTZ011
-        Dumper=_PatrYamlDumper,
+        Dumper=PatrYamlDumper,
         sort_keys=False,
         allow_unicode=True,
     )
@@ -227,19 +229,6 @@ def get_edition_content(slug):
             "mtime": f.stat().st_mtime,
         }
     )
-
-
-class _PatrYamlDumper(yaml.SafeDumper):
-    pass
-
-
-def _str_representer(dumper, data):
-    if "\n" in data:
-        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
-
-
-_PatrYamlDumper.add_representer(str, _str_representer)
 
 
 @app.route("/api/edition/<slug>/content", methods=["POST"])
@@ -269,7 +258,7 @@ def save_edition_content(slug):
             post.metadata.pop("intro", None)
     body = data.get("body", post.content)
     fm_yaml = yaml.dump(
-        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
+        post.metadata, Dumper=PatrYamlDumper, sort_keys=False, allow_unicode=True
     )
     content = f"---\n{fm_yaml}---\n\n{body.strip()}\n"
     # Write to a temp file in the same directory, then atomically replace.
@@ -457,10 +446,7 @@ def _mark_edition_sent(f, post, status: str) -> None:
     if post.get("sent") == status or post.get("sent") == "full":
         return
     post.metadata["sent"] = status
-    fm_yaml = yaml.dump(
-        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
-    )
-    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
+    write_edition_frontmatter(f, post)
 
 
 @app.route("/api/toggle-draft/<slug>", methods=["POST"])
@@ -470,10 +456,7 @@ def toggle_draft(slug):
         return jsonify({"error": "Not found"}), 404
     new_draft = not post.get("draft", False)
     post.metadata["draft"] = new_draft
-    fm_yaml = yaml.dump(
-        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
-    )
-    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
+    write_edition_frontmatter(f, post)
     return jsonify({"draft": new_draft})
 
 
@@ -484,10 +467,7 @@ def _set_draft_and_push(f, post, draft: bool, commit_prefix: str):
     push for the edition directory.  Returns a Flask JSON response.
     """
     post.metadata["draft"] = draft
-    fm_yaml = yaml.dump(
-        post.metadata, Dumper=_PatrYamlDumper, sort_keys=False, allow_unicode=True
-    )
-    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
+    write_edition_frontmatter(f, post)
 
     for cmd in [
         ["git", "add", str(f.parent)],

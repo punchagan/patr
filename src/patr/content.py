@@ -6,11 +6,36 @@ from pathlib import Path
 import css_inline
 import frontmatter
 import markdown
+import yaml
 from bs4 import BeautifulSoup
 from patr import state
 from patr.config import hugo_mode
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
+
+
+class PatrYamlDumper(yaml.SafeDumper):
+    """YAML dumper for edition frontmatter — preserves key order (via
+    sort_keys=False at call sites) and uses literal block scalars for
+    multi-line strings (e.g. intro:) instead of escaped single-line ones."""
+
+
+def _str_representer(dumper, data):
+    if "\n" in data:
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+PatrYamlDumper.add_representer(str, _str_representer)
+
+
+def write_edition_frontmatter(f: Path, post) -> None:
+    """Write post's current metadata + content back to f, using
+    PatrYamlDumper so key order and multi-line strings round-trip."""
+    fm_yaml = yaml.dump(
+        post.metadata, Dumper=PatrYamlDumper, sort_keys=False, allow_unicode=True
+    )
+    f.write_text(f"---\n{fm_yaml}---\n\n{post.content.strip()}\n")
 
 
 def get_editions():
