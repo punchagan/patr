@@ -107,6 +107,7 @@ export default function Sidebar({
   hidden,
   updateAvailable,
   updateSafe,
+  installMethod,
   onSelect,
   onFooter,
   onNewEdition,
@@ -226,12 +227,19 @@ export default function Sidebar({
               `Update failed: ${applyUpdateError}`
             ) : updateSafe ? (
               "A newer version of Patr is available."
-            ) : (
+            ) : installMethod === "vcs" ? (
+              <>
+                A newer version of Patr is available. To update: stop patr, then
+                run <code>uv tool upgrade patr</code> before restarting.
+              </>
+            ) : installMethod === "editable" ? (
               <>
                 A newer version of Patr is available. To update: stop patr, then
                 run <code>git pull --ff-only && uv sync</code> before
                 restarting.
               </>
+            ) : (
+              "A newer version of Patr is available. Ask the maintainer to update it for you."
             )}
           </span>
           {updateSafe && (

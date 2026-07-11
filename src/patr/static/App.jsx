@@ -69,6 +69,7 @@ export default function App() {
   const [gmailConnected, setGmailConnected] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateSafe, setUpdateSafe] = useState(false);
+  const [installMethod, setInstallMethod] = useState(null);
   const [editingFooter, setEditingFooter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showNewEdition, setShowNewEdition] = useState(false);
@@ -135,6 +136,7 @@ export default function App() {
       .then((d) => {
         setUpdateAvailable(!!d.update_available);
         setUpdateSafe(!!d.safe_to_auto_update);
+        setInstallMethod(d.install_method || null);
       });
     if (document.body.dataset.unconfigured) setShowSettings(true);
 
@@ -174,6 +176,7 @@ export default function App() {
         hidden={focusMode}
         updateAvailable={updateAvailable}
         updateSafe={updateSafe}
+        installMethod={installMethod}
         onSelect={(e) => {
           setSelectedEdition(e);
           setEditingFooter(false);

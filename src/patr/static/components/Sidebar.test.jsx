@@ -53,12 +53,44 @@ describe("Sidebar self-update button", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows manual update instructions when the update isn't safe to apply automatically", () => {
+  it("shows git pull instructions for an editable checkout install", () => {
     render(
-      <Sidebar {...baseProps} updateAvailable={true} updateSafe={false} />,
+      <Sidebar
+        {...baseProps}
+        updateAvailable={true}
+        updateSafe={false}
+        installMethod="editable"
+      />,
     );
     expect(screen.getByText(/git pull --ff-only/)).toBeInTheDocument();
     expect(screen.getByText(/uv sync/)).toBeInTheDocument();
+  });
+
+  it("shows uv tool upgrade instructions for a vcs install", () => {
+    render(
+      <Sidebar
+        {...baseProps}
+        updateAvailable={true}
+        updateSafe={false}
+        installMethod="vcs"
+      />,
+    );
+    expect(screen.getByText(/uv tool upgrade patr/)).toBeInTheDocument();
+    expect(screen.queryByText(/git pull/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to a generic message when the install method is unknown", () => {
+    render(
+      <Sidebar
+        {...baseProps}
+        updateAvailable={true}
+        updateSafe={false}
+        installMethod="unknown"
+      />,
+    );
+    expect(screen.getByText(/ask.*maintainer/i)).toBeInTheDocument();
+    expect(screen.queryByText(/git pull/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/uv tool upgrade/)).not.toBeInTheDocument();
   });
 
   it("does not show manual update instructions when it's safe to auto-update", () => {
