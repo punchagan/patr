@@ -390,9 +390,18 @@ const EditorPanel = forwardRef(function EditorPanel(
       const files = [...(e.clipboardData?.files || [])].filter((f) =>
         f.type.startsWith("image/"),
       );
-      for (const file of files) {
+      if (files.length) {
+        for (const file of files) {
+          e.preventDefault();
+          const path = await uploadImage(file, slugRef.current);
+          if (path) insertAtPos(view, `![](${path})`);
+        }
+        return;
+      }
+      const text = e.clipboardData?.getData("text/plain")?.trim();
+      if (text && isGifLink(text)) {
         e.preventDefault();
-        const path = await uploadImage(file, slugRef.current);
+        const path = await downloadGif(text, slugRef.current);
         if (path) insertAtPos(view, `![](${path})`);
       }
     };
