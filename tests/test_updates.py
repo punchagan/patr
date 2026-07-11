@@ -255,6 +255,7 @@ def test_check_for_update_true_and_safe_when_behind_with_clean_pull() -> None:
         patch("patr.updates._compare_status", return_value="ahead"),
         patch("patr.updates._local_tree_clean", return_value=True),
         patch("patr.updates._dependency_files_changed", return_value=False),
+        patch("patr.updates.install_method", return_value="editable"),
     ):
         result = updates.check_for_update(force=True)
     assert result == {
@@ -262,6 +263,7 @@ def test_check_for_update_true_and_safe_when_behind_with_clean_pull() -> None:
         "local": "old",
         "latest": "new",
         "safe_to_auto_update": True,
+        "install_method": "editable",
     }
 
 

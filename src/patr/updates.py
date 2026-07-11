@@ -199,6 +199,7 @@ def check_for_update(force: bool = False) -> dict:
         "local": local,
         "latest": latest,
         "safe_to_auto_update": safe,
+        "install_method": install_method(),
     }
     _cache["checked_at"] = now
     _cache["result"] = result
