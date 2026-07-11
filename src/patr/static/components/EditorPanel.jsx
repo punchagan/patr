@@ -187,6 +187,33 @@ async function uploadImage(file, slug) {
   return (await r.json()).path;
 }
 
+// Hosts allowed for GIF paste-detection — mirrors the server's allow-list in
+// patr.gifs (which does the actual fetching); this is just a lightweight
+// client-side check to avoid a network round trip for every text paste.
+const GIF_HOSTS = ["tenor.com", "giphy.com"];
+
+export function isGifLink(text) {
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase();
+  return GIF_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
+async function downloadGif(url, slug) {
+  const r = await fetch(`/api/edition/${slug}/download-gif`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!r.ok) return null;
+  return (await r.json()).path;
+}
+
 function wrapSelection(view, before, after = before) {
   const { state } = view;
   const changes = [];
