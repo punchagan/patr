@@ -335,6 +335,12 @@ function EditorToolbar({ viewRef, slug }) {
       <ToolbarButton onClick={handleImageUpload} title="Insert image">
         🖼
       </ToolbarButton>
+      <ToolbarButton
+        onClick={() => window.open("https://tenor.com", "_blank")}
+        title="Insert GIF from Tenor — paste the share link back here"
+      >
+        GIF
+      </ToolbarButton>
     </div>
   );
 }
