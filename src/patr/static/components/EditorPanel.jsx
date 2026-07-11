@@ -406,9 +406,35 @@ const EditorPanel = forwardRef(function EditorPanel(
       }
       const text = e.clipboardData?.getData("text/plain")?.trim();
       if (text && isGifLink(text)) {
-        e.preventDefault();
+        // CodeMirror's own paste handling runs on contentDOM (the actual
+        // event target) before this listener sees the bubbled event on
+        // view.dom, so the raw link is already inserted by now —
+        // preventDefault() here can't undo that. Instead, locate where it
+        // landed (it's a plain text paste, so it's exactly [to - text.length,
+        // to)) and swap it for the markdown image once the GIF downloads.
+        const to = view.state.selection.main.to;
+        const from = to - text.length;
+        if (view.state.sliceDoc(from, to) !== text) return;
+
+        // Swap the raw link for a placeholder immediately — leaving the
+        // bare URL sitting there during the fetch reads as "nothing is
+        // happening".
+        const placeholder = "Fetching GIF…";
+        view.dispatch({
+          changes: { from, to, insert: placeholder },
+          selection: { anchor: from + placeholder.length },
+        });
+        const placeholderEnd = from + placeholder.length;
+
         const path = await downloadGif(text, slugRef.current);
-        if (path) insertAtPos(view, `![](${path})`);
+        const insert = path ? `![](${path})` : text; // restore the link on failure
+        if (view.state.sliceDoc(from, placeholderEnd) === placeholder) {
+          view.dispatch({
+            changes: { from, to: placeholderEnd, insert },
+            selection: { anchor: from + insert.length },
+          });
+          view.focus();
+        }
       }
     };
     const onDrop = async (e) => {
