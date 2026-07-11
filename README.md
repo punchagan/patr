@@ -25,6 +25,10 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 
 ![Email preview](screenshots/email-preview.png)
 
+**Keeping up to date** — Patr checks GitHub for a newer commit and, when it's
+a plain code change with no new dependencies, offers to pull and restart
+itself with one click. Otherwise it shows the exact commands to run.
+
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — to install Patr (manages Python automatically)

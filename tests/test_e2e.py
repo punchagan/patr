@@ -175,7 +175,12 @@ def test_screenshot(screenshot_edition, context, base_url) -> None:
                 status=200,
                 content_type="application/json",
                 body=json.dumps(
-                    {"update_available": True, "local": "abc123", "latest": "def456"}
+                    {
+                        "update_available": True,
+                        "safe_to_auto_update": True,
+                        "local": "abc123",
+                        "latest": "def456",
+                    }
                 ),
             ),
         )
@@ -194,17 +199,72 @@ def test_screenshot(screenshot_edition, context, base_url) -> None:
 
 
 @pytest.mark.screenshots
+def test_screenshot_manual_update(screenshot_edition, context, base_url) -> None:
+    """Capture the full editor view with the manual-update banner (shown
+    when a pull isn't safe to apply automatically, e.g. a dependency file
+    changed) for the README — same framing as test_screenshot's editor.png,
+    just with a different /api/check-update response.
+    """
+    import json
+
+    p = context.new_page()
+    p.set_viewport_size({"width": 1280, "height": 800})
+    try:
+        p.route(
+            "**/api/check-deployment/**",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {"live": True, "email_only": False, "git_available": True}
+                ),
+            ),
+        )
+        p.route(
+            "**/api/check-update",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {
+                        "update_available": True,
+                        "safe_to_auto_update": False,
+                        "local": "abc123",
+                        "latest": "def456",
+                    }
+                ),
+            ),
+        )
+        p.goto(base_url)
+        p.wait_for_selector(".sidebar")
+        p.locator(".edition-item:has-text('Hello from Patr')").click()
+        p.wait_for_selector(".cm-content")
+        p.wait_for_selector(".badge-live")
+        p.wait_for_selector(".update-banner")
+        out = REPO_ROOT / "screenshots" / "editor-manual-update.png"
+        out.parent.mkdir(exist_ok=True)
+        p.screenshot(path=str(out))
+    finally:
+        p.close()
+    assert out.exists()
+
+
+@pytest.mark.screenshots
 def test_screenshot_email_preview(screenshot_edition, context, base_url) -> None:
     """Capture a screenshot of the email preview for the README.
 
-    Depends on test_screenshot having run first (uses editor.png as the
-    newsletter image). Skips gracefully if run in isolation.
+    Depends on test_screenshot_manual_update having run first (uses
+    editor-manual-update.png as the newsletter image). Skips gracefully if
+    run in isolation.
     """
     import shutil
 
-    editor_png = REPO_ROOT / "screenshots" / "editor.png"
+    editor_png = REPO_ROOT / "screenshots" / "editor-manual-update.png"
     if not editor_png.exists():
-        pytest.skip("editor.png not yet generated; run test_screenshot first")
+        pytest.skip(
+            "editor-manual-update.png not yet generated; "
+            "run test_screenshot_manual_update first"
+        )
     shutil.copy(editor_png, state.CONTENT_DIR / screenshot_edition / "writing.png")
     p = context.new_page()
     p.set_viewport_size({"width": 700, "height": 900})

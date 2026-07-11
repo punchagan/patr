@@ -3,3 +3,7 @@ __pycache__/
 .env
 *.egg-info/
 node_modules/
+
+# Intermediate screenshot — only used as a source image embedded inside
+# screenshots/email-preview.png, not linked directly anywhere itself.
+screenshots/editor-manual-update.png
