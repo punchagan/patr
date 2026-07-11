@@ -2,7 +2,12 @@
 
 from unittest.mock import MagicMock, patch
 
-from patr.contacts import fetch_contacts, get_already_sent
+from patr.contacts import (
+    fetch_contacts,
+    get_all_sent_slugs,
+    get_already_sent,
+    get_sent_log_entries,
+)
 
 
 def make_sheets_mock(rows):
@@ -174,3 +179,71 @@ def test_get_already_sent_multiple_slugs() -> None:
     assert "alice@example.com" in sent
     assert "carol@example.com" in sent
     assert "bob@example.com" not in sent
+
+
+# get_sent_log_entries — per-slug detail for the "view sent log" UI
+
+
+def test_get_sent_log_entries_returns_matching_rows() -> None:
+    rows = [
+        ["email", "slug", "sent_at"],
+        ["alice@example.com", "my-edition", "2024-01-01 10:00 UTC"],
+        ["bob@example.com", "other-edition", "2024-01-02 10:00 UTC"],
+    ]
+    with patch("patr.contacts.build", return_value=make_sent_log_mock(rows)):
+        entries = get_sent_log_entries("sheet_id", None, "my-edition")
+    assert entries == [
+        {"email": "alice@example.com", "sent_at": "2024-01-01 10:00 UTC"}
+    ]
+
+
+def test_get_sent_log_entries_empty_log() -> None:
+    rows = [["email", "slug", "sent_at"]]
+    with patch("patr.contacts.build", return_value=make_sent_log_mock(rows)):
+        entries = get_sent_log_entries("sheet_id", None, "my-edition")
+    assert entries == []
+
+
+def test_get_sent_log_entries_returns_empty_on_api_error() -> None:
+    mock_service = MagicMock()
+    mock_service.spreadsheets().values().get().execute.side_effect = Exception("boom")
+    with patch("patr.contacts.build", return_value=mock_service):
+        entries = get_sent_log_entries("sheet_id", None, "my-edition")
+    assert entries == []
+
+
+def test_get_sent_log_entries_ignores_malformed_rows() -> None:
+    rows = [["email", "slug", "sent_at"], ["alice@example.com"]]  # missing columns
+    with patch("patr.contacts.build", return_value=make_sent_log_mock(rows)):
+        entries = get_sent_log_entries("sheet_id", None, "my-edition")
+    assert entries == []
+
+
+# get_all_sent_slugs — distinct slugs across the whole log, for backfill
+
+
+def test_get_all_sent_slugs_returns_distinct_slugs() -> None:
+    rows = [
+        ["email", "slug", "sent_at"],
+        ["alice@example.com", "edition-1", "2024-01-01 10:00 UTC"],
+        ["bob@example.com", "edition-2", "2024-01-02 10:00 UTC"],
+        ["carol@example.com", "edition-1", "2024-01-01 11:00 UTC"],
+    ]
+    with patch("patr.contacts.build", return_value=make_sent_log_mock(rows)):
+        slugs = get_all_sent_slugs("sheet_id", None)
+    assert slugs == {"edition-1", "edition-2"}
+
+
+def test_get_all_sent_slugs_empty_log() -> None:
+    rows = [["email", "slug", "sent_at"]]
+    with patch("patr.contacts.build", return_value=make_sent_log_mock(rows)):
+        slugs = get_all_sent_slugs("sheet_id", None)
+    assert slugs == set()
+
+
+def test_get_all_sent_slugs_returns_empty_on_api_error() -> None:
+    mock_service = MagicMock()
+    mock_service.spreadsheets().values().get().execute.side_effect = Exception("boom")
+    with patch("patr.contacts.build", return_value=mock_service):
+        slugs = get_all_sent_slugs("sheet_id", None)
+    assert slugs == set()

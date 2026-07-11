@@ -53,6 +53,50 @@ def get_already_sent(sheet_id, creds, slug):
     }
 
 
+def get_sent_log_entries(sheet_id, creds, slug):
+    """Return [{"email", "sent_at"}, ...] for this slug from the Sent Log
+    tab, for the UI's "view sent log" detail — unlike get_already_sent,
+    keeps the sent_at timestamp and doesn't dedupe/lowercase emails."""
+    service = build("sheets", "v4", credentials=creds)
+    try:
+        result = (
+            service.spreadsheets()
+            .values()
+            .get(spreadsheetId=sheet_id, range="Sent Log!A:C")
+            .execute()
+        )
+    except Exception:
+        return []
+    rows = result.get("values", [])
+    if len(rows) < 2:
+        return []
+    return [
+        {"email": row[0].strip(), "sent_at": row[2].strip() if len(row) > 2 else ""}
+        for row in rows[1:]
+        if len(row) >= 2 and row[1].strip() == slug
+    ]
+
+
+def get_all_sent_slugs(sheet_id, creds):
+    """Return the set of distinct slugs appearing anywhere in the Sent Log
+    tab — used to backfill local sent metadata for editions sent before
+    that feature existed."""
+    service = build("sheets", "v4", credentials=creds)
+    try:
+        result = (
+            service.spreadsheets()
+            .values()
+            .get(spreadsheetId=sheet_id, range="Sent Log!A:C")
+            .execute()
+        )
+    except Exception:
+        return set()
+    rows = result.get("values", [])
+    if len(rows) < 2:
+        return set()
+    return {row[1].strip() for row in rows[1:] if len(row) >= 2 and row[1].strip()}
+
+
 def log_sent(sheet_id, creds, email, slug) -> None:
     """Append a row to the Sent Log tab."""
     service = build("sheets", "v4", credentials=creds)
