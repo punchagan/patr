@@ -53,6 +53,19 @@ describe("Sidebar self-update button", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows manual update instructions when the update isn't safe to apply automatically", () => {
+    render(
+      <Sidebar {...baseProps} updateAvailable={true} updateSafe={false} />,
+    );
+    expect(screen.getByText(/git pull --ff-only/)).toBeInTheDocument();
+    expect(screen.getByText(/uv sync/)).toBeInTheDocument();
+  });
+
+  it("does not show manual update instructions when it's safe to auto-update", () => {
+    render(<Sidebar {...baseProps} updateAvailable={true} updateSafe={true} />);
+    expect(screen.queryByText(/git pull --ff-only/)).not.toBeInTheDocument();
+  });
+
   it("is shown when the update is safe to apply automatically", () => {
     render(<Sidebar {...baseProps} updateAvailable={true} updateSafe={true} />);
     expect(

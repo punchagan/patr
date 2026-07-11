@@ -222,9 +222,17 @@ export default function Sidebar({
       {updateAvailable && !updateDismissed && (
         <div className="update-banner">
           <span>
-            {applyUpdateError
-              ? `Update failed: ${applyUpdateError}`
-              : "A newer version of Patr is available."}
+            {applyUpdateError ? (
+              `Update failed: ${applyUpdateError}`
+            ) : updateSafe ? (
+              "A newer version of Patr is available."
+            ) : (
+              <>
+                A newer version of Patr is available. To update: stop patr, then
+                run <code>git pull --ff-only && uv sync</code> before
+                restarting.
+              </>
+            )}
           </span>
           {updateSafe && (
             <button

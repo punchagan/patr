@@ -141,6 +141,12 @@ body {
 .update-banner span {
   flex: 1;
 }
+.update-banner code {
+  font-size: 11px;
+  background: var(--btn-bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
 .update-banner-dismiss {
   background: none;
   border: none;
