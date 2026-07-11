@@ -2,6 +2,7 @@
 
 import io
 import textwrap
+from unittest.mock import patch
 
 import pytest
 from patr import server, state
@@ -254,6 +255,45 @@ def test_upload_image_404(client) -> None:
         "/api/edition/missing/upload-image",
         data=data,
         content_type="multipart/form-data",
+    )
+    assert r.status_code == 404
+
+
+# POST /api/edition/<slug>/download-gif
+
+
+def test_download_gif(client, repo) -> None:
+    with patch("patr.server.download_gif", return_value="abc123.gif") as mock_dl:
+        r = client.post(
+            "/api/edition/test-edition/download-gif",
+            json={"url": "https://tenor.com/view/cat-gif-123"},
+        )
+    assert r.status_code == 200
+    assert r.get_json() == {"path": "abc123.gif"}
+    mock_dl.assert_called_once()
+    called_url, called_dir = mock_dl.call_args[0]
+    assert called_url == "https://tenor.com/view/cat-gif-123"
+    assert called_dir == repo / "content" / "newsletter" / "test-edition"
+
+
+def test_download_gif_no_url(client) -> None:
+    r = client.post("/api/edition/test-edition/download-gif", json={})
+    assert r.status_code == 400
+
+
+def test_download_gif_resolution_failure(client) -> None:
+    with patch("patr.server.download_gif", return_value=None):
+        r = client.post(
+            "/api/edition/test-edition/download-gif",
+            json={"url": "https://evil.com/cat.gif"},
+        )
+    assert r.status_code == 400
+
+
+def test_download_gif_404_for_missing_edition(client) -> None:
+    r = client.post(
+        "/api/edition/missing/download-gif",
+        json={"url": "https://tenor.com/view/cat-gif-123"},
     )
     assert r.status_code == 404
 

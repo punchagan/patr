@@ -56,6 +56,7 @@ from patr.content import (
     load_edition,
     load_footer,
 )
+from patr.gifs import download_gif
 from patr.gmail import send_email
 from patr.updates import apply_update, check_for_update
 from playwright.sync_api import sync_playwright
@@ -323,6 +324,22 @@ def upload_image(slug):
         dest = dest_dir / f"{stem}-{secrets.token_hex(4)}.{ext}"
     file.save(dest)
     return jsonify({"path": dest.name})
+
+
+@app.route("/api/edition/<slug>/download-gif", methods=["POST"])
+def download_gif_route(slug):
+    f, post = load_edition(slug)
+    if f is None or post is None:
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json(silent=True) or {}
+    url = data.get("url", "")
+    if not url:
+        return jsonify({"error": "No url provided"}), 400
+    dest_dir = edition_dir_for(f)
+    filename = download_gif(url, dest_dir)
+    if filename is None:
+        return jsonify({"error": "Could not fetch GIF from that link"}), 400
+    return jsonify({"path": filename})
 
 
 @app.route("/api/edition/<slug>/check-images")
