@@ -26,11 +26,9 @@ DEPENDENCY_FILES = {"pyproject.toml", "uv.lock"}
 _cache = {"checked_at": 0.0, "result": None}
 
 
-def _editable_checkout_path() -> Path | None:
-    """Return the local checkout directory when patr was installed with
-    `pip install -e .` (the documented dev install), or None when it was
-    installed from a VCS URL (no local checkout to pull into) or package
-    metadata is missing entirely."""
+def _direct_url_info() -> dict | None:
+    """Return the parsed PEP 610 direct_url.json that pip/uv record on
+    install, or None if package metadata is missing entirely."""
     try:
         dist = distribution("patr")
         raw = dist.read_text("direct_url.json")
@@ -38,8 +36,32 @@ def _editable_checkout_path() -> Path | None:
         return None
     if not raw:
         return None
-    info = json.loads(raw)
-    if info.get("vcs_info"):
+    return json.loads(raw)
+
+
+def install_method() -> str:
+    """Return "vcs" (`uv tool install git+https://...`), "editable"
+    (`pip install -e .`, the documented dev install), or "unknown" (package
+    metadata missing, or some other install method) — used to tailor the
+    manual-update instructions, since the two supported methods need
+    different commands to update."""
+    info = _direct_url_info()
+    if info is None:
+        return "unknown"
+    if info.get("vcs_info", {}).get("vcs") == "git":
+        return "vcs"
+    if info.get("dir_info", {}).get("editable"):
+        return "editable"
+    return "unknown"
+
+
+def _editable_checkout_path() -> Path | None:
+    """Return the local checkout directory when patr was installed with
+    `pip install -e .` (the documented dev install), or None when it was
+    installed from a VCS URL (no local checkout to pull into) or package
+    metadata is missing entirely."""
+    info = _direct_url_info()
+    if info is None or info.get("vcs_info"):
         return None
     url = info.get("url", "")
     if not url.startswith("file://"):
@@ -56,14 +78,9 @@ def _local_commit() -> str | None:
     - `pip install -e .` (the documented dev install) records the local
       checkout path instead, so fall back to `git rev-parse HEAD` there.
     """
-    try:
-        dist = distribution("patr")
-        raw = dist.read_text("direct_url.json")
-    except PackageNotFoundError:
+    info = _direct_url_info()
+    if info is None:
         return None
-    if not raw:
-        return None
-    info = json.loads(raw)
 
     vcs_info = info.get("vcs_info")
     if vcs_info and vcs_info.get("vcs") == "git":

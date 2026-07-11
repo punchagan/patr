@@ -46,6 +46,43 @@ def test_editable_checkout_path_none_when_package_not_found() -> None:
         assert updates._editable_checkout_path() is None
 
 
+# --- install_method ---
+
+
+def test_install_method_vcs() -> None:
+    direct_url = json.dumps(
+        {
+            "url": "https://github.com/punchagan/patr",
+            "vcs_info": {"vcs": "git", "commit_id": "abc123"},
+        }
+    )
+    with patch("patr.updates.distribution") as mock_dist:
+        mock_dist.return_value.read_text.return_value = direct_url
+        assert updates.install_method() == "vcs"
+
+
+def test_install_method_editable() -> None:
+    direct_url = json.dumps(
+        {"url": "file:///home/user/patr", "dir_info": {"editable": True}}
+    )
+    with patch("patr.updates.distribution") as mock_dist:
+        mock_dist.return_value.read_text.return_value = direct_url
+        assert updates.install_method() == "editable"
+
+
+def test_install_method_unknown_when_package_not_found() -> None:
+    with patch("patr.updates.distribution", side_effect=PackageNotFoundError("patr")):
+        assert updates.install_method() == "unknown"
+
+
+def test_install_method_unknown_for_non_editable_non_vcs_install() -> None:
+    # e.g. a regular `pip install patr` from a built wheel/sdist.
+    direct_url = json.dumps({"url": "file:///home/user/patr"})
+    with patch("patr.updates.distribution") as mock_dist:
+        mock_dist.return_value.read_text.return_value = direct_url
+        assert updates.install_method() == "unknown"
+
+
 # --- _local_commit ---
 
 
