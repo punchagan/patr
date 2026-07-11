@@ -16,7 +16,7 @@ from pathlib import Path
 
 GITHUB_REPO = "punchagan/patr"
 GITHUB_BRANCH = "main"
-CHECK_INTERVAL_SECONDS = 24 * 60 * 60  # re-check the network at most once a day
+CHECK_INTERVAL_SECONDS = 60 * 60  # re-check the network at most once an hour
 
 # Files whose presence in a diff means a plain `git pull` might need a
 # dependency sync (`uv sync`) afterward — self-updating past one of these is
@@ -219,7 +219,7 @@ def apply_update() -> dict:
     if pull.returncode != 0:
         return {"ok": False, "error": pull.stderr.strip() or "git pull failed"}
 
-    # Avoid showing a stale "update available" for up to 24h after we just applied one.
+    # Avoid showing a stale "update available" for up to CHECK_INTERVAL_SECONDS after we just applied one.
     _cache["checked_at"] = 0.0
     _cache["result"] = None
     return {"ok": True}
