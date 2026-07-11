@@ -645,6 +645,10 @@ def commit_edition(slug):
     return jsonify({"ok": True, "committed": True})
 
 
+_GIT_VERSION_ID_RE = re.compile(r"^[0-9a-fA-F]{4,64}$")
+_BACKUP_VERSION_ID_RE = re.compile(r"^\d{8}T\d{6}$")
+
+
 @app.route("/api/edition/<slug>/versions")
 def list_versions(slug):
     """Return a list of saved versions for an edition.
@@ -716,6 +720,14 @@ def get_version_content(slug, version_id):
         return jsonify({"error": "Not found"}), 404
 
     if git_mode():
+        # version_id is concatenated straight into a single git-show
+        # argument below (f"{version_id}:{rel}"), so it must be validated
+        # as a plausible commit hash *before* that point — otherwise a
+        # value starting with "-" (e.g. "--output=<file>") gets parsed by
+        # git as a flag instead of a revision, letting it write its output
+        # to an arbitrary file on disk rather than returning it here.
+        if not _GIT_VERSION_ID_RE.match(version_id):
+            return jsonify({"error": "Invalid version id"}), 400
         # Determine the path relative to REPO_ROOT for git show
         try:
             rel = f.relative_to(state.REPO_ROOT)
@@ -733,6 +745,8 @@ def get_version_content(slug, version_id):
         return jsonify({"content": result.stdout})
 
     # Backup mode
+    if not _BACKUP_VERSION_ID_RE.match(version_id):
+        return jsonify({"error": "Invalid version id"}), 400
     backup_file = state.BACKUPS_DIR / _repo_slug() / slug / f"{version_id}.md"
     if not backup_file.exists():
         return jsonify({"error": "Version not found"}), 404

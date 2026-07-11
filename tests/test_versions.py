@@ -154,5 +154,39 @@ def test_version_content_404_when_git_show_fails(client, repo, backup_root) -> N
         patch("patr.server.git_mode", return_value=True),
         patch("subprocess.run", mock_run),
     ):
-        r = client.get("/api/edition/my-ed/versions/badref")
+        # "deadbeef" is well-formed (looks like a real, if short, commit
+        # hash) but doesn't exist — git show fails, which is a 404, not a
+        # 400. Distinct from the injection-shaped ids tested below.
+        r = client.get("/api/edition/my-ed/versions/deadbeef")
     assert r.status_code == 404
+
+
+def test_version_content_rejects_non_hash_git_version_id(client, repo) -> None:
+    # version_id is concatenated straight into a `git show` argument
+    # (f"{version_id}:{rel}"). Without validation, a value starting with
+    # "-" can be parsed by git as a flag instead of a revision — e.g.
+    # "--output=<file>" makes git write its output to an arbitrary path
+    # on disk instead of returning it in the response. Reject anything
+    # that doesn't look like an actual commit hash before it ever reaches
+    # subprocess.
+    make_edition(repo, "my-ed")
+    with (
+        patch("patr.server.git_mode", return_value=True),
+        patch("subprocess.run") as mock_run,
+    ):
+        # A relative path keeps this a single URL path segment (Flask's
+        # <version_id> converter doesn't match a literal "/"); confirmed
+        # working standalone: `git show "--output=pwned.txt:file.txt"`
+        # writes pwned.txt to disk instead of printing to stdout.
+        r = client.get("/api/edition/my-ed/versions/--output=pwned.txt")
+    assert r.status_code == 400
+    mock_run.assert_not_called()
+
+
+def test_version_content_rejects_malformed_backup_version_id(
+    client, repo, backup_root
+) -> None:
+    make_edition(repo, "my-ed")
+    with patch("patr.server.git_mode", return_value=False):
+        r = client.get("/api/edition/my-ed/versions/not-a-real-timestamp")
+    assert r.status_code == 400
