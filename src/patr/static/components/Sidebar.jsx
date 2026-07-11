@@ -1,10 +1,17 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import SentLogModal from "./modals/SentLogModal";
 
 const SIDEBAR_WIDTH_KEY = "patr-sidebar-width";
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 500;
 
-function EditionItem({ e, isSelected, onSelect, onEditionUpdated }) {
+function EditionItem({
+  e,
+  isSelected,
+  onSelect,
+  onEditionUpdated,
+  onViewSentLog,
+}) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
@@ -87,9 +94,27 @@ function EditionItem({ e, isSelected, onSelect, onEditionUpdated }) {
       <div className="edition-meta">
         <span>{e.date}</span>
         {!e.draft && <span className="badge badge-live">Published</span>}
-        {e.sent === "full" && <span className="badge badge-sent">Sent</span>}
+        {e.sent === "full" && (
+          <span
+            className="badge badge-sent badge-clickable"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onViewSentLog(e.slug);
+            }}
+          >
+            Sent
+          </span>
+        )}
         {e.sent === "partial" && (
-          <span className="badge badge-sent-partial">Partially sent</span>
+          <span
+            className="badge badge-sent-partial badge-clickable"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onViewSentLog(e.slug);
+            }}
+          >
+            Partially sent
+          </span>
         )}
         <button
           className="edition-edit-btn"
@@ -122,6 +147,7 @@ export default function Sidebar({
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   const [applyUpdateError, setApplyUpdateError] = useState(null);
+  const [sentLogSlug, setSentLogSlug] = useState(null);
   const pollTimer = useRef(null);
 
   useEffect(() => {
@@ -298,10 +324,14 @@ export default function Sidebar({
               isSelected={e.slug === selectedSlug}
               onSelect={onSelect}
               onEditionUpdated={onEditionUpdated}
+              onViewSentLog={setSentLogSlug}
             />
           ))
         )}
       </div>
+      {sentLogSlug && (
+        <SentLogModal slug={sentLogSlug} onClose={() => setSentLogSlug(null)} />
+      )}
       <div
         className={`edition-item footer-item${editingFooter ? " active" : ""}`}
         onClick={onFooter}

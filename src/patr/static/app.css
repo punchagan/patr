@@ -271,6 +271,30 @@ body.dark .badge-sent-partial {
   color: #e0b93d;
 }
 
+.badge-clickable {
+  cursor: pointer;
+}
+.badge-clickable:hover {
+  filter: brightness(0.95);
+}
+
+.sent-log-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+.sent-log-table th,
+.sent-log-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 12px;
+}
+.sent-log-table th {
+  background: var(--toolbar-bg);
+  font-weight: 600;
+}
+
 /* Main panel */
 .main {
   flex: 1;
