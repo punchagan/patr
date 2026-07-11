@@ -203,7 +203,9 @@ def test_screenshot_manual_update(screenshot_edition, context, base_url) -> None
     """Capture the full editor view with the manual-update banner (shown
     when a pull isn't safe to apply automatically, e.g. a dependency file
     changed) for the README — same framing as test_screenshot's editor.png,
-    just with a different /api/check-update response.
+    just with a different /api/check-update response. Uses install_method
+    "vcs" since that's the documented public install method (`uv tool
+    install git+...`).
     """
     import json
 
@@ -229,6 +231,7 @@ def test_screenshot_manual_update(screenshot_edition, context, base_url) -> None
                     {
                         "update_available": True,
                         "safe_to_auto_update": False,
+                        "install_method": "vcs",
                         "local": "abc123",
                         "latest": "def456",
                     }
