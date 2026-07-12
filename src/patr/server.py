@@ -544,10 +544,15 @@ COMMIT_AGE_THRESHOLD = 300  # seconds (5 min); older wip commits get a new commi
 def _repo_slug():
     """Derive a filesystem-safe slug from REPO_ROOT for backup directory naming.
 
-    Strips the leading slash and replaces all remaining path separators with
-    hyphens, e.g. ``/home/user/my-newsletter`` → ``home-user-my-newsletter``.
+    Uses Path.parts (OS-aware) rather than splitting the string on a
+    hardcoded '/', so it works for both POSIX (``/home/user/my-newsletter``
+    -> ``home-user-my-newsletter``) and Windows (``C:\\Users\\you\\newsletter``
+    -> ``C-Users-you-newsletter``) roots. A leftover ':' or '\\' in the slug
+    would make pathlib's '/' join treat it as a fresh absolute path, silently
+    discarding BACKUPS_DIR instead of nesting under it.
     """
-    return str(state.REPO_ROOT).lstrip("/").replace("/", "-")
+    parts = [str(p).strip("\\/:") for p in Path(state.REPO_ROOT).parts]
+    return "-".join(p for p in parts if p)
 
 
 def write_backup(slug, content):

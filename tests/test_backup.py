@@ -2,7 +2,7 @@
 
 import textwrap
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 from patr import server, state
@@ -105,3 +105,24 @@ def test_repo_slug_uses_path_separators(backup_root) -> None:
     """REPO_ROOT path separators become hyphens in backup dir name."""
     server.write_backup("my-ed", CONTENT)
     assert (backup_root / "home-user-my-newsletter").is_dir()
+
+
+def test_repo_slug_handles_windows_style_paths(monkeypatch) -> None:
+    """A Windows REPO_ROOT (drive letter + backslashes) must become a plain
+    hyphenated slug with no ':' or '\\' left in it — those characters,
+    left as-is, make pathlib's '/' join treat the slug as a fresh absolute
+    path, silently discarding BACKUPS_DIR instead of nesting under it.
+
+    Uses PureWindowsPath (not a plain Path with backslashes) so Windows
+    path-splitting semantics are exercised correctly even when this test
+    runs on a POSIX dev machine — pathlib preserves an existing PurePath's
+    already-split parts when re-wrapped, rather than re-splitting the raw
+    string with POSIX separator rules.
+    """
+    monkeypatch.setattr(
+        state, "REPO_ROOT", PureWindowsPath("C:\\Users\\you\\my-newsletter")
+    )
+    slug = server._repo_slug()
+    assert slug == "C-Users-you-my-newsletter"
+    assert ":" not in slug
+    assert "\\" not in slug
