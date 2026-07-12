@@ -1,6 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import Sidebar from "./Sidebar";
+
+// Scoped to .edition-list, since the sidebar's status/sent filter dropdowns
+// also contain "Sent" option text outside that container.
+function editionList() {
+  return within(document.querySelector(".edition-list"));
+}
 
 const baseProps = {
   warnings: [],
@@ -40,7 +52,7 @@ describe("Sent log modal", () => {
 
   it("opens the sent log modal and fetches entries when the badge is clicked", async () => {
     render(<Sidebar {...baseProps} editions={[edition()]} />);
-    fireEvent.click(screen.getByText("Sent"));
+    fireEvent.click(editionList().getByText("Sent"));
 
     expect(global.fetch).toHaveBeenCalledWith("/api/edition/my-ed/sent-log");
     await waitFor(() =>
@@ -50,7 +62,7 @@ describe("Sent log modal", () => {
 
   it("closes the modal", async () => {
     render(<Sidebar {...baseProps} editions={[edition()]} />);
-    fireEvent.click(screen.getByText("Sent"));
+    fireEvent.click(editionList().getByText("Sent"));
     await waitFor(() =>
       expect(screen.getByText("alice@example.com")).toBeInTheDocument(),
     );

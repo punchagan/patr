@@ -123,6 +123,39 @@ body {
   letter-spacing: 0.05em;
 }
 
+.sidebar-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-search-input {
+  font-size: 12px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+.sidebar-filters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.sidebar-filters select {
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  flex: 1;
+}
+
 .edition-list {
   overflow-y: auto;
   flex: 1;

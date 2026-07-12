@@ -147,6 +147,9 @@ export default function Sidebar({
   onHelp,
   onEditionUpdated,
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sentFilter, setSentFilter] = useState("all");
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
   const [applyUpdateError, setApplyUpdateError] = useState(null);
@@ -178,6 +181,26 @@ export default function Sidebar({
     };
     pollTimer.current = setTimeout(poll, UPDATE_POLL_INITIAL_DELAY_MS);
   }, []);
+
+  const matchesLifecycle = (e) => {
+    if (statusFilter === "draft") return e.draft;
+    if (statusFilter === "published") return !e.draft;
+    return true;
+  };
+
+  const matchesSent = (e) => {
+    if (sentFilter === "sent") return e.sent === "full";
+    if (sentFilter === "partial") return e.sent === "partial";
+    if (sentFilter === "unsent") return !e.sent;
+    return true;
+  };
+
+  const filteredEditions = editions.filter(
+    (e) =>
+      e.title.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
+      matchesLifecycle(e) &&
+      matchesSent(e),
+  );
 
   const handleUpdateNow = () => {
     if (!confirm("Make sure your work is saved. Update now?")) return;
@@ -262,6 +285,40 @@ export default function Sidebar({
           </button>
         </span>
       </div>
+      <div className="sidebar-filters">
+        <input
+          type="text"
+          className="sidebar-search-input"
+          placeholder="Search editions…"
+          value={searchQuery}
+          onChange={(ev) => setSearchQuery(ev.target.value)}
+        />
+        <label htmlFor="sidebar-status-filter">
+          Status:
+          <select
+            id="sidebar-status-filter"
+            value={statusFilter}
+            onChange={(ev) => setStatusFilter(ev.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </label>
+        <label htmlFor="sidebar-sent-filter">
+          Sent:
+          <select
+            id="sidebar-sent-filter"
+            value={sentFilter}
+            onChange={(ev) => setSentFilter(ev.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="sent">Sent</option>
+            <option value="partial">Partially Sent</option>
+            <option value="unsent">Not Sent</option>
+          </select>
+        </label>
+      </div>
       {updateAvailable && !updateDismissed && (
         <div className="update-banner">
           <span>
@@ -328,8 +385,18 @@ export default function Sidebar({
           >
             Loading…
           </div>
-        ) : editions.length === 0 ? null : (
-          editions.map((e) => (
+        ) : editions.length === 0 ? null : filteredEditions.length === 0 ? (
+          <div
+            style={{
+              padding: 16,
+              color: "var(--text-placeholder)",
+              fontSize: 13,
+            }}
+          >
+            No editions match.
+          </div>
+        ) : (
+          filteredEditions.map((e) => (
             <EditionItem
               key={e.slug}
               e={e}
