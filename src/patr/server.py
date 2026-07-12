@@ -57,6 +57,7 @@ from patr.content import (
     PatrYamlDumper,
     build_email_html,
     build_email_plain,
+    compress_image,
     edition_dir_for,
     get_editions,
     load_edition,
@@ -300,6 +301,15 @@ ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 @app.route("/api/edition/<slug>/upload-image", methods=["POST"])
 def upload_image(slug):
+    """Save an uploaded image into the edition's directory.
+
+    Non-GIF images are resized and re-encoded as JPEG (see
+    content.compress_image) so newsletters stay light — the same
+    compressed file is used for both the web edition and the email, there's
+    no separate full-resolution copy. GIFs are kept as-is to preserve
+    animation. If the uploaded bytes aren't a decodable image, they're
+    saved unchanged under their original extension.
+    """
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -312,11 +322,25 @@ def upload_image(slug):
         return jsonify({"error": f"File type .{ext} not allowed"}), 400
     dest_dir = edition_dir_for(f)
     dest_dir.mkdir(exist_ok=True)
-    dest = dest_dir / filename
-    if dest.exists():
-        stem = filename.rsplit(".", 1)[0]
-        dest = dest_dir / f"{stem}-{secrets.token_hex(4)}.{ext}"
-    file.save(dest)
+    stem = filename.rsplit(".", 1)[0]
+
+    tmp_path = dest_dir / f".upload-{secrets.token_hex(4)}.{ext}"
+    file.save(tmp_path)
+
+    def unique_dest(target_ext):
+        dest = dest_dir / f"{stem}.{target_ext}"
+        if dest.exists():
+            dest = dest_dir / f"{stem}-{secrets.token_hex(4)}.{target_ext}"
+        return dest
+
+    if ext != "gif":
+        dest = unique_dest("jpg")
+        if compress_image(tmp_path, dest):
+            tmp_path.unlink()
+            return jsonify({"path": dest.name})
+
+    dest = unique_dest(ext)
+    tmp_path.rename(dest)
     return jsonify({"path": dest.name})
 
 

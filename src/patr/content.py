@@ -10,8 +10,12 @@ import yaml
 from bs4 import BeautifulSoup
 from patr import state
 from patr.config import hugo_mode
+from PIL import Image, UnidentifiedImageError
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
+
+IMAGE_MAX_WIDTH = 800
+IMAGE_JPEG_QUALITY = 85
 
 
 class PatrYamlDumper(yaml.SafeDumper):
@@ -117,6 +121,35 @@ def edition_dir_for(f):
     For a flat file (slug.md) this is a sibling directory with the same stem (slug/).
     """
     return f.parent if f.parent != state.CONTENT_DIR else f.with_suffix("")
+
+
+def compress_image(src: Path, dest: Path) -> bool:
+    """Resize src to at most IMAGE_MAX_WIDTH wide and re-encode as JPEG at
+    dest, flattening any transparency onto a white background (both the
+    email and the web edition render newsletter content on white). Both
+    surfaces share this single compressed copy, so there's no separate
+    full-resolution version.
+
+    Returns True on success. Returns False (leaving dest untouched) if src
+    isn't a decodable image — callers should fall back to saving the
+    original bytes as-is.
+    """
+    try:
+        with Image.open(src) as img:
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGBA")
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            else:
+                img = img.convert("RGB")
+            if img.width > IMAGE_MAX_WIDTH:
+                new_height = round(img.height * IMAGE_MAX_WIDTH / img.width)
+                img = img.resize((IMAGE_MAX_WIDTH, new_height), Image.LANCZOS)
+            img.save(dest, "JPEG", quality=IMAGE_JPEG_QUALITY)
+    except UnidentifiedImageError:
+        return False
+    return True
 
 
 def load_footer():

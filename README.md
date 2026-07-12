@@ -118,7 +118,7 @@ The **Intro** field is optional. It appears in an italicised, bordered style abo
 
 #### Images
 
-Paste or drag images directly into the editor, or use the 🖼 toolbar button to upload. Images are stored alongside the edition and referenced with a relative path.
+Paste or drag images directly into the editor, or use the 🖼 toolbar button to upload. Images are stored alongside the edition and referenced with a relative path. Uploads are automatically resized (max 800px wide) and re-encoded as JPEG to keep newsletters light; GIFs are left untouched so animation still works.
 
 To control display size, add a title with an attribute block:
 

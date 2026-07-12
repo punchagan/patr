@@ -6,6 +6,17 @@ from unittest.mock import patch
 
 import pytest
 from patr import server, state
+from PIL import Image
+
+
+def _make_image_bytes(width, height, mode="RGB", fmt="PNG"):
+    """Build real encoded image bytes for upload/compression tests."""
+    color = (200, 50, 50, 128) if mode == "RGBA" else (200, 50, 50)
+    img = Image.new(mode, (width, height), color)
+    buf = io.BytesIO()
+    img.save(buf, fmt)
+    buf.seek(0)
+    return buf
 
 
 @pytest.fixture
@@ -213,8 +224,8 @@ def test_intro_with_blank_lines_round_trips(client, repo) -> None:
 # POST /api/edition/<slug>/upload-image
 
 
-def test_upload_image(client, repo) -> None:
-    data = {"file": (io.BytesIO(b"fake png data"), "photo.png")}
+def test_upload_image_resizes_and_converts_oversized_png_to_jpeg(client, repo) -> None:
+    data = {"file": (_make_image_bytes(1600, 900, mode="RGBA"), "big.png")}
     r = client.post(
         "/api/edition/test-edition/upload-image",
         data=data,
@@ -222,8 +233,56 @@ def test_upload_image(client, repo) -> None:
     )
     assert r.status_code == 200
     d = r.get_json()
-    assert d["path"] == "photo.png"
-    assert (repo / "content" / "newsletter" / "test-edition" / "photo.png").exists()
+    assert d["path"] == "big.jpg"
+    saved = repo / "content" / "newsletter" / "test-edition" / "big.jpg"
+    assert saved.exists()
+    with Image.open(saved) as out:
+        assert out.format == "JPEG"
+        assert out.width == 800
+        assert out.height == 450
+
+
+def test_upload_image_leaves_small_image_dimensions_unscaled(client, repo) -> None:
+    data = {"file": (_make_image_bytes(400, 300, fmt="JPEG"), "small.jpg")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    saved = repo / "content" / "newsletter" / "test-edition" / "small.jpg"
+    with Image.open(saved) as out:
+        assert out.width == 400
+        assert out.height == 300
+
+
+def test_upload_image_skips_gif_compression(client, repo) -> None:
+    data = {"file": (_make_image_bytes(10, 10, fmt="GIF"), "anim.gif")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] == "anim.gif"
+    saved = repo / "content" / "newsletter" / "test-edition" / "anim.gif"
+    with Image.open(saved) as out:
+        assert out.format == "GIF"
+
+
+def test_upload_image_falls_back_when_bytes_are_not_decodable(client, repo) -> None:
+    """Corrupt/non-image bytes shouldn't crash the upload; compression is
+    skipped and the original bytes are saved as-is."""
+    data = {"file": (io.BytesIO(b"not a real image"), "broken.png")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] == "broken.png"
+    saved = repo / "content" / "newsletter" / "test-edition" / "broken.png"
+    assert saved.read_bytes() == b"not a real image"
 
 
 def test_upload_image_disallows_bad_extension(client) -> None:
@@ -237,16 +296,20 @@ def test_upload_image_disallows_bad_extension(client) -> None:
 
 
 def test_upload_image_deduplicates_filename(client, repo) -> None:
+    """Uploads are converted to JPEG, so dedup must check against the final
+    .jpg name, not the uploaded file's original extension."""
     edition_dir = repo / "content" / "newsletter" / "test-edition"
-    (edition_dir / "photo.png").write_bytes(b"existing")
-    data = {"file": (io.BytesIO(b"new data"), "photo.png")}
+    (edition_dir / "photo.jpg").write_bytes(b"existing")
+    data = {"file": (_make_image_bytes(100, 100), "photo.png")}
     r = client.post(
         "/api/edition/test-edition/upload-image",
         data=data,
         content_type="multipart/form-data",
     )
     assert r.status_code == 200
-    assert r.get_json()["path"] != "photo.png"
+    path = r.get_json()["path"]
+    assert path != "photo.jpg"
+    assert path.endswith(".jpg")
 
 
 def test_upload_image_404(client) -> None:
