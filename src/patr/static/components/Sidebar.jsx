@@ -286,38 +286,77 @@ export default function Sidebar({
         </span>
       </div>
       <div className="sidebar-filters">
-        <input
-          type="text"
-          className="sidebar-search-input"
-          placeholder="Search editions…"
-          value={searchQuery}
-          onChange={(ev) => setSearchQuery(ev.target.value)}
-        />
-        <label htmlFor="sidebar-status-filter">
-          Status:
-          <select
-            id="sidebar-status-filter"
-            value={statusFilter}
-            onChange={(ev) => setStatusFilter(ev.target.value)}
+        <div className="sidebar-search">
+          <svg
+            className="sidebar-search-icon"
+            viewBox="0 0 16 16"
+            width="13"
+            height="13"
+            aria-hidden="true"
           >
-            <option value="all">All</option>
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-          </select>
-        </label>
-        <label htmlFor="sidebar-sent-filter">
-          Sent:
-          <select
-            id="sidebar-sent-filter"
-            value={sentFilter}
-            onChange={(ev) => setSentFilter(ev.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="sent">Sent</option>
-            <option value="partial">Partially Sent</option>
-            <option value="unsent">Not Sent</option>
-          </select>
-        </label>
+            <circle
+              cx="6.5"
+              cy="6.5"
+              r="5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="10.3"
+              y1="10.3"
+              x2="14.5"
+              y2="14.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <input
+            type="text"
+            className="sidebar-search-input"
+            placeholder="Search editions…"
+            value={searchQuery}
+            onChange={(ev) => setSearchQuery(ev.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="sidebar-search-clear"
+              aria-label="Clear search"
+              onClick={() => setSearchQuery("")}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div className="sidebar-filter-row">
+          <label htmlFor="sidebar-status-filter">
+            Status:
+            <select
+              id="sidebar-status-filter"
+              value={statusFilter}
+              onChange={(ev) => setStatusFilter(ev.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </label>
+          <label htmlFor="sidebar-sent-filter">
+            Sent:
+            <select
+              id="sidebar-sent-filter"
+              value={sentFilter}
+              onChange={(ev) => setSentFilter(ev.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="sent">Sent</option>
+              <option value="partial">Partially Sent</option>
+              <option value="unsent">Not Sent</option>
+            </select>
+          </label>
+        </div>
       </div>
       {updateAvailable && !updateDismissed && (
         <div className="update-banner">

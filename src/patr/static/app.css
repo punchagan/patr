@@ -126,27 +126,73 @@ body {
 .sidebar-filters {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
 }
+.sidebar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.sidebar-search-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--text-placeholder);
+  pointer-events: none;
+}
 .sidebar-search-input {
   font-size: 12px;
-  padding: 4px 7px;
+  padding: 5px 26px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 14px;
   background: var(--surface);
   color: var(--text);
   width: 100%;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
-.sidebar-filters label {
+.sidebar-search-input:focus {
+  outline: none;
+  border-color: var(--active-accent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--active-accent) 25%, transparent);
+}
+.sidebar-search-clear {
+  position: absolute;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-search-clear:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+.sidebar-filter-row {
+  display: flex;
+  gap: 10px;
+}
+.sidebar-filter-row label {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
   color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
 }
-.sidebar-filters select {
+.sidebar-filter-row select {
   font-size: 12px;
   padding: 2px 4px;
   border: 1px solid var(--border);
@@ -154,6 +200,7 @@ body {
   background: var(--surface);
   color: var(--text);
   flex: 1;
+  min-width: 0;
 }
 
 .edition-list {

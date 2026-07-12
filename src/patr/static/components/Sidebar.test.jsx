@@ -48,6 +48,22 @@ const sampleEditions = [
 ];
 
 describe("Sidebar search and status filter", () => {
+  it("has no clear button when the search is empty", () => {
+    render(<Sidebar {...baseProps} editions={sampleEditions} />);
+    expect(screen.queryByLabelText(/clear search/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a clear button once text is typed, and clicking it resets the search", () => {
+    render(<Sidebar {...baseProps} editions={sampleEditions} />);
+    const input = screen.getByPlaceholderText(/search/i);
+    fireEvent.change(input, { target: { value: "spring" } });
+    expect(screen.queryByText("Winter Plans")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/clear search/i));
+    expect(input).toHaveValue("");
+    expect(screen.getByText("Winter Plans")).toBeInTheDocument();
+  });
+
   it("filters editions by title as you type", () => {
     render(<Sidebar {...baseProps} editions={sampleEditions} />);
     fireEvent.change(screen.getByPlaceholderText(/search/i), {
