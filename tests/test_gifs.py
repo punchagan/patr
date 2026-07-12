@@ -27,6 +27,18 @@ def test_is_allowed_host_false_for_lookalike_domain() -> None:
     assert gifs._is_allowed_host("https://eviltenor.com/cat.gif") is False
 
 
+def test_is_allowed_host_true_for_tenor_with_explicit_port() -> None:
+    """netloc includes the port, which would break a suffix/equality
+    check against the bare hostname; hostname-based checks must ignore it."""
+    assert gifs._is_allowed_host("https://tenor.com:443/view/cat-123") is True
+
+
+def test_is_allowed_host_false_for_userinfo_spoofed_host() -> None:
+    """netloc includes userinfo, so a URL can smuggle an allowed-looking
+    string before the '@' while the real host is something else entirely."""
+    assert gifs._is_allowed_host("https://tenor.com@evil.com/cat.gif") is False
+
+
 # --- resolve_media_url ---
 
 

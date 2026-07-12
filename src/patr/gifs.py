@@ -21,7 +21,7 @@ def _is_allowed_host(url: str) -> bool:
     """Return True if url's host is tenor.com/giphy.com or a subdomain
     (e.g. media.tenor.com) — restricts fetching to these two GIF services,
     not arbitrary URLs."""
-    host = urllib.parse.urlsplit(url).netloc.lower()
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
     return any(host == h or host.endswith(f".{h}") for h in ALLOWED_HOSTS)
 
 
