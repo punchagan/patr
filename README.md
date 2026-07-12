@@ -50,7 +50,7 @@ itself with one click. Otherwise it shows the exact commands to run.
    - Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
    - Choose **Desktop app**, give it a name, and click Create.
    - Download the JSON file.
-5. Save the downloaded file as `~/.config/patr/credentials.json` (Linux/macOS) or `%USERPROFILE%\.config\patr\credentials.json` (Windows).
+5. Save the downloaded file as `~/.config/patr/credentials.json` (Linux/macOS) or `%LOCALAPPDATA%\patr\config\credentials.json` (Windows).
 
 ## Installation
 
@@ -106,7 +106,7 @@ Click **+** in the sidebar. Give it a title and you're ready to write.
 
 ### Write
 
-The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically. On each save a timestamped backup is written to `~/.local/share/patr/backups/`, and when Git is available a commit is also created — so you can always recover previous versions.
+The editor supports bold, italic, headings, lists, links, and images. Writing is saved automatically. On each save a timestamped backup is written to `~/.local/share/patr/backups/` (`%LOCALAPPDATA%\patr\backups\` on Windows), and when Git is available a commit is also created — so you can always recover previous versions.
 
 Open the **⋯** menu in the action bar and click **History** to browse previous versions, compare them to the current content, and restore an earlier one if needed.
 
@@ -159,18 +159,18 @@ Use **Test Send** to send yourself a copy first. When you're happy with it, **Se
 
 > **Gmail send limits:** Personal Gmail accounts can send ~500 emails/day. If your list exceeds 400 recipients, Patr will warn you before sending.
 
-Open the **⋯** menu in the action bar and click **Delete** to delete an edition. Previous versions are still recoverable from `~/.local/share/patr/backups/`.
+Open the **⋯** menu in the action bar and click **Delete** to delete an edition. Previous versions are still recoverable from `~/.local/share/patr/backups/` (`%LOCALAPPDATA%\patr\backups\` on Windows).
 
 <!-- help-end -->
 
 ## Configuration
 
-| Location | Contents |
-|---|---|
-| `{hugo-site}/hugo.toml` → `[params.patr]` | `name`, `email_only` — used in Hugo mode |
-| `{dir}/patr.toml` | `name`, `email_only` — used in hugo-free mode (no `hugo.toml`) |
-| `~/.config/patr/config.toml` | `sheet_id` — Google Sheets contacts sheet |
-| `~/.config/patr/credentials.json` | GCP OAuth client credentials (Desktop app) |
+| Location (Linux/macOS) | Location (Windows) | Contents |
+|---|---|---|
+| `{hugo-site}/hugo.toml` → `[params.patr]` | same | `name`, `email_only` — used in Hugo mode |
+| `{dir}/patr.toml` | same | `name`, `email_only` — used in hugo-free mode (no `hugo.toml`) |
+| `~/.config/patr/config.toml` | `%LOCALAPPDATA%\patr\config\config.toml` | `sheet_id` — Google Sheets contacts sheet |
+| `~/.config/patr/credentials.json` | `%LOCALAPPDATA%\patr\config\credentials.json` | GCP OAuth client credentials (Desktop app) |
 
 ### Contacts sheet format
 

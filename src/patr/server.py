@@ -108,7 +108,7 @@ def api_auth_status():
 def oauth_start():
     if not state.CREDENTIALS_FILE.exists():
         return (
-            "credentials.json not found at ~/.config/patr/credentials.json",
+            f"credentials.json not found at {state.CREDENTIALS_FILE}",
             400,
         )
     flow = Flow.from_client_secrets_file(
@@ -965,7 +965,7 @@ def contacts_count():
         return jsonify(
             {
                 "count": None,
-                "error": "sheet_id not set in ~/.config/patr/config.toml",
+                "error": f"sheet_id not set in {state.CONFIG_DIR / 'config.toml'}",
             }
         )
     try:

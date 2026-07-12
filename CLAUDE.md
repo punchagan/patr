@@ -42,6 +42,18 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
   unless there's no way out.
 - Add docstrings to functions. Future readers of the code shouldn't need to dig
   their way through commit messages to figure out what functions are doing.
+- **Do proper path manipulation for Windows compatibility.** Patr is used on
+  Windows. Never assume `/` as a path separator or hardcode POSIX-style config
+  paths (`~/.config/...`) — use `pathlib.Path` operators/`.parts` and OS
+  detection (see `state._default_config_dir()` / `_default_backups_dir()` for
+  the pattern) instead of raw string splitting/joining. Test with Windows-style
+  paths wherever practical, even when developing on Linux/macOS — a plain
+  `Path("C:\\Users\\you\\thing")` on a POSIX machine won't exhibit real Windows
+  parsing (backslash is just a regular character to PosixPath), but wrapping a
+  `pathlib.PureWindowsPath` instance in `Path(...)` preserves its already-split
+  parts and lets you exercise Windows path-splitting logic in tests without a
+  Windows machine (see `test_repo_slug_handles_windows_style_paths` in
+  `tests/test_backup.py`).
 
 ## Running Patr
 

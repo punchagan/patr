@@ -202,7 +202,7 @@ def cmd_import_sent_log(args) -> None:
     newsletter_config = load_newsletter_config()
     sheet_id = newsletter_config.get("sheet_id")
     if not sheet_id:
-        print("Error: sheet_id not configured in ~/.config/patr/config.toml")
+        print(f"Error: sheet_id not configured in {state.CONFIG_DIR / 'config.toml'}")
         return
 
     creds = get_auth()
