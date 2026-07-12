@@ -161,7 +161,7 @@ describe("Sidebar self-update button", () => {
       await vi.advanceTimersByTimeAsync(0); // apply-update resolves
     });
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000); // first poll: fails
+      await vi.advanceTimersByTimeAsync(2000); // initial delay elapses, first poll: fails
     });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000); // second poll: succeeds
@@ -169,5 +169,30 @@ describe("Sidebar self-update button", () => {
 
     expect(reload).toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  it("gives up and shows an error after repeated failed retries", async () => {
+    global.fetch = vi.fn((url) => {
+      if (url === "/api/apply-update") {
+        return Promise.resolve({ json: () => Promise.resolve({ ok: true }) });
+      }
+      return Promise.reject(new Error("still down"));
+    });
+
+    render(<Sidebar {...baseProps} updateAvailable={true} updateSafe={true} />);
+    fireEvent.click(screen.getByRole("button", { name: /update now/i }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0); // apply-update resolves
+    });
+    await act(async () => {
+      // initial delay + enough retry intervals to exhaust all attempts
+      await vi.advanceTimersByTimeAsync(2000 + 1000 * 10);
+    });
+
+    expect(screen.getByText(/did not come back/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /update now/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -4,6 +4,9 @@ import SentLogModal from "./modals/SentLogModal";
 const SIDEBAR_WIDTH_KEY = "patr-sidebar-width";
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 500;
+const UPDATE_POLL_INITIAL_DELAY_MS = 2000;
+const UPDATE_POLL_INTERVAL_MS = 1000;
+const UPDATE_POLL_MAX_ATTEMPTS = 8;
 
 function EditionItem({
   e,
@@ -151,20 +154,29 @@ export default function Sidebar({
   const pollTimer = useRef(null);
 
   useEffect(() => {
-    return () => clearInterval(pollTimer.current);
+    return () => clearTimeout(pollTimer.current);
   }, []);
 
   const pollUntilBackUp = useCallback(() => {
-    pollTimer.current = setInterval(() => {
+    let attempts = 0;
+    const poll = () => {
       fetch("/api/editions")
         .then(() => {
-          clearInterval(pollTimer.current);
           location.reload();
         })
         .catch(() => {
-          // Server is still restarting — keep polling.
+          attempts += 1;
+          if (attempts >= UPDATE_POLL_MAX_ATTEMPTS) {
+            setApplyingUpdate(false);
+            setApplyUpdateError(
+              "Server did not come back up after the update — check the server logs.",
+            );
+            return;
+          }
+          pollTimer.current = setTimeout(poll, UPDATE_POLL_INTERVAL_MS);
         });
-    }, 1000);
+    };
+    pollTimer.current = setTimeout(poll, UPDATE_POLL_INITIAL_DELAY_MS);
   }, []);
 
   const handleUpdateNow = () => {
