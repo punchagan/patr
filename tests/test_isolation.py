@@ -27,7 +27,7 @@ def test_get_auth_raises_without_real_token() -> None:
     """get_auth() must raise, not silently use real credentials."""
     from patr.auth import get_auth
 
-    with pytest.raises(RuntimeError, match="not_authenticated"):
+    with pytest.raises(RuntimeError, match="Gmail isn't connected"):
         get_auth()
 
 

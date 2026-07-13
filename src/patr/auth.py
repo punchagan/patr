@@ -1,5 +1,6 @@
 import json
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
 from patr import state
@@ -14,15 +15,28 @@ def oauth_redirect_uri(port: int) -> str:
 
 
 def get_auth():
+    """Return valid Gmail/Sheets credentials, refreshing the access token if
+    needed.
+
+    Raises RuntimeError with an already-user-facing message — not a sentinel
+    to match on — for both "never connected" and "refresh token is dead"
+    (expired after Google's 7-day limit for OAuth apps in Testing publishing
+    status, or manually revoked): callers can just show str(e) as-is.
+    """
     creds = None
     if state.TOKEN_FILE.exists():
         creds = Credentials.from_authorized_user_file(state.TOKEN_FILE, state.SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(GoogleRequest())
+            try:
+                creds.refresh(GoogleRequest())
+            except RefreshError:
+                raise RuntimeError(
+                    "Your Gmail connection has expired — reconnect it in ⚙ Settings."
+                )
             state.TOKEN_FILE.write_text(creds.to_json())
         else:
-            raise RuntimeError("not_authenticated")
+            raise RuntimeError("Gmail isn't connected — connect it in ⚙ Settings.")
     return creds
 
 
