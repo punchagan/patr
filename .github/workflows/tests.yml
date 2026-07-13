@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Force UTF-8 as the default text encoding for open()/Path.write_text()/
+      # read_text() calls that don't pass encoding= explicitly. Must be set
+      # before the interpreter starts, which is exactly what happens here —
+      # it's set before `uv run` ever launches python. Mirrors the same fix
+      # applied to the real `patr` CLI (cli.py's
+      # _require_pythonutf8_on_windows(), which refuses to run on Windows
+      # without this set) — pytest itself isn't gated by that check, so CI
+      # needs to set it independently.
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: "3.13"
+
+      - name: Install Playwright browser
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run Python test suite
+        run: uv run --extra dev pytest
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Run JS test suite
+        run: npm run test
