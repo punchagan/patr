@@ -107,6 +107,18 @@ def test_repo_slug_uses_path_separators(backup_root) -> None:
     assert (backup_root / "home-user-my-newsletter").is_dir()
 
 
+def test_backups_dir_route_returns_repo_specific_path(backup_root) -> None:
+    """GET /api/backups-dir must return the real, current BACKUPS_DIR (not a
+    hardcoded string) so the frontend can show an accurate path — e.g. in
+    the delete-confirmation modal, which used to hardcode the Unix path
+    even when running on Windows."""
+    server.app.config["TESTING"] = True
+    with server.app.test_client() as client:
+        r = client.get("/api/backups-dir")
+    assert r.status_code == 200
+    assert r.get_json()["path"] == str(backup_root / "home-user-my-newsletter")
+
+
 def test_repo_slug_handles_windows_style_paths(monkeypatch) -> None:
     """A Windows REPO_ROOT (drive letter + backslashes) must become a plain
     hyphenated slug with no ':' or '\\' left in it — those characters,

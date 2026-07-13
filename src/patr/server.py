@@ -555,6 +555,14 @@ def _repo_slug():
     return "-".join(p for p in parts if p)
 
 
+@app.route("/api/backups-dir")
+def backups_dir_route():
+    """Return this repo's actual backup directory, so the frontend can show
+    a real, OS-correct path (e.g. in the delete-confirmation modal) instead
+    of a hardcoded Unix path that's wrong on Windows."""
+    return jsonify({"path": str(state.BACKUPS_DIR / _repo_slug())})
+
+
 def write_backup(slug, content):
     """Write a timestamped backup of edition content to BACKUPS_DIR.
 
