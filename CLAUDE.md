@@ -68,6 +68,10 @@ patr serve --repo /path/to/hugo-site --port 5001
 # Migrate existing flat .md editions to page bundles (dry run first)
 patr migrate --repo /path/to/hugo-site
 patr migrate --repo /path/to/hugo-site --apply
+
+# Thin out closely-timestamped backups (dry run first)
+patr prune-backups --repo /path/to/hugo-site
+patr prune-backups --repo /path/to/hugo-site --apply
 ```
 
 Install with `uv pip install -e .` or `pip install -e .`. Requires Python 3.11+.
@@ -259,12 +263,25 @@ regardless of git availability:
       ...
 ```
 
-The repo slug is derived from `REPO_ROOT` with path separators replaced by
-`-`. Backups use the same amend-vs-new logic as git auto-commit: overwrite the
-latest if the diff is small (< `COMMIT_DIFF_THRESHOLD` bytes) and it is recent
-(< `COMMIT_AGE_THRESHOLD` seconds), otherwise write a new timestamped file.
-Backups accumulate indefinitely. When Git is also available, the existing
+The repo slug is derived from `REPO_ROOT` via `content.repo_slug()` (OS-aware,
+using `Path.parts`). Backups use the same amend-vs-new logic as git
+auto-commit: overwrite the latest if the diff is small (< `COMMIT_DIFF_THRESHOLD`
+bytes) and it is recent (< `COMMIT_AGE_THRESHOLD` seconds), otherwise write a
+new timestamped file. Backups accumulate indefinitely by default — this is
+intentional (text files are cheap) — but see `patr prune-backups` below for a
+manual, opt-in way to thin them out. When Git is also available, the existing
 auto-commit path runs alongside — backups and git commits are independent.
+
+`patr prune-backups --repo <path> [--apply]` (dry run by default) declutters
+the History list rather than saving disk space: for each edition, it always
+keeps the first and last backup, and drops any backup in between whose diff
+from the last *kept* checkpoint is under `COMMIT_DIFF_THRESHOLD` bytes (not
+much real change). The comparison is against the last **kept** checkpoint,
+not the immediately-previous file — otherwise a long run of individually-tiny
+edits would accumulate real drift while every single step still looks
+"small" pairwise, and the whole run would get wrongly discarded. Idempotent:
+re-running after an `--apply` finds nothing left to prune. Implemented in
+`content.plan_backup_pruning()` / `cli.cmd_prune_backups()`.
 
 ### Hugo-free mode
 

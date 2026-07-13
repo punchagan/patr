@@ -1,6 +1,8 @@
 import base64
+import difflib
 import mimetypes
 import re
+from datetime import datetime
 from pathlib import Path
 
 import css_inline
@@ -16,6 +18,7 @@ _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 
 IMAGE_MAX_WIDTH = 800
 IMAGE_JPEG_QUALITY = 85
+COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit / backup
 
 
 class PatrYamlDumper(yaml.SafeDumper):
@@ -121,6 +124,74 @@ def edition_dir_for(f):
     For a flat file (slug.md) this is a sibling directory with the same stem (slug/).
     """
     return f.parent if f.parent != state.CONTENT_DIR else f.with_suffix("")
+
+
+def repo_slug():
+    """Derive a filesystem-safe slug from REPO_ROOT for backup directory naming.
+
+    Uses Path.parts (OS-aware) rather than splitting the string on a
+    hardcoded '/', so it works for both POSIX (``/home/user/my-newsletter``
+    -> ``home-user-my-newsletter``) and Windows (``C:\\Users\\you\\newsletter``
+    -> ``C-Users-you-newsletter``) roots. A leftover ':' or '\\' in the slug
+    would make pathlib's '/' join treat it as a fresh absolute path, silently
+    discarding BACKUPS_DIR instead of nesting under it.
+    """
+    parts = [str(p).strip("\\/:") for p in Path(state.REPO_ROOT).parts]
+    return "-".join(p for p in parts if p)
+
+
+def _diff_size(a: str, b: str) -> int:
+    return len(
+        "".join(
+            difflib.unified_diff(
+                a.splitlines(keepends=True), b.splitlines(keepends=True)
+            )
+        )
+    )
+
+
+def plan_backup_pruning(
+    backups_root: Path, diff_threshold: int = COMMIT_DIFF_THRESHOLD
+):
+    """Plan a "checkpoint compaction" of timestamped backups under
+    backups_root (one subdirectory per edition slug).
+
+    Always keeps the first and last backup for each edition. For everything
+    in between, keeps a backup only if its diff from the last *kept*
+    checkpoint is >= diff_threshold bytes — i.e. it represents real,
+    accumulated work — and drops it otherwise. Comparing against the last
+    *kept* checkpoint (not the immediately-previous file) matters: a long
+    run of individually-tiny edits must still accumulate into a new
+    checkpoint once the drift is large enough, rather than being silently
+    discarded as a chain of "small" diffs against each other.
+
+    Returns {edition_slug: [prunable_paths]} — a dry-run-friendly plan; does
+    not delete anything itself. Files with unparseable timestamp names are
+    skipped (left untouched, never planned for pruning).
+    """
+    plan = {}
+    if not backups_root.exists():
+        return plan
+    for ed_dir in sorted(p for p in backups_root.iterdir() if p.is_dir()):
+        files = []
+        for f in sorted(ed_dir.glob("*.md")):
+            try:
+                datetime.strptime(f.stem, "%Y%m%dT%H%M%S")  # noqa: DTZ007 (validation only)
+            except ValueError:
+                continue
+            files.append(f)
+
+        prunable = []
+        if len(files) > 2:
+            checkpoint_content = files[0].read_text(encoding="utf-8")
+            for f in files[1:-1]:
+                content = f.read_text(encoding="utf-8")
+                if _diff_size(checkpoint_content, content) >= diff_threshold:
+                    checkpoint_content = content
+                else:
+                    prunable.append(f)
+        plan[ed_dir.name] = prunable
+    return plan
 
 
 def compress_image(src: Path, dest: Path) -> bool:

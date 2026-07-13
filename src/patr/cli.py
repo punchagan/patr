@@ -19,7 +19,13 @@ from patr import state
 from patr.auth import get_auth
 from patr.config import git_mode, hugo_mode, load_newsletter_config
 from patr.contacts import get_all_sent_slugs
-from patr.content import get_editions, load_edition, write_edition_frontmatter
+from patr.content import (
+    get_editions,
+    load_edition,
+    plan_backup_pruning,
+    repo_slug,
+    write_edition_frontmatter,
+)
 
 
 def cmd_install(args) -> None:
@@ -237,6 +243,47 @@ def cmd_import_sent_log(args) -> None:
         print("Run with --apply to write changes.")
 
 
+def cmd_prune_backups(args) -> None:
+    """Thin out closely-timestamped edition backups.
+
+    Text backups are cheap, so this isn't storage-driven rotation — it's a
+    manual, dry-run-by-default declutter of the History list: for each
+    edition, always keeps the first and last backup, and drops any backup
+    in between whose diff from the last *kept* checkpoint is smaller than
+    COMMIT_DIFF_THRESHOLD (i.e. it didn't represent much real change).
+    Idempotent: re-running after an --apply finds nothing left to prune,
+    since only first/last and real checkpoints survive.
+    """
+    state.REPO_ROOT = Path(args.repo).resolve()
+    dry_run = not args.apply
+    backups_root = state.BACKUPS_DIR / repo_slug()
+
+    if not backups_root.exists():
+        print(f"No backups found at {backups_root}")
+        return
+
+    plan = plan_backup_pruning(backups_root)
+    total = sum(len(paths) for paths in plan.values())
+
+    if dry_run:
+        print("Dry run — pass --apply to delete files.\n")
+
+    for slug, paths in plan.items():
+        if not paths:
+            continue
+        verb = "would delete" if dry_run else "deleting"
+        print(f"  {slug}: {verb} {len(paths)} backup(s)")
+        for path in paths:
+            print(f"    {path.name}")
+        if not dry_run:
+            for path in paths:
+                path.unlink()
+
+    print(f"\n{'Would delete' if dry_run else 'Deleted'} {total} backup file(s).")
+    if dry_run and total:
+        print("Run with --apply to delete.")
+
+
 def cmd_serve(args) -> None:
     state.REPO_ROOT = Path(args.repo).resolve()
     if hugo_mode():
@@ -324,6 +371,18 @@ def main() -> None:
         "--apply", action="store_true", help="Actually write changes (default: dry run)"
     )
 
+    # prune-backups
+    prune_backups_parser = sub.add_parser(
+        "prune-backups",
+        help="Thin out closely-timestamped edition backups",
+    )
+    prune_backups_parser.add_argument(
+        "--repo", required=True, help="Path to Hugo site root"
+    )
+    prune_backups_parser.add_argument(
+        "--apply", action="store_true", help="Actually delete files (default: dry run)"
+    )
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -332,6 +391,8 @@ def main() -> None:
         cmd_migrate(args)
     elif args.command == "import-sent-log":
         cmd_import_sent_log(args)
+    elif args.command == "prune-backups":
+        cmd_prune_backups(args)
     elif args.command == "serve":
         cmd_serve(args)
     else:

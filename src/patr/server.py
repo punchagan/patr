@@ -54,6 +54,7 @@ from patr.contacts import (
     log_sent,
 )
 from patr.content import (
+    COMMIT_DIFF_THRESHOLD,
     PatrYamlDumper,
     build_email_html,
     build_email_plain,
@@ -62,6 +63,7 @@ from patr.content import (
     get_editions,
     load_edition,
     load_footer,
+    repo_slug,
     write_edition_frontmatter,
 )
 from patr.gifs import download_gif
@@ -537,22 +539,7 @@ def unpublish_edition(slug):
     return _set_draft_and_push(f, post, draft=True, commit_prefix="Unpublish")
 
 
-COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit
 COMMIT_AGE_THRESHOLD = 300  # seconds (5 min); older wip commits get a new commit
-
-
-def _repo_slug():
-    """Derive a filesystem-safe slug from REPO_ROOT for backup directory naming.
-
-    Uses Path.parts (OS-aware) rather than splitting the string on a
-    hardcoded '/', so it works for both POSIX (``/home/user/my-newsletter``
-    -> ``home-user-my-newsletter``) and Windows (``C:\\Users\\you\\newsletter``
-    -> ``C-Users-you-newsletter``) roots. A leftover ':' or '\\' in the slug
-    would make pathlib's '/' join treat it as a fresh absolute path, silently
-    discarding BACKUPS_DIR instead of nesting under it.
-    """
-    parts = [str(p).strip("\\/:") for p in Path(state.REPO_ROOT).parts]
-    return "-".join(p for p in parts if p)
 
 
 @app.route("/api/backups-dir")
@@ -560,7 +547,7 @@ def backups_dir_route():
     """Return this repo's actual backup directory, so the frontend can show
     a real, OS-correct path (e.g. in the delete-confirmation modal) instead
     of a hardcoded Unix path that's wrong on Windows."""
-    return jsonify({"path": str(state.BACKUPS_DIR / _repo_slug())})
+    return jsonify({"path": str(state.BACKUPS_DIR / repo_slug())})
 
 
 def write_backup(slug, content):
@@ -573,7 +560,7 @@ def write_backup(slug, content):
     behaviour.  Otherwise writes a new timestamped file.  Backups accumulate
     indefinitely — no rotation.
     """
-    backup_dir = state.BACKUPS_DIR / _repo_slug() / slug
+    backup_dir = state.BACKUPS_DIR / repo_slug() / slug
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     existing = sorted(backup_dir.glob("*.md"))
@@ -730,7 +717,7 @@ def list_versions(slug):
         return jsonify({"versions": versions})
 
     # Backup mode
-    backup_dir = state.BACKUPS_DIR / _repo_slug() / slug
+    backup_dir = state.BACKUPS_DIR / repo_slug() / slug
     if not backup_dir.exists():
         return jsonify({"versions": []})
 
@@ -787,7 +774,7 @@ def get_version_content(slug, version_id):
     # Backup mode
     if not _BACKUP_VERSION_ID_RE.match(version_id):
         return jsonify({"error": "Invalid version id"}), 400
-    backup_file = state.BACKUPS_DIR / _repo_slug() / slug / f"{version_id}.md"
+    backup_file = state.BACKUPS_DIR / repo_slug() / slug / f"{version_id}.md"
     if not backup_file.exists():
         return jsonify({"error": "Version not found"}), 404
     return jsonify({"content": backup_file.read_text(encoding="utf-8")})

@@ -134,7 +134,7 @@ def test_repo_slug_handles_windows_style_paths(monkeypatch) -> None:
     monkeypatch.setattr(
         state, "REPO_ROOT", PureWindowsPath("C:\\Users\\you\\my-newsletter")
     )
-    slug = server._repo_slug()
+    slug = server.repo_slug()
     assert slug == "C-Users-you-my-newsletter"
     assert ":" not in slug
     assert "\\" not in slug
