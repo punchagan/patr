@@ -126,7 +126,11 @@ Thanks for reading. Reply any time — I'd love to hear from you.
 
 @pytest.fixture(scope="session")
 def screenshot_edition(repo, context, base_url):
-    """Set up the 'April 2025' edition with rich content for README screenshots."""
+    """Set up the 'April 2025' edition with rich content for README
+    screenshots, plus a handful of sibling editions spanning the
+    draft/published x sent axes — written directly rather than via the UI,
+    same as the PDF test does — so the sidebar's search/filter row has a
+    realistic list to show in the screenshot, not just one edition."""
     p = context.new_page()
     try:
         p.goto(base_url)
@@ -143,6 +147,20 @@ def screenshot_edition(repo, context, base_url):
         "---\ntitle: Hello from Patr\ndate: 2025-04-01\ndraft: false\nintro: |\n  A short personal note before the main content — good for context or a quick hello.\n---\n\n"
         + _SCREENSHOT_BODY
     )
+
+    for sib_slug, title, date, draft, sent in [
+        ("march-2025", "March Roundup", "2025-03-01", False, "full"),
+        ("february-2025", "February Digest", "2025-02-01", False, "partial"),
+        ("january-2025", "January Notes", "2025-01-01", True, None),
+    ]:
+        sib_dir = state.CONTENT_DIR / sib_slug
+        sib_dir.mkdir(parents=True, exist_ok=True)
+        sent_line = f"sent: {sent}\n" if sent else ""
+        (sib_dir / "index.md").write_text(
+            f"---\ntitle: {title}\ndate: {date}\ndraft: {str(draft).lower()}\n"
+            f"{sent_line}---\n\nPlaceholder body for the sidebar screenshot.\n"
+        )
+
     yield slug
 
 
@@ -190,6 +208,11 @@ def test_screenshot(screenshot_edition, context, base_url) -> None:
         p.wait_for_selector(".cm-content")
         p.wait_for_selector(".badge-live")  # wait for Published badge to appear
         p.wait_for_selector(".update-banner")  # wait for update nudge to appear
+        # The search/filter row must still render correctly alongside the
+        # update banner and a sidebar with editions in different states.
+        assert p.locator(".sidebar-search-input").is_visible()
+        assert p.locator("#sidebar-status-filter").is_visible()
+        assert p.locator("#sidebar-sent-filter").is_visible()
         out = REPO_ROOT / "screenshots" / "editor.png"
         out.parent.mkdir(exist_ok=True)
         p.screenshot(path=str(out))
