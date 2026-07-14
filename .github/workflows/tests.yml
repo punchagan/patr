@@ -30,8 +30,32 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Playwright browser
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/AppData/Local/ms-playwright
+          # Keyed off uv.lock's hash, not a separate version-lookup step —
+          # it changes automatically whenever the pinned playwright version
+          # does (that's what would bump uv.lock), so the cache
+          # self-invalidates for free. GitHub evicts old cache entries
+          # automatically (10GB/repo cap, LRU) — no manual pruning needed.
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+
+      # --with-deps installs OS-level shared libraries (libnss3, libx11,
+      # fonts, ...) missing from a bare Ubuntu image — Chromium won't launch
+      # at all without them. On Windows it instead runs a PowerShell script
+      # that installs the Windows Media Feature Pack (~3-4 minutes) for
+      # audio/video codec support, which these tests never exercise (no
+      # media playback, just clicking around a web UI) — so skip it there.
+      - name: Install Playwright browser (Linux)
+        if: runner.os == 'Linux'
         run: uv run playwright install --with-deps chromium
+
+      - name: Install Playwright browser (Windows)
+        if: runner.os == 'Windows'
+        run: uv run playwright install chromium
 
       - name: Run Python test suite
         run: uv run --extra dev pytest
