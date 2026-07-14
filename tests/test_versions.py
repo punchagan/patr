@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from patr import server, state
+from patr.content import repo_slug
 
 CONTENT_V1 = textwrap.dedent("""\
     ---
@@ -49,9 +50,8 @@ def make_edition(repo, slug, content=CONTENT_V1):
     (d / "index.md").write_text(content, encoding="utf-8")
 
 
-def make_backup(backup_root, repo_root, slug, content, age_seconds=10):
-    repo_slug = str(repo_root).lstrip("/").replace("/", "-")
-    ed = backup_root / repo_slug / slug
+def make_backup(backup_root, slug, content, age_seconds=10):
+    ed = backup_root / repo_slug() / slug
     ed.mkdir(parents=True, exist_ok=True)
     ts = (datetime.now(tz=UTC) - timedelta(seconds=age_seconds)).strftime(
         "%Y%m%dT%H%M%S"
@@ -79,8 +79,8 @@ def test_versions_empty_without_git_or_backups(client, repo, backup_root) -> Non
 
 def test_versions_lists_backups_in_git_free_mode(client, repo, backup_root) -> None:
     make_edition(repo, "my-ed")
-    ts1 = make_backup(backup_root, repo, "my-ed", CONTENT_V1, age_seconds=120)
-    ts2 = make_backup(backup_root, repo, "my-ed", CONTENT_V2, age_seconds=10)
+    ts1 = make_backup(backup_root, "my-ed", CONTENT_V1, age_seconds=120)
+    ts2 = make_backup(backup_root, "my-ed", CONTENT_V2, age_seconds=10)
     with patch("patr.server.git_mode", return_value=False):
         r = client.get("/api/edition/my-ed/versions")
     d = r.get_json()
@@ -121,7 +121,7 @@ def test_version_content_returns_backup_in_git_free_mode(
     client, repo, backup_root
 ) -> None:
     make_edition(repo, "my-ed")
-    ts = make_backup(backup_root, repo, "my-ed", CONTENT_V1, age_seconds=30)
+    ts = make_backup(backup_root, "my-ed", CONTENT_V1, age_seconds=30)
     with patch("patr.server.git_mode", return_value=False):
         r = client.get(f"/api/edition/my-ed/versions/{ts}")
     assert r.status_code == 200
