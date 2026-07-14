@@ -2,6 +2,7 @@
 
 import json
 from importlib.metadata import PackageNotFoundError
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,12 +22,21 @@ def reset_cache():
 
 
 def test_editable_checkout_path_for_editable_install() -> None:
+    """Compares Path objects (not raw strings): a POSIX-style file:// URL
+    parses to a POSIX-flavored path component, but str(Path(...)) renders
+    with backslashes on Windows (WindowsPath) — semantically the same path,
+    different string form, per OS. This unrealistic test input (a POSIX
+    path from `file:///home/user/patr`) can't occur on real Windows anyway
+    -- there `pip install -e .` would record a file:///C:/Users/... URL --
+    so this only tests that the URL parses into some correct Path, not any
+    particular OS's string rendering of it.
+    """
     direct_url = json.dumps(
         {"url": "file:///home/user/patr", "dir_info": {"editable": True}}
     )
     with patch("patr.updates.distribution") as mock_dist:
         mock_dist.return_value.read_text.return_value = direct_url
-        assert str(updates._editable_checkout_path()) == "/home/user/patr"
+        assert updates._editable_checkout_path() == Path("/home/user/patr")
 
 
 def test_editable_checkout_path_none_for_vcs_install() -> None:

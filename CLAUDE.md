@@ -54,6 +54,13 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
   parts and lets you exercise Windows path-splitting logic in tests without a
   Windows machine (see `test_repo_slug_handles_windows_style_paths` in
   `tests/test_backup.py`).
+- **When asserting on a function that returns a `Path`, compare `Path` objects,
+  not `str(path) == "some/hardcoded/string"`.** A hardcoded POSIX-style string
+  will fail on Windows even when the code is correct — `WindowsPath` always
+  renders with backslashes. `Path("/home/user/x") == Path("/home/user/x")`
+  works correctly regardless of which OS flavor of `Path` is on either side,
+  since equality compares parsed components, not string form (see the fix to
+  `test_editable_checkout_path_for_editable_install` in `tests/test_updates.py`).
 
 ## Running Patr
 
