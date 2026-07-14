@@ -10,6 +10,7 @@ from pathlib import Path
 import patr.server as patr_server
 import pytest
 from patr import state
+from patr.content import repo_slug
 
 pytestmark = pytest.mark.e2e
 
@@ -751,9 +752,7 @@ def test_history_restore(page, edition, base_url) -> None:
     # Directly inject a backup with different content so the diff is meaningful
     from datetime import UTC, datetime, timedelta
 
-    backup_dir = (
-        state.BACKUPS_DIR / str(state.REPO_ROOT).lstrip("/").replace("/", "-") / edition
-    )
+    backup_dir = state.BACKUPS_DIR / repo_slug() / edition
     backup_dir.mkdir(parents=True, exist_ok=True)
     old_ts = (datetime.now(tz=UTC) - timedelta(seconds=700)).strftime("%Y%m%dT%H%M%S")
     old_content = "---\ntitle: Restore Test\ndate: 2024-01-01\ndraft: true\n---\n\nOld restored content.\n"
