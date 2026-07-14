@@ -32,6 +32,14 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 - **Always update the README and CLAUDE.md.** With every change, check if the
   README and/CLAUDE.md need updating. New features need documentation in the
   README, etc.
+- **Use a feature-branch workflow for non-trivial changes.** For bug fixes and
+  features, create a branch (`git checkout -b <descriptive-name>`), commit
+  there, push, and open a PR with `gh pr create` — this lets CI
+  (`.github/workflows/tests.yml`, runs on Ubuntu + Windows) check the change
+  before it lands on `main`. Trivial changes (small doc tweaks, one-line
+  fixes) can still go straight to `main` as before. **Never merge the PR
+  yourself** — open it, report the PR URL, and stop; the user reviews the CI
+  result and merges manually.
 
 ## Coding style
 
