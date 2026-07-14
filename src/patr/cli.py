@@ -125,7 +125,9 @@ def cmd_install(args) -> None:
         except Exception:
             desktop = Path.home()
         bat = desktop / f"start-patr-{repo.name}.bat"
-        bat.write_text(f'@echo off\npatr serve --repo "{repo}"\npause\n')
+        bat.write_text(
+            f'@echo off\nset PYTHONUTF8=1\npatr serve --repo "{repo}"\npause\n'
+        )
         print(f"✓ Created launcher on Desktop → {bat}")
 
     print("\nPatr installed. Run: patr serve --repo", repo)
@@ -326,7 +328,35 @@ def cmd_serve(args) -> None:
     app.run(host="127.0.0.1", port=args.port, debug=True)
 
 
+def _require_pythonutf8_on_windows() -> None:
+    """On Windows, refuse to run without PYTHONUTF8 set, rather than
+    silently mis-encoding (or crashing on) non-ASCII content later.
+
+    PYTHONUTF8 must be set before the interpreter starts — Python reads it
+    at startup, so there's no way to fix this from within already-running
+    code. Without it, open()/Path.write_text()/read_text() calls with no
+    explicit encoding= fall back to the Windows system codepage instead of
+    UTF-8. The desktop launcher `patr install` creates sets this
+    automatically; anyone running `patr` directly from a terminal needs to
+    set it themselves, once per session.
+    """
+    if os.name == "nt" and not os.environ.get("PYTHONUTF8"):
+        print(
+            "Error: the PYTHONUTF8 environment variable is not set.\n\n"
+            "Patr needs this on Windows to correctly save/read non-ASCII\n"
+            "text (accented characters, emoji, etc.) — without it, Python\n"
+            "falls back to the Windows system codepage instead of UTF-8.\n\n"
+            "Set it once for this terminal session, then re-run:\n"
+            '  PowerShell:  $env:PYTHONUTF8 = "1"\n'
+            "  cmd.exe:     set PYTHONUTF8=1\n\n"
+            "(The desktop launcher created by `patr install` sets this\n"
+            "automatically for future runs.)"
+        )
+        raise SystemExit(1)
+
+
 def main() -> None:
+    _require_pythonutf8_on_windows()
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
     os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 

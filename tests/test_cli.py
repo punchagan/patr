@@ -4,7 +4,7 @@ import argparse
 
 import pytest
 from patr import state
-from patr.cli import cmd_serve
+from patr.cli import _require_pythonutf8_on_windows, cmd_serve
 
 
 def serve_args(repo, port=5000):
@@ -50,3 +50,26 @@ def test_cmd_serve_hugo_mode_requires_layouts(tmp_path):
     with pytest.raises(SystemExit) as exc:
         cmd_serve(serve_args(tmp_path))
     assert exc.value.code == 1
+
+
+# --- _require_pythonutf8_on_windows ---
+
+
+def test_pythonutf8_guard_exits_on_windows_without_env_var(monkeypatch):
+    monkeypatch.setattr("os.name", "nt")
+    monkeypatch.delenv("PYTHONUTF8", raising=False)
+    with pytest.raises(SystemExit) as exc:
+        _require_pythonutf8_on_windows()
+    assert exc.value.code == 1
+
+
+def test_pythonutf8_guard_passes_on_windows_with_env_var(monkeypatch):
+    monkeypatch.setattr("os.name", "nt")
+    monkeypatch.setenv("PYTHONUTF8", "1")
+    _require_pythonutf8_on_windows()  # should not raise
+
+
+def test_pythonutf8_guard_passes_on_non_windows_without_env_var(monkeypatch):
+    monkeypatch.setattr("os.name", "posix")
+    monkeypatch.delenv("PYTHONUTF8", raising=False)
+    _require_pythonutf8_on_windows()  # should not raise

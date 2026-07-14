@@ -58,6 +58,16 @@ itself with one click. Otherwise it shows the exact commands to run.
 uv tool install git+https://github.com/punchagan/patr
 ```
 
+**Windows:** set `PYTHONUTF8=1` before running any `patr` command (required for correctly saving/reading non-ASCII text — accented characters, emoji, etc.). `patr install` creates a desktop launcher that sets this automatically; running `patr` directly from a terminal needs it set once per session:
+
+```powershell
+$env:PYTHONUTF8 = "1"
+```
+
+```cmd
+set PYTHONUTF8=1
+```
+
 ### Email-only mode (no Hugo required)
 
 Point Patr at any directory of markdown files and start writing:

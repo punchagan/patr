@@ -76,6 +76,15 @@ patr prune-backups --repo /path/to/hugo-site --apply
 
 Install with `uv pip install -e .` or `pip install -e .`. Requires Python 3.11+.
 
+On Windows, `main()` refuses to run (`_require_pythonutf8_on_windows()` in
+`cli.py`) unless `PYTHONUTF8=1` is set — it must be set before the
+interpreter starts, so there's no way to fix this from already-running
+code. Without it, `open()`/`Path.write_text()`/`read_text()` calls with no
+explicit `encoding=` fall back to the Windows system codepage instead of
+UTF-8, silently mis-encoding (or crashing on) non-ASCII content. The desktop
+launcher `patr install` creates sets this automatically; direct terminal use
+needs it set once per session (see README's Windows install note).
+
 ## Architecture
 
 ### Repo Structure
