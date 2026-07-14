@@ -66,7 +66,14 @@ def _editable_checkout_path() -> Path | None:
     url = info.get("url", "")
     if not url.startswith("file://"):
         return None
-    return Path(urllib.parse.urlsplit(url).path)
+    # url2pathname (not a bare Path() wrap) matters on Windows: a
+    # file:///C:/Users/... URL's path component is /C:/Users/... (URLs
+    # always have a leading '/' before the drive letter) — Path() would
+    # keep that stray leading slash and treat "C:" as a plain path
+    # component instead of a drive, producing a non-absolute, unusable
+    # path. url2pathname dispatches to the OS-appropriate conversion (a
+    # no-op passthrough on POSIX, drive-letter-aware on Windows).
+    return Path(urllib.request.url2pathname(urllib.parse.urlsplit(url).path))
 
 
 def _local_commit() -> str | None:
