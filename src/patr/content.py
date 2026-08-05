@@ -243,7 +243,7 @@ def _parse_title_attrs(title):
     return title[: m.start()].strip(), attrs
 
 
-def render_md(text):
+def render_md(text, hard_wraps=False):
     # "extra" minus attr_list — attr_list is disabled so {width="N"} syntax
     # is not silently processed; use the title convention instead.
     extensions = [
@@ -255,6 +255,11 @@ def render_md(text):
         "tables",
         "smarty",
     ]
+    # nl2br mirrors Hugo's markup.goldmark.renderer.hardWraps setting (see
+    # README) — only enable it when that's also on, otherwise email and web
+    # would render single newlines differently.
+    if hard_wraps:
+        extensions.append("nl2br")
     html = markdown.markdown(text or "", extensions=extensions)
 
     # Mirror Hugo's render hook: wrap <img> with <figure>/<figcaption>
@@ -347,9 +352,15 @@ def build_email_html(
     page_url = f"{base_url}/newsletter/{slug}/"
     name = (recipient_name or "").strip()
     greeting = f"Hi {name}," if name else "Hi,"
-    intro_html = render_md(post.get("intro", ""))
-    body_html = render_md(post.content)
-    footer_html = render_md(footer_md)
+    hard_wraps = (
+        hugo_config.get("markup", {})
+        .get("goldmark", {})
+        .get("renderer", {})
+        .get("hardWraps", False)
+    )
+    intro_html = render_md(post.get("intro", ""), hard_wraps=hard_wraps)
+    body_html = render_md(post.content, hard_wraps=hard_wraps)
+    footer_html = render_md(footer_md, hard_wraps=hard_wraps)
 
     view_in_browser = (
         ""
