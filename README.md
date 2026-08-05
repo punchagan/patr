@@ -95,6 +95,15 @@ patr migrate --repo /path/to/hugo-site          # dry run
 patr migrate --repo /path/to/hugo-site --apply  # apply
 ```
 
+**Single newlines as line breaks:** by default, Markdown collapses a lone newline within a paragraph into a space — only a blank line starts a new paragraph. If your editions use single newlines as intentional line breaks (not just paragraph separators), add this to `hugo.toml`:
+
+```toml
+[markup.goldmark.renderer]
+  hardWraps = true
+```
+
+Patr reads this same setting when rendering emails, so web and email output stay in sync — leave it unset (or `false`) to keep the plain Markdown behavior on both.
+
 ## Usage
 
 ```bash

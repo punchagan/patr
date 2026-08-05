@@ -41,6 +41,34 @@ def test_render_md_attr_list_syntax_not_processed() -> None:
     assert 'width="200"' not in html
 
 
+def test_render_md_single_newline_becomes_line_break_when_hard_wraps_enabled() -> None:
+    """A lone newline within a paragraph (no blank line) should render as
+    <br>, not be collapsed into a space — writers often use single newlines
+    as intentional line breaks, not paragraph separators. Only enabled when
+    hard_wraps is True, to match Hugo's hardWraps setting (see README) —
+    otherwise email and web would render single newlines differently."""
+    html = render_md("Line one\nLine two", hard_wraps=True)
+    assert "<br" in html
+    soup = BeautifulSoup(html, "html.parser")
+    paragraphs = soup.find_all("p")
+    assert len(paragraphs) == 1
+
+
+def test_render_md_single_newline_stays_plain_when_hard_wraps_disabled() -> None:
+    """Default behavior (hard_wraps=False) must match plain Hugo/Markdown —
+    a single newline is collapsed into a space, not a <br>."""
+    html = render_md("Line one\nLine two")
+    assert "<br" not in html
+
+
+def test_render_md_blank_line_still_starts_new_paragraph() -> None:
+    html = render_md("Paragraph one.\n\nParagraph two.", hard_wraps=True)
+    soup = BeautifulSoup(html, "html.parser")
+    paragraphs = soup.find_all("p")
+    assert len(paragraphs) == 2
+    assert "<br" not in html
+
+
 def test_render_md_plain_title_stays_as_title() -> None:
     html = render_md('![A cat](photo.jpg "A cute cat")')
     assert 'title="A cute cat"' in html
@@ -117,6 +145,26 @@ def test_email_html_contains_greeting() -> None:
         "test-ed", post, FOOTER_MD, HUGO_CONFIG, recipient_name="Alice"
     )
     assert "Hi Alice," in html
+
+
+def test_email_html_single_newline_stays_plain_without_hard_wraps_config() -> None:
+    """Without markup.goldmark.renderer.hardWraps in hugo.toml, single
+    newlines must stay plain — matching Hugo's default web rendering."""
+    post = make_post(body="Line one\nLine two")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "<br" not in html
+
+
+def test_email_html_single_newline_becomes_br_with_hard_wraps_config() -> None:
+    """With markup.goldmark.renderer.hardWraps = true in hugo.toml, single
+    newlines should become <br> — matching Hugo's web rendering."""
+    config = {
+        **HUGO_CONFIG,
+        "markup": {"goldmark": {"renderer": {"hardWraps": True}}},
+    }
+    post = make_post(body="Line one\nLine two")
+    html = build_email_html("test-ed", post, FOOTER_MD, config)
+    assert "<br" in html
 
 
 def test_email_html_has_viewport_meta_tag() -> None:
