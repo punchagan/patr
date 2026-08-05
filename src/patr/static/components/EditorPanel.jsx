@@ -258,6 +258,30 @@ function insertAtPos(view, text) {
   view.focus();
 }
 
+// Placeholder alt text for inserted images — becomes the <figure> caption
+// (see content.render_md), so leaving it empty produces a plain, uncaptioned
+// image and gives no hint that alt text is even an option. Inserting it
+// pre-selected means typing a real caption is a single keystroke away, and
+// leaving it untouched still degrades gracefully to a non-empty caption.
+const IMAGE_ALT_PLACEHOLDER = "Title";
+
+export function insertImageAtPos(view, path) {
+  const { state } = view;
+  const pos = state.selection.main.head;
+  const text = `![${IMAGE_ALT_PLACEHOLDER}](${path})`;
+  const altFrom = pos + 2; // after "!["
+  view.dispatch(
+    state.update({
+      changes: { from: pos, insert: text },
+      selection: {
+        anchor: altFrom,
+        head: altFrom + IMAGE_ALT_PLACEHOLDER.length,
+      },
+    }),
+  );
+  view.focus();
+}
+
 function ToolbarButton({ onClick, title, children }) {
   return (
     <button
@@ -292,7 +316,7 @@ function EditorToolbar({ viewRef, slug }) {
       const file = input.files[0];
       if (!file) return;
       const path = await uploadImage(file, slug);
-      if (path && v()) insertAtPos(v(), `![](${path})`);
+      if (path && v()) insertImageAtPos(v(), path);
     };
     input.click();
   };
@@ -400,7 +424,7 @@ const EditorPanel = forwardRef(function EditorPanel(
         for (const file of files) {
           e.preventDefault();
           const path = await uploadImage(file, slugRef.current);
-          if (path) insertAtPos(view, `![](${path})`);
+          if (path) insertImageAtPos(view, path);
         }
         return;
       }
@@ -445,7 +469,7 @@ const EditorPanel = forwardRef(function EditorPanel(
       e.preventDefault();
       for (const file of files) {
         const path = await uploadImage(file, slugRef.current);
-        if (path) insertAtPos(view, `![](${path})`);
+        if (path) insertImageAtPos(view, path);
       }
     };
 
