@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, act } from "@testing-library/react";
-import EditorPanel from "./EditorPanel";
+import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import EditorPanel, { insertImageAtPos } from "./EditorPanel";
 
 // Real CodeMirror needs browser APIs jsdom doesn't provide (measurement,
 // ranges, etc). We only care about what props EditorPanel hands it, so
@@ -51,5 +53,36 @@ describe("EditorPanel", () => {
     // ("Memory leak in the UI?" — app slows to a crawl / tab crashes after
     // ~1000-1500 words, since a re-render happens on every keystroke).
     expect(after).toBe(before);
+  });
+});
+
+describe("insertImageAtPos", () => {
+  it("inserts image markdown with the placeholder alt text selected", () => {
+    const state = EditorState.create({ doc: "" });
+    const view = new EditorView({ state, parent: document.body });
+
+    insertImageAtPos(view, "photo.jpg");
+
+    expect(view.state.doc.toString()).toBe("![Title](photo.jpg)");
+    const sel = view.state.selection.main;
+    // Selected (not just cursor-positioned) so typing immediately replaces
+    // the placeholder with a real caption.
+    expect(view.state.sliceDoc(sel.from, sel.to)).toBe("Title");
+
+    view.destroy();
+  });
+
+  it("inserts at the cursor position, not always at the start", () => {
+    const state = EditorState.create({
+      doc: "before after",
+      selection: { anchor: 6 }, // right after "before"
+    });
+    const view = new EditorView({ state, parent: document.body });
+
+    insertImageAtPos(view, "photo.jpg");
+
+    expect(view.state.doc.toString()).toBe("before![Title](photo.jpg) after");
+
+    view.destroy();
   });
 });
