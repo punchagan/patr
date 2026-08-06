@@ -11,6 +11,7 @@ remote.
 """
 
 import subprocess
+import tempfile
 
 from patr import state
 
@@ -19,6 +20,32 @@ def _run(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(
         args, cwd=state.REPO_ROOT, capture_output=True, text=True, check=False
     )
+
+
+_no_hooks_dir: str | None = None
+
+
+def _no_hooks() -> list[str]:
+    """`-c core.hooksPath=<empty dir>` — prepend right after "git" (before
+    the subcommand) for any operation that creates a commit: `commit`,
+    `cherry-pick`, `rebase`.
+
+    squash_edition_commits() and split_commit() replay/reconstruct content
+    that's already been committed — and already gone through the repo's
+    real hooks — once; re-running commit hooks on every replayed commit is
+    redundant at best. At worst (e.g. a hook that renames or re-encodes
+    images on commit) it leaves stray untracked derivative files behind
+    after every squash/split, since nothing re-stages or re-commits the
+    hook's output — confirmed via a real user's repo with an image-tweaking
+    hook. There's no single flag that reliably disables hooks across all
+    three commands: `git cherry-pick` has no `--no-verify` at all, and
+    `--no-verify` never covers `post-commit` regardless. Overriding
+    `core.hooksPath` does, uniformly.
+    """
+    global _no_hooks_dir
+    if _no_hooks_dir is None:
+        _no_hooks_dir = tempfile.mkdtemp(prefix="patr-no-hooks-")
+    return ["-c", f"core.hooksPath={_no_hooks_dir}"]
 
 
 def upstream_ref() -> str | None:
@@ -78,6 +105,180 @@ def _touched_paths_by_commit() -> dict[str, list[str]]:
             continue
         result[lines[0]] = [p for p in lines[1:] if p]
     return result
+
+
+def _subjects_by_commit() -> dict[str, str]:
+    """Map each local-only commit SHA to its subject line, via a single
+    `git log` call over the whole upstream..HEAD range. Empty if there's no
+    upstream configured."""
+    upstream = upstream_ref()
+    if upstream is None:
+        return {}
+    out = _run(
+        ["git", "log", "--reverse", "--format=%H%x01%s", f"{upstream}..HEAD"]
+    ).stdout
+    result: dict[str, str] = {}
+    for line in out.splitlines():
+        sha, sep, subject = line.partition("\x01")
+        if sep:
+            result[sha] = subject
+    return result
+
+
+def blocking_commits(
+    edition_relpaths: list[str],
+) -> list[tuple[str, str, list[str]]]:
+    """Return (sha, subject, touched_edition_relpaths) for each local-only
+    commit that touches more than one of the given editions, or touches
+    exactly one of them plus some path outside all of them — either way,
+    squash_edition_commits() refuses to squash every edition such a commit
+    touches (see _classify_commits). Read-only; meant for reporting (e.g.
+    `patr squash-drafts`'s dry run) so these can be split manually — with
+    `git rebase -i`, say — before running --apply.
+    """
+    commits = _local_only_commits()
+    touched_map = _touched_paths_by_commit()
+    subjects = _subjects_by_commit()
+
+    def matches(edition_relpath: str, p: str) -> bool:
+        return p == edition_relpath or p.startswith(edition_relpath + "/")
+
+    result = []
+    for sha in commits:
+        paths = touched_map.get(sha, [])
+        if not paths:
+            continue
+        touched_editions = [
+            ep for ep in edition_relpaths if any(matches(ep, p) for p in paths)
+        ]
+        if not touched_editions:
+            continue
+        fully_covered = all(
+            any(matches(ep, p) for ep in touched_editions) for p in paths
+        )
+        if len(touched_editions) > 1 or not fully_covered:
+            result.append((sha, subjects.get(sha, ""), touched_editions))
+    return result
+
+
+def split_commit(
+    sha: str, edition_relpaths: list[str]
+) -> tuple[bool, str, list[tuple[str, str]]]:
+    """Split a single local-only commit into one commit per edition it
+    touches (grouped by which of edition_relpaths each changed path falls
+    under), plus one more commit for any remaining paths that belong to
+    none of them. Everything that came after `sha` in local history is
+    replayed on top afterward, unchanged.
+
+    Meant for exactly the commits blocking_commits() reports — splitting
+    one so each piece only touches a single edition unblocks
+    squash_edition_commits() for the edition(s) involved.
+
+    Since the split pieces' combined diff is identical to the original
+    commit's diff, the tree state right after the split matches the
+    original tree state at that point exactly, file for file — so
+    replaying the later commits on top can't newly conflict as a *result*
+    of splitting (any conflict there would already have existed before).
+
+    Returns (ok, error, new_commits) — new_commits is [(sha, label), ...]
+    for the pieces `sha` was split into (label is the matched edition_relpath,
+    or "other"), in the order created; empty on failure. Refuses outright,
+    without touching anything, if the working tree is dirty or `sha` isn't
+    among the local-only (not-yet-pushed) commits. On any failure partway
+    through — a checkout, stage, commit, or later cherry-pick failing —
+    restores the original history exactly (nothing left half-done) and
+    returns an error.
+    """
+    if not working_tree_clean():
+        return False, "working tree has uncommitted changes", []
+
+    # sha may be abbreviated (e.g. from blocking_commits()'s 8-char report)
+    # — resolve to the full SHA before comparing against local-only commits.
+    resolved = _run(["git", "rev-parse", sha]).stdout.strip()
+    if not resolved:
+        return False, f"{sha} is not a valid commit", []
+    sha = resolved
+
+    commits = _local_only_commits()
+    if sha not in commits:
+        return False, f"{sha} is not a local-only (unpushed) commit", []
+
+    original_head = commits[-1]
+    after = commits[commits.index(sha) + 1 :]
+
+    parent = _run(["git", "rev-parse", f"{sha}^"]).stdout.strip()
+    if not parent:
+        return False, f"could not resolve the parent of {sha} (root commit?)", []
+
+    message = _run(["git", "log", "-1", "--format=%B", sha]).stdout.rstrip("\n")
+    paths = _touched_paths_by_commit().get(sha, [])
+    if not paths:
+        return False, f"{sha} has no changed paths to split", []
+
+    def matches(edition_relpath: str, p: str) -> bool:
+        return p == edition_relpath or p.startswith(edition_relpath + "/")
+
+    groups: list[tuple[str | None, list[str]]] = []
+    remaining = list(paths)
+    for ep in edition_relpaths:
+        group = [p for p in remaining if matches(ep, p)]
+        if group:
+            groups.append((ep, group))
+            remaining = [p for p in remaining if p not in group]
+    if remaining:
+        groups.append((None, remaining))
+
+    def _restore() -> None:
+        _run(["git", "reset", "--hard", original_head])
+
+    if _run(["git", "reset", "--hard", parent]).returncode != 0:
+        _restore()
+        return False, f"failed to reset to {sha}'s parent", []
+
+    new_commits: list[tuple[str, str]] = []
+    for label, group_paths in groups:
+        existing = [
+            p
+            for p in group_paths
+            if _run(["git", "cat-file", "-e", f"{sha}:{p}"]).returncode == 0
+        ]
+        deleted = [p for p in group_paths if p not in existing]
+        if existing and _run(["git", "checkout", sha, "--", *existing]).returncode != 0:
+            _restore()
+            return False, f"failed to check out {label or 'other'} paths from {sha}", []
+        for p in deleted:
+            if (state.REPO_ROOT / p).exists():
+                _run(["git", "rm", "-q", p])
+        # Only `existing`, not the full group — `git rm` above already
+        # staged `deleted` paths; re-adding a now-nonexistent path fails
+        # ("pathspec did not match any files").
+        if existing and _run(["git", "add", *existing]).returncode != 0:
+            _restore()
+            return False, f"failed to stage {label or 'other'} paths", []
+        suffix = f" (split: {label or 'other'})"
+        if (
+            _run(["git", *_no_hooks(), "commit", "-m", message + suffix]).returncode
+            != 0
+        ):
+            _restore()
+            return False, f"failed to commit {label or 'other'} split", []
+        new_sha = _run(["git", "rev-parse", "HEAD"]).stdout.strip()
+        new_commits.append((new_sha, label or "other"))
+
+    for after_sha in after:
+        if _run(["git", *_no_hooks(), "cherry-pick", after_sha]).returncode != 0:
+            _run(["git", "cherry-pick", "--abort"])
+            _restore()
+            return (
+                False,
+                (
+                    f"cherry-pick of {after_sha} failed while replaying commits after "
+                    f"the split — resolve manually or re-run to retry"
+                ),
+                [],
+            )
+
+    return True, "", new_commits
 
 
 def _classify_commits(

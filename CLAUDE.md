@@ -91,6 +91,9 @@ patr prune-backups --repo /path/to/hugo-site --apply
 # Squash each edition's local-only wip: commits into one (dry run first)
 patr squash-drafts --repo /path/to/hugo-site
 patr squash-drafts --repo /path/to/hugo-site --apply
+
+# Split a commit that touches multiple editions (blocks squashing them)
+patr squash-drafts --repo /path/to/hugo-site --split <sha>
 ```
 
 Install with `uv pip install -e .` or `pip install -e .`. Requires Python 3.11+.
@@ -364,6 +367,25 @@ page-bundle editions (flat `.md` editions in hugo-free/email-only mode share
 one parent directory across all editions, so there's no single-edition path
 to scope the squash to — those are skipped with a note). Implemented in
 `cli.cmd_squash_drafts()`.
+
+The dry run also calls `git_sync.blocking_commits()` to list, upfront, every
+local-only commit that touches more than one edition (or an edition plus
+something else) — the ones `_classify_commits()` refuses to squash. Each is
+printed with its (possibly abbreviated) SHA, subject, and which edition(s)
+it touches. `patr squash-drafts --repo <path> --split <sha>` (works in both
+dry-run and `--apply` mode) then calls `git_sync.split_commit()` to turn one
+of these into a separate commit per edition it touches, plus one more for
+any remaining paths ("other") — printing the new commits' SHAs so they're
+easy to find with `git log`/`git show`. Implementation: reset to the
+commit's parent, reconstruct each group from the original commit's tree
+(`git checkout <sha> -- <paths>`, or `git rm` for paths deleted by it),
+commit each group separately, then cherry-pick everything that came after
+the original commit back on top — since the split pieces' combined diff is
+identical to the original, the tree state right after the split matches
+exactly, so replaying later commits can't newly conflict as a *result* of
+splitting. Refuses (restoring the original history untouched) if the
+working tree is dirty, the given SHA isn't local-only, or any step fails
+partway through.
 
 ### Hugo-free mode
 
