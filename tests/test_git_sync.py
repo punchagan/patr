@@ -2,6 +2,7 @@
 fetch/rebase/push, against real git repos (not mocked subprocess)."""
 
 import subprocess
+from unittest.mock import patch
 
 import pytest
 from patr import state
@@ -136,6 +137,31 @@ def test_squashable_commit_count_matches_and_does_not_mutate(repo) -> None:
     assert squashable_commit_count("content/newsletter/a") == 2
     assert squashable_commit_count("content/newsletter/b") == 1
     assert len(log_subjects(repo)) == 4  # untouched — this is a preview only
+
+
+def test_squashable_commit_count_uses_a_bounded_number_of_git_calls(repo) -> None:
+    """Regression: the original implementation ran one `git diff-tree` per
+    local-only commit, so a repo with thousands of unpushed commits made
+    even the dry-run report (patr squash-drafts) take forever. Assert the
+    number of subprocess calls stays small regardless of commit count,
+    rather than only checking wall-clock time (flaky under CI load)."""
+    for i in range(60):
+        commit_edition(repo, "a", f"v{i}", "wip: A")
+
+    real_run = subprocess.run
+    calls = []
+
+    def counting_run(*args, **kwargs):
+        calls.append(args)
+        return real_run(*args, **kwargs)
+
+    with patch("patr.git_sync.subprocess.run", side_effect=counting_run):
+        count = squashable_commit_count("content/newsletter/a")
+
+    assert count == 60
+    # A handful of calls (upstream lookup, status, rev-list, one log
+    # --name-only dump) — not one per commit.
+    assert len(calls) < 10, f"expected O(1) git calls, got {len(calls)}"
 
 
 # fetch_rebase_and_push

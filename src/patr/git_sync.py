@@ -48,22 +48,48 @@ def _local_only_commits() -> list[str]:
     ]
 
 
+def _touched_paths_by_commit() -> dict[str, list[str]]:
+    """Map each local-only commit SHA to its changed file paths, via a
+    single `git log --name-only` call over the whole upstream..HEAD range.
+
+    Deliberately not one `git diff-tree` per commit (the previous
+    implementation) — that's O(commits) subprocess spawns, which turns into
+    tens of thousands of process spawns (and a very slow `patr
+    squash-drafts --repo ...` dry run) on a repo with thousands of unpushed
+    commits. Empty if there's no upstream configured.
+    """
+    upstream = upstream_ref()
+    if upstream is None:
+        return {}
+    out = _run(
+        [
+            "git",
+            "log",
+            "--reverse",
+            "--name-only",
+            "--format=%x00%H",
+            f"{upstream}..HEAD",
+        ]
+    ).stdout
+    result: dict[str, list[str]] = {}
+    for chunk in out.split("\x00"):
+        lines = chunk.splitlines()
+        if not lines:
+            continue
+        result[lines[0]] = [p for p in lines[1:] if p]
+    return result
+
+
 def _commits_touching(edition_relpath: str, commits: list[str]) -> list[str]:
+    touched_map = _touched_paths_by_commit()
+    prefix = edition_relpath + "/"
     return [
         sha
         for sha in commits
-        if _run(
-            [
-                "git",
-                "diff-tree",
-                "--no-commit-id",
-                "--name-only",
-                "-r",
-                sha,
-                "--",
-                edition_relpath,
-            ]
-        ).stdout.strip()
+        if any(
+            p == edition_relpath or p.startswith(prefix)
+            for p in touched_map.get(sha, [])
+        )
     ]
 
 
