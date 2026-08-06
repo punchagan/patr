@@ -76,6 +76,40 @@ def test_dry_run_reports_without_squashing(repo, capsys) -> None:
     assert "Run with --apply to squash." in out
 
 
+def test_missing_upstream_reports_actionable_error(repo, capsys) -> None:
+    """Regression: without an upstream tracking branch,
+    squash_edition_commits() silently no-ops for every edition — this
+    command must catch that upfront and say so, not just report every
+    edition as "nothing to squash" with no explanation."""
+    run(["git", "branch", "--unset-upstream"], cwd=repo)
+    make_commit(repo, "a", "v1", "wip: A")
+    make_commit(repo, "a", "v2", "wip: A")
+
+    args = argparse.Namespace(repo=str(repo), apply=False)
+    cli.cmd_squash_drafts(args)
+
+    out = capsys.readouterr().out
+    assert "no upstream tracking branch configured" in out
+    assert "git branch --set-upstream-to" in out
+    # Returns before ever scanning editions — no per-edition report at all.
+    assert "would squash" not in out
+    assert "skip" not in out
+
+
+def test_dirty_working_tree_reports_actionable_error(repo, capsys) -> None:
+    make_commit(repo, "a", "v1", "wip: A")
+    make_commit(repo, "a", "v2", "wip: A")
+    (repo / "content" / "newsletter" / "a" / "index.md").write_text("uncommitted")
+
+    args = argparse.Namespace(repo=str(repo), apply=False)
+    cli.cmd_squash_drafts(args)
+
+    out = capsys.readouterr().out
+    assert "uncommitted changes" in out
+    assert "would squash" not in out
+    assert "skip" not in out
+
+
 def test_apply_squashes_each_edition_independently(repo, capsys) -> None:
     make_commit(repo, "a", "v1", "wip: A")
     make_commit(repo, "b", "v1", "wip: B")

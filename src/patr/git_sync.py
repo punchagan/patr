@@ -21,17 +21,22 @@ def _run(args: list[str]) -> subprocess.CompletedProcess:
     )
 
 
-def _upstream_ref() -> str | None:
+def upstream_ref() -> str | None:
     """Return the current branch's upstream tracking ref (e.g. "origin/main"),
     or None if none is configured."""
     r = _run(["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
     return r.stdout.strip() if r.returncode == 0 else None
 
 
+def working_tree_clean() -> bool:
+    """Return True if there are no uncommitted changes."""
+    return not _run(["git", "status", "--porcelain"]).stdout.strip()
+
+
 def _local_only_commits() -> list[str]:
     """Return SHAs of commits ahead of the upstream tracking branch, oldest
     first. Empty if there's no upstream configured or nothing is ahead."""
-    upstream = _upstream_ref()
+    upstream = upstream_ref()
     if upstream is None:
         return []
     return [
@@ -87,10 +92,10 @@ def squash_edition_commits(edition_relpath: str) -> bool:
     deleted again before ever being pushed — nothing to commit). On any
     False, the original history is left exactly as it was.
     """
-    upstream = _upstream_ref()
+    upstream = upstream_ref()
     if upstream is None:
         return False
-    if _run(["git", "status", "--porcelain"]).stdout.strip():
+    if not working_tree_clean():
         return False
 
     commits = _local_only_commits()
@@ -154,7 +159,7 @@ def fetch_rebase_and_push() -> tuple[bool, str]:
     as they were beforehand — nothing is lost — and returns an error message
     for the caller to surface so the user can resolve it manually.
     """
-    upstream = _upstream_ref()
+    upstream = upstream_ref()
     if upstream is None:
         branch = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
         r = _run(["git", "push", "origin", f"HEAD:{branch}"])
