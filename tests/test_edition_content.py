@@ -486,6 +486,58 @@ def test_check_images_404(client) -> None:
     assert r.status_code == 404
 
 
+# GET /preview/<slug>/email — markup.goldmark.renderer.hardWraps passthrough
+#
+# preview_email() and check_images() build their own hugo_config stand-in
+# (baseURL is overridden for local preview / irrelevant when absolute_urls is
+# off) — regression coverage for that stand-in silently dropping the real
+# markup config, which would make the email preview disagree with what
+# actually gets sent (see test_send.py for the send-path equivalent).
+
+
+def test_preview_email_applies_hard_wraps_from_hugo_config(client, repo) -> None:
+    (repo / "hugo.toml").write_text(
+        'baseURL = "https://example.com"\n'
+        "[markup.goldmark.renderer]\n"
+        "  hardWraps = true\n"
+    )
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        Line one
+        Line two
+    """)
+    )
+    r = client.get("/preview/test-edition/email")
+    assert r.status_code == 200
+    assert b"<br" in r.data
+
+
+def test_preview_email_no_hard_wraps_without_hugo_config(client, repo) -> None:
+    edition_dir = repo / "content" / "newsletter" / "test-edition"
+    (edition_dir / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: "Test Edition"
+        date: 2024-01-01
+        draft: true
+        ---
+
+        Line one
+        Line two
+    """)
+    )
+    r = client.get("/preview/test-edition/email")
+    assert r.status_code == 200
+    assert b"<br" not in r.data
+
+
 # Flat-file editions (hugo-free mode)
 
 

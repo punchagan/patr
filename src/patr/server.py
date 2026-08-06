@@ -368,12 +368,16 @@ def check_images(slug):
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
     edition_dir = edition_dir_for(f)
-    fake_hugo_config = {"baseURL": ""}
+    # baseURL is irrelevant here (absolute_urls=False), but markup settings
+    # (e.g. hardWraps) must still come from the real config so this matches
+    # what actually gets sent — a wholesale {"baseURL": ""} stand-in would
+    # silently drop them.
+    hugo_config = {**load_hugo_config(), "baseURL": ""}
     html = build_email_html(
         slug,
         post,
         load_footer(),
-        fake_hugo_config,
+        hugo_config,
         absolute_urls=False,
         edition_dir=edition_dir,
     )
@@ -402,11 +406,15 @@ def preview_email(slug):
     port = app.config["PORT"]
     newsletter_config = load_newsletter_config()
     email_only = bool(newsletter_config.get("email_only", False))
+    # baseURL is overridden to point at the local preview server, but markup
+    # settings (e.g. hardWraps) must still come from the real config so the
+    # preview matches what actually gets sent.
+    hugo_config = {**load_hugo_config(), "baseURL": f"http://127.0.0.1:{port}"}
     return build_email_html(
         slug,
         post,
         load_footer(),
-        {"baseURL": f"http://127.0.0.1:{port}"},
+        hugo_config,
         email_only=email_only,
     )
 
