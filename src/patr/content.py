@@ -16,7 +16,7 @@ from PIL import Image, UnidentifiedImageError
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 
-IMAGE_MAX_WIDTH = 800
+IMAGE_MAX_DIMENSION = 800  # bounds both width and height, whichever is larger
 IMAGE_JPEG_QUALITY = 85
 COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit / backup
 
@@ -195,10 +195,11 @@ def plan_backup_pruning(
 
 
 def compress_image(src: Path, dest: Path) -> bool:
-    """Resize src to at most IMAGE_MAX_WIDTH wide and re-encode as JPEG at
-    dest, flattening any transparency onto a white background (both the
-    email and the web edition render newsletter content on white). Both
-    surfaces share this single compressed copy, so there's no separate
+    """Resize src to fit within IMAGE_MAX_DIMENSION on both width and height
+    (whichever would otherwise be larger) and re-encode as JPEG at dest,
+    flattening any transparency onto a white background (both the email and
+    the web edition render newsletter content on white). Both surfaces
+    share this single compressed copy, so there's no separate
     full-resolution version.
 
     Returns True on success. Returns False (leaving dest untouched) if src
@@ -214,9 +215,10 @@ def compress_image(src: Path, dest: Path) -> bool:
                 img = background
             else:
                 img = img.convert("RGB")
-            if img.width > IMAGE_MAX_WIDTH:
-                new_height = round(img.height * IMAGE_MAX_WIDTH / img.width)
-                img = img.resize((IMAGE_MAX_WIDTH, new_height), Image.LANCZOS)
+            # thumbnail(), not a width-only check: bounds *both* dimensions,
+            # so a tall portrait image (narrow width, huge height) doesn't
+            # slip through uncapped just because its width alone is fine.
+            img.thumbnail((IMAGE_MAX_DIMENSION, IMAGE_MAX_DIMENSION), Image.LANCZOS)
             img.save(dest, "JPEG", quality=IMAGE_JPEG_QUALITY)
     except UnidentifiedImageError:
         return False
