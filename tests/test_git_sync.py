@@ -283,6 +283,58 @@ def test_split_then_squash_multiple_editions_preserves_images(repo) -> None:
     assert (repo / "content" / "newsletter" / "ii" / "index.md").read_text() == "ii-v5"
 
 
+def _install_stray_file_hook(repo, hook_name="post-commit"):
+    """A hook that creates a derivative file on every commit — e.g. a real
+    repo's image-processing hook. post-commit hooks can't be disabled via
+    --no-verify (it only covers pre-commit/commit-msg), which is exactly
+    why git_sync.py uses core.hooksPath instead."""
+    hooks_dir = repo / ".git" / "hooks"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    hook = hooks_dir / hook_name
+    hook.write_text("#!/bin/sh\ntouch content/newsletter/a/stray-from-hook.txt\n")
+    hook.chmod(0o755)
+
+
+def test_squash_final_commit_does_not_trigger_repo_hooks(repo) -> None:
+    """Regression: reported by a real user with a commit hook that
+    processes images — squash's own internal commit must not re-trigger
+    repo hooks, since replaying already-committed (already hook-processed)
+    content through hooks again is redundant at best, and at worst (e.g. a
+    hook that creates a derivative file) leaves a stray untracked file
+    after every squash — exactly what happened."""
+    commit_edition(repo, "a", "a-v1", "wip: A")
+    _install_stray_file_hook(repo)
+    commit_edition(repo, "a", "a-v2", "wip: A")
+
+    stray = repo / "content" / "newsletter" / "a" / "stray-from-hook.txt"
+    if stray.exists():
+        stray.unlink()  # clean up the setup commit's own (expected) hook side effect
+    assert working_tree_clean()
+
+    assert squash_edition_commits("content/newsletter/a") is True
+    assert working_tree_clean()
+    assert not stray.exists()
+
+
+def test_squash_cherry_pick_does_not_trigger_repo_hooks(repo) -> None:
+    """Same, but exercising the cherry-pick path (an edition's squash
+    replays every *other* edition's commits) — cherry-pick has no
+    --no-verify flag at all, so this specifically needs core.hooksPath."""
+    commit_edition(repo, "a", "a-v1", "wip: A")
+    commit_edition(repo, "a", "a-v2", "wip: A")
+    _install_stray_file_hook(repo)
+    commit_edition(repo, "b", "b-v1", "wip: B")
+
+    stray = repo / "content" / "newsletter" / "a" / "stray-from-hook.txt"
+    if stray.exists():
+        stray.unlink()
+    assert working_tree_clean()
+
+    assert squash_edition_commits("content/newsletter/a") is True
+    assert working_tree_clean()
+    assert not stray.exists()
+
+
 # squashable_commit_count — read-only preview, must not mutate anything
 
 

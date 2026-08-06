@@ -385,7 +385,7 @@ def squash_edition_commits(edition_relpath: str) -> bool:
         return False
 
     for sha in others:
-        if _run(["git", "cherry-pick", sha]).returncode != 0:
+        if _run(["git", *_no_hooks(), "cherry-pick", sha]).returncode != 0:
             _run(["git", "cherry-pick", "--abort"])
             _restore()
             return False
@@ -406,7 +406,7 @@ def squash_edition_commits(edition_relpath: str) -> bool:
     elif edition_path.exists():
         _run(["git", "rm", "-r", "-q", edition_relpath])
 
-    if _run(["git", "commit", "-m", final_message]).returncode != 0:
+    if _run(["git", *_no_hooks(), "commit", "-m", final_message]).returncode != 0:
         _restore()
         return False
     return True
@@ -432,7 +432,7 @@ def fetch_rebase_and_push() -> tuple[bool, str]:
     if fetch.returncode != 0:
         return False, f"git fetch failed: {(fetch.stderr or fetch.stdout).strip()}"
 
-    rebase = _run(["git", "rebase", upstream])
+    rebase = _run(["git", *_no_hooks(), "rebase", upstream])
     if rebase.returncode != 0:
         _run(["git", "rebase", "--abort"])
         return False, (
