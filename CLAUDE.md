@@ -87,6 +87,10 @@ patr migrate --repo /path/to/hugo-site --apply
 # Thin out closely-timestamped backups (dry run first)
 patr prune-backups --repo /path/to/hugo-site
 patr prune-backups --repo /path/to/hugo-site --apply
+
+# Squash each edition's local-only wip: commits into one (dry run first)
+patr squash-drafts --repo /path/to/hugo-site
+patr squash-drafts --repo /path/to/hugo-site --apply
 ```
 
 Install with `uv pip install -e .` or `pip install -e .`. Requires Python 3.11+.
@@ -306,6 +310,53 @@ edits would accumulate real drift while every single step still looks
 "small" pairwise, and the whole run would get wrongly discarded. Idempotent:
 re-running after an `--apply` finds nothing left to prune. Implemented in
 `content.plan_backup_pruning()` / `cli.cmd_prune_backups()`.
+
+### Git History Hygiene
+
+`server.commit_edition()`'s auto-commits (see above) are local-only —
+they're never pushed on their own. Left alone, a long editing session
+produces a trail of `wip:` commits that all land on the branch at once
+whenever something *does* push, interleaved with unrelated `wip:` commits
+from other editions worked on in between. `git_sync.py` cleans this up at
+the two points a push actually happens:
+
+- **Publish/Unpublish** (`server._set_draft_and_push()`, Hugo/git mode) —
+  after the `Publish:`/`Unpublish:` commit, squashes.
+- **Send** (`server.send_all()`, email-only mode only — there's no
+  Publish/Unpublish UI in that mode, see `MainPanel.jsx`) — after every
+  email has already gone out, commits any pending frontmatter change
+  (`sent: full`/`partial`) and squashes. Only triggered by a real Send, not
+  Test Send. A git failure here never affects the send result — it's
+  reported as a non-blocking `git_warning` in the final SSE `done` event,
+  surfaced as a `warn`-styled status message in the UI (see `onSent()` in
+  `MainPanel.jsx`) — the user pushes manually later if needed.
+
+`git_sync.squash_edition_commits(edition_relpath)` collapses just one
+edition's local-only (not-yet-pushed) commits into a single commit, keeping
+the most recent matching commit's message; commits touching other paths
+(other editions) are replayed unchanged in their original relative order.
+Implementation: reset to the merge-base with upstream, cherry-pick the
+non-matching commits back on in order (safe/conflict-free since their diffs
+are path-disjoint from the edition being squashed), then checkout the
+edition's original-HEAD content on top and commit. No-ops (returns `False`,
+original history untouched) when there's no upstream tracking branch, the
+working tree isn't clean, or fewer than two local commits touch that
+edition. `git_sync.fetch_rebase_and_push()` then fetches and rebases onto
+the upstream branch before pushing (explicit refspec — some environments
+set `push.default = nothing`, which breaks a bare `git push`); on a rebase
+conflict it aborts the rebase and returns an error rather than leaving the
+repo mid-conflict.
+
+`patr squash-drafts --repo <path> [--apply]` (dry run by default) is a
+one-off, repo-wide version of the same squash for cleaning up history that
+accumulated *before* the automatic squashing above existed — e.g. an
+existing clone with a long `wip:` trail for editions drafted a while back.
+Only rewrites commits ahead of the upstream tracking branch; already-pushed
+history is never touched, so it's safe to run repeatedly. Only handles
+page-bundle editions (flat `.md` editions in hugo-free/email-only mode share
+one parent directory across all editions, so there's no single-edition path
+to scope the squash to — those are skipped with a note). Implemented in
+`cli.cmd_squash_drafts()`.
 
 ### Hugo-free mode
 
