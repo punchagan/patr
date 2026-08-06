@@ -256,6 +256,24 @@ def test_upload_image_leaves_small_image_dimensions_unscaled(client, repo) -> No
         assert out.height == 300
 
 
+def test_upload_image_resizes_tall_portrait_image(client, repo) -> None:
+    """Regression: compress_image() only checked width, so a tall portrait
+    image (narrow width, huge height) sailed through unresized — a real
+    photo's height could exceed IMAGE_MAX_DIMENSION even though its width
+    never did."""
+    data = {"file": (_make_image_bytes(600, 4000, mode="RGBA"), "tall.png")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    saved = repo / "content" / "newsletter" / "test-edition" / "tall.jpg"
+    with Image.open(saved) as out:
+        assert out.height == 800
+        assert out.width == 120  # 600 * (800 / 4000), aspect ratio preserved
+
+
 def test_upload_image_skips_gif_compression(client, repo) -> None:
     data = {"file": (_make_image_bytes(10, 10, fmt="GIF"), "anim.gif")}
     r = client.post(
