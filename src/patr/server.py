@@ -194,13 +194,21 @@ def api_editions():
     return jsonify({"editions": editions, "warnings": warnings})
 
 
+def _slugify(text: str) -> str:
+    """Lowercase, hyphen-separated slug — strips anything that isn't
+    alphanumeric. Used for both edition slugs and uploaded image filenames,
+    so neither ever contains spaces or mixed-case extensions that trip up
+    case-sensitive tooling downstream (e.g. shell scripts, git hooks)."""
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
 @app.route("/api/new-edition", methods=["POST"])
 def new_edition():
     data = request.json or {}
     title = data.get("title", "").strip()
     if not title:
         return jsonify({"error": "Title is required"}), 400
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    slug = _slugify(title)
     edition_dir = state.CONTENT_DIR / slug
     if edition_dir.exists():
         return jsonify({"error": f"Edition '{slug}' already exists"}), 400
@@ -325,7 +333,11 @@ def upload_image(slug):
         return jsonify({"error": f"File type .{ext} not allowed"}), 400
     dest_dir = edition_dir_for(f)
     dest_dir.mkdir(exist_ok=True)
-    stem = filename.rsplit(".", 1)[0]
+    # Slugified, not the raw uploaded name — spaces and mixed-case
+    # extensions in filenames are exactly what tripped up an external
+    # image-compression git hook (case-sensitive extension handling
+    # produced an untracked derivative file every commit).
+    stem = _slugify(filename.rsplit(".", 1)[0]) or "image"
 
     tmp_path = dest_dir / f".upload-{secrets.token_hex(4)}.{ext}"
     file.save(tmp_path)
