@@ -61,6 +61,87 @@ def make_commit(repo, slug, body, message) -> None:
     run(["git", "commit", "-m", message], cwd=repo)
 
 
+def make_multi_edition_commit(repo, slugs_and_bodies, message) -> None:
+    paths = []
+    for slug, body in slugs_and_bodies:
+        d = repo / "content" / "newsletter" / slug
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.md").write_text(body)
+        paths.append(f"content/newsletter/{slug}")
+    run(["git", "add", *paths], cwd=repo)
+    run(["git", "commit", "-m", message], cwd=repo)
+
+
+def test_dry_run_reports_commits_blocking_multiple_editions(repo, capsys) -> None:
+    make_commit(repo, "a", "v1", "wip: A")
+    make_multi_edition_commit(
+        repo, [("a", "shared"), ("b", "b-v1")], "manual: touches a and b"
+    )
+
+    args = argparse.Namespace(repo=str(repo), apply=False)
+    cli.cmd_squash_drafts(args)
+
+    out = capsys.readouterr().out
+    assert "commit(s) touch more than one edition" in out
+    assert "manual: touches a and b" in out
+    assert "a, b" in out
+    assert "--split <sha>" in out
+
+
+def test_dry_run_reports_none_when_nothing_blocking(repo, capsys) -> None:
+    make_commit(repo, "a", "v1", "wip: A")
+    make_commit(repo, "a", "v2", "wip: A")
+
+    args = argparse.Namespace(repo=str(repo), apply=False)
+    cli.cmd_squash_drafts(args)
+
+    out = capsys.readouterr().out
+    assert "touch more than one edition" not in out
+
+
+def test_split_unblocks_the_edition_for_a_later_dry_run(repo, capsys) -> None:
+    make_commit(repo, "a", "v1", "wip: A")
+    make_multi_edition_commit(
+        repo, [("a", "shared"), ("b", "b-v1")], "manual: touches a and b"
+    )
+    make_commit(repo, "a", "v3", "wip: A")
+
+    dry_run_args = argparse.Namespace(repo=str(repo), apply=False)
+    cli.cmd_squash_drafts(dry_run_args)
+    blocking_line = next(
+        line
+        for line in capsys.readouterr().out.splitlines()
+        if "manual: touches a and b" in line
+    )
+    sha = blocking_line.split()[0]
+
+    split_args = argparse.Namespace(repo=str(repo), apply=False, split=sha)
+    cli.cmd_squash_drafts(split_args)
+    out = capsys.readouterr().out
+    assert f"Split {sha}" in out
+    assert "into 2 commit(s)" in out
+    assert "(content/newsletter/a)" in out
+    assert "(content/newsletter/b)" in out
+
+    cli.cmd_squash_drafts(dry_run_args)
+    out = capsys.readouterr().out
+    assert "touch more than one edition" not in out
+    assert "would squash  a" in out
+
+
+def test_split_reports_error_for_an_already_pushed_commit(repo, capsys) -> None:
+    make_commit(repo, "a", "v1", "wip: A")
+    pushed_sha = run(["git", "rev-parse", "HEAD"], cwd=repo).stdout.strip()
+    run(["git", "push", "origin", "HEAD:main"], cwd=repo)
+
+    args = argparse.Namespace(repo=str(repo), apply=False, split=pushed_sha)
+    cli.cmd_squash_drafts(args)
+
+    out = capsys.readouterr().out
+    assert "Error:" in out
+    assert "not a local-only" in out
+
+
 def test_dry_run_reports_without_squashing(repo, capsys) -> None:
     make_commit(repo, "a", "v1", "wip: A")
     make_commit(repo, "b", "v1", "wip: B")

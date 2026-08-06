@@ -27,6 +27,8 @@ from patr.content import (
     write_edition_frontmatter,
 )
 from patr.git_sync import (
+    blocking_commits,
+    split_commit,
     squash_edition_commits,
     squashable_commit_count,
     upstream_ref,
@@ -314,6 +316,13 @@ def cmd_squash_drafts(args) -> None:
 
     Dry run by default (just reports how many commits each edition would
     collapse to); pass --apply to actually rewrite history.
+
+    Some local-only commits touch more than one edition (or an edition plus
+    something else) — these can never be squashed automatically (see
+    git_sync._classify_commits), so the dry run lists them by SHA. Pass
+    --split <sha> to split one into a separate commit per edition it
+    touches (plus one more for anything else), unblocking those editions'
+    squashes — see git_sync.split_commit.
     """
     state.REPO_ROOT = Path(args.repo).resolve()
     state.CONTENT_DIR = (
@@ -343,21 +352,57 @@ def cmd_squash_drafts(args) -> None:
         print("No editions found.")
         return
 
-    dry_run = not args.apply
-    if dry_run:
-        print("Dry run — pass --apply to squash.\n")
-
-    squashed = 0
-    skipped = 0
+    # Page-bundle editions only — flat .md editions (hugo-free/email-only
+    # mode) share a parent directory across all editions, so there's no
+    # single-edition path to scope a squash or split to.
+    edition_relpaths = {}
+    flat_slugs = []
     for edition in editions:
         slug = edition["slug"]
         f, _ = load_edition(slug)
         if f.parent == state.CONTENT_DIR:
-            print(f"  skip      {slug} (flat .md edition, not a page bundle)")
-            skipped += 1
-            continue
-        edition_relpath = f.parent.relative_to(state.REPO_ROOT).as_posix()
+            flat_slugs.append(slug)
+        else:
+            edition_relpaths[slug] = f.parent.relative_to(state.REPO_ROOT).as_posix()
 
+    split_sha = getattr(args, "split", None)
+    if split_sha:
+        ok, error, new_commits = split_commit(
+            split_sha, list(edition_relpaths.values())
+        )
+        if not ok:
+            print(f"Error: {error}")
+            return
+        print(f"Split {split_sha} into {len(new_commits)} commit(s):\n")
+        for new_sha, label in new_commits:
+            print(f"  {new_sha[:8]}  ({label})")
+        print("\nReview with `git log`, then re-run the dry run.")
+        return
+
+    dry_run = not args.apply
+    if dry_run:
+        print("Dry run — pass --apply to squash.\n")
+
+    flat_skipped = len(flat_slugs)
+    for slug in flat_slugs:
+        print(f"  skip      {slug} (flat .md edition, not a page bundle)")
+
+    blocking = blocking_commits(list(edition_relpaths.values()))
+    if blocking:
+        print(f"{len(blocking)} commit(s) touch more than one edition (or an")
+        print("edition plus something else) — these block squashing for every")
+        print("edition they touch, until split manually:\n")
+        for sha, subject, touched in blocking:
+            slugs = [s for s, p in edition_relpaths.items() if p in touched]
+            print(f"  {sha[:8]}  {subject}  ({', '.join(slugs) or ', '.join(touched)})")
+        print(
+            "\nSplit one with: patr squash-drafts --repo "
+            f"{state.REPO_ROOT} --split <sha>\n"
+        )
+
+    squashed = 0
+    skipped = flat_skipped
+    for slug, edition_relpath in edition_relpaths.items():
         if dry_run:
             count = squashable_commit_count(edition_relpath)
             if count >= 2:
@@ -522,6 +567,12 @@ def main() -> None:
         "--apply",
         action="store_true",
         help="Actually squash commits (default: dry run)",
+    )
+    squash_drafts_parser.add_argument(
+        "--split",
+        metavar="SHA",
+        help="Split a commit (from the dry-run's blocking list) into one "
+        "commit per edition it touches",
     )
 
     args = parser.parse_args()
