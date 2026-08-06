@@ -1132,6 +1132,7 @@ def send_all(slug):
     subject = f"{post['title']} — {newsletter_name}"
     footer_md = load_footer()
     edition_dir = edition_dir_for(f)
+    edition_relpath = (state.CONTENT_DIR / slug).relative_to(state.REPO_ROOT).as_posix()
     total = len(pending)
     skipped = len(contacts) - total
 
@@ -1180,7 +1181,40 @@ def send_all(slug):
                 yield f"data: {json.dumps({'type': 'error', 'email': contact['email'], 'error': str(e)})}\n\n"
         if sent > 0 and not failed:
             _mark_edition_sent(f, post, "full")
-        yield f"data: {json.dumps({'type': 'done', 'sent': sent, 'failed': failed, 'skipped': skipped})}\n\n"
+
+        # email-only mode has no Publish button (see MainPanel.jsx), so Send
+        # is the only point a push ever happens. This runs after every email
+        # has already gone out — sending is the important part and must
+        # never be blocked or rolled back by a git problem here. Any failure
+        # (including an unresolved rebase, safely aborted inside
+        # fetch_rebase_and_push) is surfaced as a warning only; the user can
+        # always push manually later.
+        git_warning = None
+        if email_only and sent > 0 and git_mode():
+            try:
+                subprocess.run(
+                    ["git", "add", str(state.CONTENT_DIR / slug)],
+                    cwd=state.REPO_ROOT,
+                    capture_output=True,
+                    check=False,
+                )
+                subprocess.run(
+                    ["git", "commit", "-m", f"Send: {post['title']}"],
+                    cwd=state.REPO_ROOT,
+                    capture_output=True,
+                    check=False,
+                )
+                squash_edition_commits(edition_relpath)
+                ok, error = fetch_rebase_and_push()
+                if not ok:
+                    git_warning = f"Sent, but couldn't push to git: {error}"
+            except Exception as e:
+                git_warning = f"Sent, but git push failed unexpectedly: {e}"
+
+        done = {"type": "done", "sent": sent, "failed": failed, "skipped": skipped}
+        if git_warning:
+            done["git_warning"] = git_warning
+        yield f"data: {json.dumps(done)}\n\n"
 
     return Response(stream_with_context(generate()), content_type="text/event-stream")
 

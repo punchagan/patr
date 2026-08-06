@@ -286,7 +286,12 @@ export default function MainPanel({
       let msg = `Sent to ${d.sent} recipient${d.sent !== 1 ? "s" : ""} ✓`;
       if (d.skipped) msg += `, ${d.skipped} already sent`;
       if (d.failed?.length) msg += `, ${d.failed.length} failed`;
-      setStatus({ cls: d.failed?.length ? "warn" : "ok", text: msg });
+      // git_warning never means the send itself failed — the emails already
+      // went out. It just means the follow-up git push didn't happen and
+      // needs a manual `git push` later.
+      const hasWarning = d.failed?.length || d.gitWarning;
+      if (d.gitWarning) msg += ` — ${d.gitWarning}`;
+      setStatus({ cls: hasWarning ? "warn" : "ok", text: msg });
       showNotification("Patr — Send complete", msg);
     } else {
       setStatus({ cls: "err", text: `Error: ${d.error}` });
@@ -574,6 +579,7 @@ export default function MainPanel({
                         sent: event.sent,
                         failed: event.failed,
                         skipped: event.skipped,
+                        gitWarning: event.git_warning,
                       });
                   }
                   return read();
