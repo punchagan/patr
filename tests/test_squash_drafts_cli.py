@@ -6,6 +6,7 @@ around for a batch of editions rather than one at publish/send time)."""
 import argparse
 import subprocess
 import textwrap
+from unittest.mock import patch
 
 import pytest
 from patr import cli, state
@@ -209,6 +210,42 @@ def test_apply_squashes_each_edition_independently(repo, capsys) -> None:
     assert "squashed  a" in out
     assert "squashed  b" in out
     assert "Squashed 2 of 2 edition(s)." in out
+
+
+def test_apply_stops_loudly_if_tree_becomes_dirty_mid_run(repo, capsys) -> None:
+    """Regression: reported by a real user running --apply across many
+    editions — once the tree goes dirty partway through (e.g. a repo hook
+    creating a stray file — see git_sync's core.hooksPath fix), every
+    remaining edition used to silently print "nothing to squash",
+    indistinguishable from a legitimate no-op. Must instead stop the loop
+    with a clear error, leaving already-squashed editions intact."""
+    make_commit(repo, "a", "v1", "wip: A")
+    make_commit(repo, "a", "v2", "wip: A")
+    make_commit(repo, "b", "v1", "wip: B")
+    make_commit(repo, "b", "v2", "wip: B")
+
+    from patr.git_sync import squash_edition_commits as real_squash
+
+    def fake_squash(edition_relpath):
+        ok = real_squash(edition_relpath)
+        if ok and edition_relpath.endswith("/a"):
+            # Simulate something (e.g. a hook) dirtying the tree right
+            # after "a" is squashed.
+            (repo / "content" / "newsletter" / "a" / "stray.png").write_bytes(b"x")
+        return ok
+
+    with patch("patr.cli.squash_edition_commits", side_effect=fake_squash):
+        args = argparse.Namespace(repo=str(repo), apply=True)
+        cli.cmd_squash_drafts(args)
+
+    out = capsys.readouterr().out
+    assert "squashed  a" in out
+    assert "squashed  b" not in out
+    assert "Error: working tree has uncommitted changes (before b)" in out
+
+    subjects = log_subjects(repo)
+    assert subjects.count("wip: A") == 1  # a's squash was not undone
+    assert subjects.count("wip: B") == 2  # b was never touched
 
 
 def test_apply_skips_flat_file_editions(tmp_path, monkeypatch, capsys) -> None:

@@ -413,6 +413,22 @@ def cmd_squash_drafts(args) -> None:
                 skipped += 1
             continue
 
+        # squash_edition_commits() itself also refuses on a dirty tree
+        # (silently, since that's the right call when it runs automatically
+        # from publish/send) — checked explicitly here so this loop can
+        # stop loudly instead of quietly reporting every remaining edition
+        # as "nothing to squash", which is what a dirty tree looks like
+        # from the outside. Something dirtying the tree mid-run (e.g. a
+        # repo hook creating a stray file) is exactly what surfaced this.
+        if not working_tree_clean():
+            print(
+                f"\nError: working tree has uncommitted changes (before {slug}).\n"
+                "Something modified it while this command was running.\n"
+                "Commit or stash the changes, then re-run to continue with the\n"
+                "remaining editions — editions already squashed above are unaffected."
+            )
+            break
+
         if squash_edition_commits(edition_relpath):
             print(f"  squashed  {slug}")
             squashed += 1

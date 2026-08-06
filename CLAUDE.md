@@ -387,6 +387,14 @@ splitting. Refuses (restoring the original history untouched) if the
 working tree is dirty, the given SHA isn't local-only, or any step fails
 partway through.
 
+`--apply` squashes editions one at a time in a loop, and each individual
+squash requires a clean working tree. If something dirties the tree partway
+through (e.g. a repo hook — see below — creating a stray file), the loop
+stops immediately with an explicit error rather than silently reporting
+every remaining edition as "nothing to squash", which is indistinguishable
+from a legitimate no-op. Editions already squashed before that point are
+unaffected; squashing can simply be re-run once the working tree is clean.
+
 ### Hugo-free mode
 
 Patr can run against any plain directory — no `hugo.toml`, no Hugo installed.
