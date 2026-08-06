@@ -32,6 +32,20 @@ def commit_edition(repo, slug, body, message):
     run(["git", "commit", "-m", message], cwd=repo)
 
 
+def commit_multiple_editions(repo, slugs_and_bodies, message):
+    """Commit changes to several editions' directories in one commit —
+    something Patr's own auto-commit never does (it always `git add`s
+    exactly one edition's directory), but possible via manual git usage."""
+    paths = []
+    for slug, body in slugs_and_bodies:
+        d = repo / "content" / "newsletter" / slug
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.md").write_text(body)
+        paths.append(f"content/newsletter/{slug}")
+    run(["git", "add", *paths], cwd=repo)
+    run(["git", "commit", "-m", message], cwd=repo)
+
+
 @pytest.fixture
 def remote(tmp_path):
     r = tmp_path / "remote.git"
@@ -126,6 +140,42 @@ def test_squash_noop_when_edition_created_and_deleted_before_ever_pushed(repo) -
     assert len(log_subjects(repo)) == 4  # original history untouched
 
 
+def test_squash_refuses_when_a_commit_touches_multiple_editions(repo) -> None:
+    """A commit touching edition A *and* edition B (e.g. a manual
+    `git add -A`, never produced by Patr's own auto-commit) must block
+    squashing A outright — not get silently dropped (losing its B changes)
+    or replayed onto the wrong pre-image (risking a conflict or, worse,
+    resolving to the wrong content without any error)."""
+    commit_edition(repo, "a", "v1", "wip: A")
+    commit_multiple_editions(
+        repo, [("a", "v2-shared"), ("b", "b-v1")], "wip: touches a and b"
+    )
+    commit_edition(repo, "a", "v3", "wip: A")
+
+    assert squash_edition_commits("content/newsletter/a") is False
+    # Nothing rewritten — including B's content, which a naive "exclude
+    # mixed commits from mine, replay as others" fix would have corrupted.
+    assert len(log_subjects(repo)) == 4
+    assert (repo / "content" / "newsletter" / "a" / "index.md").read_text() == "v3"
+    assert (repo / "content" / "newsletter" / "b" / "index.md").read_text() == "b-v1"
+
+
+def test_squash_still_works_for_editions_the_mixed_commit_does_not_touch(repo) -> None:
+    """The mixed commit only blocks squashing for the edition(s) it
+    actually touches — an unrelated edition's own squash proceeds fine."""
+    commit_edition(repo, "a", "v1", "wip: A")
+    commit_multiple_editions(
+        repo, [("a", "v2-shared"), ("b", "b-v1")], "wip: touches a and b"
+    )
+    commit_edition(repo, "c", "c-v1", "wip: C")
+    commit_edition(repo, "c", "c-v2", "wip: C")
+
+    assert squash_edition_commits("content/newsletter/c") is True
+    subjects = log_subjects(repo)
+    assert "wip: touches a and b" in subjects  # untouched
+    assert subjects.count("wip: C") == 1
+
+
 # squashable_commit_count — read-only preview, must not mutate anything
 
 
@@ -137,6 +187,21 @@ def test_squashable_commit_count_matches_and_does_not_mutate(repo) -> None:
     assert squashable_commit_count("content/newsletter/a") == 2
     assert squashable_commit_count("content/newsletter/b") == 1
     assert len(log_subjects(repo)) == 4  # untouched — this is a preview only
+
+
+def test_squashable_commit_count_reports_zero_when_blocked_by_mixed_commit(
+    repo,
+) -> None:
+    """Preview must agree with what squash_edition_commits() would actually
+    do — reporting a nonzero count here when the real squash would refuse
+    outright would be misleading."""
+    commit_edition(repo, "a", "v1", "wip: A")
+    commit_multiple_editions(
+        repo, [("a", "v2-shared"), ("b", "b-v1")], "wip: touches a and b"
+    )
+    commit_edition(repo, "a", "v3", "wip: A")
+
+    assert squashable_commit_count("content/newsletter/a") == 0
 
 
 def test_squashable_commit_count_uses_a_bounded_number_of_git_calls(repo) -> None:
