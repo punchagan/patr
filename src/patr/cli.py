@@ -26,6 +26,7 @@ from patr.content import (
     repo_slug,
     write_edition_frontmatter,
 )
+from patr.git_sync import squash_edition_commits, squashable_commit_count
 
 
 def cmd_install(args) -> None:
@@ -286,6 +287,78 @@ def cmd_prune_backups(args) -> None:
         print("Run with --apply to delete.")
 
 
+def cmd_squash_drafts(args) -> None:
+    """Squash each edition's local-only "wip:" checkpoint commits into one.
+
+    A one-off, repo-wide cleanup for history that accumulated before the
+    server started squashing automatically at publish/send time (see
+    git_sync.squash_edition_commits) — e.g. an existing clone with a long
+    trail of autosave commits for editions that were drafted a while back.
+    Only touches commits ahead of the upstream tracking branch; anything
+    already pushed is left untouched, so this is safe to run repeatedly.
+    Requires a clean working tree.
+
+    Only page-bundle editions (content/newsletter/<slug>/index.md) are
+    handled — flat .md editions (hugo-free/email-only mode) share a parent
+    directory across all editions, so there's no single-edition path to
+    scope the squash to; those are skipped with a note.
+
+    Dry run by default (just reports how many commits each edition would
+    collapse to); pass --apply to actually rewrite history.
+    """
+    state.REPO_ROOT = Path(args.repo).resolve()
+    state.CONTENT_DIR = (
+        state.REPO_ROOT / "content" / "newsletter" if hugo_mode() else state.REPO_ROOT
+    )
+    if not git_mode():
+        print("Error: not a git repository.")
+        return
+
+    editions = get_editions()
+    if not editions:
+        print("No editions found.")
+        return
+
+    dry_run = not args.apply
+    if dry_run:
+        print("Dry run — pass --apply to squash.\n")
+
+    squashed = 0
+    skipped = 0
+    for edition in editions:
+        slug = edition["slug"]
+        f, _ = load_edition(slug)
+        if f.parent == state.CONTENT_DIR:
+            print(f"  skip      {slug} (flat .md edition, not a page bundle)")
+            skipped += 1
+            continue
+        edition_relpath = f.parent.relative_to(state.REPO_ROOT).as_posix()
+
+        if dry_run:
+            count = squashable_commit_count(edition_relpath)
+            if count >= 2:
+                print(f"  would squash  {slug} ({count} commits → 1)")
+                squashed += 1
+            else:
+                print(f"  skip          {slug} (nothing to squash)")
+                skipped += 1
+            continue
+
+        if squash_edition_commits(edition_relpath):
+            print(f"  squashed  {slug}")
+            squashed += 1
+        else:
+            print(f"  skip      {slug} (nothing to squash)")
+            skipped += 1
+
+    verb = "Would squash" if dry_run else "Squashed"
+    print(f"\n{verb} {squashed} of {len(editions)} edition(s).")
+    if dry_run and squashed:
+        print("Run with --apply to squash.")
+    elif squashed:
+        print("Review with `git log`, then push when ready.")
+
+
 def cmd_serve(args) -> None:
     state.REPO_ROOT = Path(args.repo).resolve()
     if hugo_mode():
@@ -413,6 +486,20 @@ def main() -> None:
         "--apply", action="store_true", help="Actually delete files (default: dry run)"
     )
 
+    # squash-drafts
+    squash_drafts_parser = sub.add_parser(
+        "squash-drafts",
+        help="Squash each edition's local-only wip: commits into one",
+    )
+    squash_drafts_parser.add_argument(
+        "--repo", required=True, help="Path to Hugo site root"
+    )
+    squash_drafts_parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Actually squash commits (default: dry run)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "install":
@@ -423,6 +510,8 @@ def main() -> None:
         cmd_import_sent_log(args)
     elif args.command == "prune-backups":
         cmd_prune_backups(args)
+    elif args.command == "squash-drafts":
+        cmd_squash_drafts(args)
     elif args.command == "serve":
         cmd_serve(args)
     else:
