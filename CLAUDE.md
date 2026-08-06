@@ -395,6 +395,19 @@ every remaining edition as "nothing to squash", which is indistinguishable
 from a legitimate no-op. Editions already squashed before that point are
 unaffected; squashing can simply be re-run once the working tree is clean.
 
+Every `git commit`, `git cherry-pick`, and `git rebase` that `git_sync.py`
+runs internally (squash's cherry-picks and final commit, split's per-group
+commits and its cherry-picks, and the rebase in `fetch_rebase_and_push()`)
+disables the repo's own git hooks via `-c core.hooksPath=<empty dir>`. These
+operations replay/reconstruct content that's already been committed — and
+already gone through the repo's real hooks — once; re-running hooks on
+every replayed commit is redundant at best, and at worst actively harmful —
+a real user's repo has a commit hook that processes images, and it kept
+re-firing on every internal commit `--apply` made, leaving stray untracked
+derivative files behind after squashing succeeded. `--no-verify` doesn't
+cover this: `git cherry-pick` has no such flag at all, and `--no-verify`
+never disables `post-commit` hooks regardless of command.
+
 ### Hugo-free mode
 
 Patr can run against any plain directory — no `hugo.toml`, no Hugo installed.
