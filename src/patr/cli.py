@@ -26,7 +26,12 @@ from patr.content import (
     repo_slug,
     write_edition_frontmatter,
 )
-from patr.git_sync import squash_edition_commits, squashable_commit_count
+from patr.git_sync import (
+    squash_edition_commits,
+    squashable_commit_count,
+    upstream_ref,
+    working_tree_clean,
+)
 
 
 def cmd_install(args) -> None:
@@ -296,7 +301,11 @@ def cmd_squash_drafts(args) -> None:
     trail of autosave commits for editions that were drafted a while back.
     Only touches commits ahead of the upstream tracking branch; anything
     already pushed is left untouched, so this is safe to run repeatedly.
-    Requires a clean working tree.
+    Requires a clean working tree and an upstream tracking branch — both are
+    checked upfront with an actionable error, rather than silently reporting
+    "nothing to squash" for every edition the way squash_edition_commits()
+    itself does (safe to no-op silently when called automatically from
+    publish/send, but unhelpful for a command a human is staring at).
 
     Only page-bundle editions (content/newsletter/<slug>/index.md) are
     handled — flat .md editions (hugo-free/email-only mode) share a parent
@@ -312,6 +321,21 @@ def cmd_squash_drafts(args) -> None:
     )
     if not git_mode():
         print("Error: not a git repository.")
+        return
+    if upstream_ref() is None:
+        print(
+            "Error: the current branch has no upstream tracking branch configured.\n"
+            "Squashing only rewrites commits ahead of that branch — without it there's\n"
+            "no safe boundary, so every edition silently reports nothing to squash.\n\n"
+            "Fix (replace <branch> with your current branch, e.g. main):\n"
+            "  git branch --set-upstream-to=origin/<branch> <branch>"
+        )
+        return
+    if not working_tree_clean():
+        print(
+            "Error: working tree has uncommitted changes.\n"
+            "Commit or stash them first, then re-run."
+        )
         return
 
     editions = get_editions()
