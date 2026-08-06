@@ -67,6 +67,7 @@ from patr.content import (
     write_edition_frontmatter,
 )
 from patr.gifs import download_gif
+from patr.git_sync import fetch_rebase_and_push, squash_edition_commits
 from patr.gmail import send_email
 from patr.updates import apply_update, check_for_update
 from playwright.sync_api import sync_playwright
@@ -495,18 +496,28 @@ def toggle_draft(slug):
 
 
 def _set_draft_and_push(f, post, draft: bool, commit_prefix: str):
-    """Set draft status in frontmatter then git add/commit/push.
+    """Set draft status in frontmatter, commit, squash, and push.
 
-    Writes the updated frontmatter to disk, then runs git add, commit, and
-    push for the edition directory.  Returns a Flask JSON response.
+    Writes the updated frontmatter to disk, then runs git add + commit for
+    the edition directory. Before pushing, squashes this edition's prior
+    local-only "wip:" checkpoint commits (if any) together with this commit
+    into one — so publishing/unpublishing an edition that went through many
+    autosave checkpoints leaves a single clean commit on the branch, not a
+    trail of "wip:" noise. The push itself fetches and rebases on top of any
+    remote changes first (see fetch_rebase_and_push). Returns a Flask JSON
+    response.
     """
     post.metadata["draft"] = draft
     write_edition_frontmatter(f, post)
+    # .as_posix(), not str(): git pathspecs always use forward slashes
+    # internally, regardless of OS — a raw str() on Windows would yield
+    # backslash-separated segments that never match anything in diff-tree
+    # output, silently making squash_edition_commits() a no-op.
+    edition_relpath = f.parent.relative_to(state.REPO_ROOT).as_posix()
 
     for cmd in [
         ["git", "add", str(f.parent)],
         ["git", "commit", "-m", f"{commit_prefix}: {post['title']}"],
-        ["git", "push"],
     ]:
         result = subprocess.run(
             cmd, cwd=state.REPO_ROOT, capture_output=True, text=True, check=False
@@ -515,6 +526,12 @@ def _set_draft_and_push(f, post, draft: bool, commit_prefix: str):
             if "nothing to commit" in result.stdout + result.stderr:
                 continue
             return jsonify({"error": result.stderr or result.stdout}), 500
+
+    squash_edition_commits(edition_relpath)
+
+    ok, error = fetch_rebase_and_push()
+    if not ok:
+        return jsonify({"error": error}), 500
     return jsonify({"ok": True})
 
 

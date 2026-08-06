@@ -1,29 +1,59 @@
-"""Tests for publish_edition and unpublish_edition git flow."""
+"""Tests for publish_edition and unpublish_edition git flow.
 
+Uses real git repos (init + a bare "remote") rather than mocking
+subprocess.run — the flow now runs a variable number of git commands
+(squash_edition_commits + fetch_rebase_and_push, see git_sync.py), so
+asserting on a fixed call sequence would be too brittle to internal
+implementation details.
+"""
+
+import subprocess
 import textwrap
-from unittest.mock import MagicMock, patch
 
 import pytest
 from patr import server, state
 
 
+def run(args, cwd, check=True):
+    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=False)
+    if check:
+        assert r.returncode == 0, r.stderr
+    return r
+
+
+def log_subjects(repo):
+    return run(["git", "log", "--format=%s", "--reverse"], cwd=repo).stdout.splitlines()
+
+
 @pytest.fixture
-def repo(tmp_path):
-    newsletter = tmp_path / "content" / "newsletter"
-    newsletter.mkdir(parents=True)
-    (tmp_path / "hugo.toml").write_text("[params]\n")
-    state.REPO_ROOT = tmp_path
-    state.CONTENT_DIR = newsletter
-    return tmp_path
+def repo(tmp_path, monkeypatch):
+    remote = tmp_path / "remote.git"
+    local = tmp_path / "local"
+    run(["git", "init", "--bare", str(remote)], cwd=tmp_path)
+    local.mkdir()
+    run(["git", "init", str(local)], cwd=local)
+    run(["git", "config", "user.email", "test@example.com"], cwd=local)
+    run(["git", "config", "user.name", "Test"], cwd=local)
+    run(["git", "remote", "add", "origin", str(remote)], cwd=local)
+
+    (local / "content" / "newsletter").mkdir(parents=True)
+    (local / "hugo.toml").write_text("[params]\n")
+    run(["git", "add", "-A"], cwd=local)
+    run(["git", "commit", "-m", "init"], cwd=local)
+    run(["git", "branch", "-M", "main"], cwd=local)
+    run(["git", "push", "-u", "origin", "main"], cwd=local)
+
+    monkeypatch.setattr(state, "REPO_ROOT", local)
+    monkeypatch.setattr(state, "CONTENT_DIR", local / "content" / "newsletter")
+    return local
 
 
 @pytest.fixture
 def client(repo):
     server.app.config["TESTING"] = True
     server.app.config["PORT"] = 5000
-    with patch("patr.server.git_mode", return_value=True):
-        with server.app.test_client() as c:
-            yield c
+    with server.app.test_client() as c:
+        yield c
 
 
 def make_edition(repo, slug, draft=False) -> None:
@@ -40,68 +70,63 @@ def make_edition(repo, slug, draft=False) -> None:
         Body.
     """)
     )
+    run(["git", "add", f"content/newsletter/{slug}"], cwd=repo)
+    run(["git", "commit", "-m", f"wip: {slug}"], cwd=repo)
 
 
-def make_run(responses):
-    """Return a subprocess.run mock that cycles through the given responses."""
-    calls = iter(responses)
-
-    def _run(cmd, **kwargs):
-        r = MagicMock()
-        r.returncode, r.stdout, r.stderr = next(calls)
-        return r
-
-    return _run
+# Normal happy path — commit gets made and pushed to the remote
 
 
-# Normal happy path — all three git commands run
-
-
-def test_publish_runs_add_commit_push(client, repo) -> None:
-    make_edition(repo, "my-ed")
-    ok = (0, "", "")
-    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])) as mock_run:
-        r = client.post("/api/publish/my-ed")
+def test_publish_commits_and_pushes(client, repo) -> None:
+    make_edition(repo, "my-ed", draft=True)
+    r = client.post("/api/publish/my-ed")
     assert r.status_code == 200
-    cmds = [c.args[0] for c in mock_run.call_args_list]
-    assert any("add" in cmd for cmd in cmds)
-    assert any("commit" in cmd for cmd in cmds)
-    assert any("push" in cmd for cmd in cmds)
+    remote_subjects = run(["git", "log", "--format=%s", "origin/main"], cwd=repo).stdout
+    assert "Publish: Test Edition" in remote_subjects
 
 
-# Bug: when commit says "nothing to commit", push is skipped
+def test_publish_squashes_prior_wip_commits(client, repo) -> None:
+    """Multiple autosave checkpoints for the edition collapse into the one
+    final Publish commit — no wip: trail left on the branch."""
+    make_edition(repo, "my-ed", draft=True)
+    d = repo / "content" / "newsletter" / "my-ed"
+    (d / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: Test Edition
+        date: 2024-01-01
+        draft: true
+        ---
+
+        Body v2.
+    """)
+    )
+    run(["git", "add", "content/newsletter/my-ed"], cwd=repo)
+    run(["git", "commit", "-m", "wip: Test Edition"], cwd=repo)
+
+    r = client.post("/api/publish/my-ed")
+    assert r.status_code == 200
+    subjects = log_subjects(repo)
+    assert subjects == ["init", "Publish: Test Edition"]
 
 
 def test_publish_still_pushes_when_nothing_to_commit(client, repo) -> None:
-    """Regression: retry after a failed push must still run git push."""
-    make_edition(repo, "my-ed")
-    nothing_to_commit = (1, "nothing to commit, working tree clean", "")
-    push_ok = (0, "", "")
-    with patch(
-        "subprocess.run",
-        side_effect=make_run(
-            [
-                (0, "", ""),  # git add — ok
-                nothing_to_commit,  # git commit — already committed
-                push_ok,  # git push — should still run
-            ]
-        ),
-    ) as mock_run:
-        r = client.post("/api/publish/my-ed")
+    """Regression: e.g. retrying after a previous failed push, where the
+    frontmatter is already draft: false locally (so the commit step no-ops)
+    but the earlier commit still needs to reach the remote."""
+    make_edition(repo, "my-ed", draft=False)  # commits locally, unpushed
+    r = client.post("/api/publish/my-ed")
     assert r.status_code == 200
-    cmds = [c.args[0] for c in mock_run.call_args_list]
-    assert any("push" in cmd for cmd in cmds), "git push was never called"
+    remote_subjects = run(["git", "log", "--format=%s", "origin/main"], cwd=repo).stdout
+    assert "wip: my-ed" in remote_subjects
 
 
 # Publish marks draft editions as live before pushing
 
 
 def test_publish_marks_draft_as_live(client, repo) -> None:
-    """Publish should set draft: false in frontmatter even when edition is a draft."""
     make_edition(repo, "my-ed", draft=True)
-    ok = (0, "", "")
-    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])):
-        r = client.post("/api/publish/my-ed")
+    r = client.post("/api/publish/my-ed")
     assert r.status_code == 200
     text = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
     assert "draft: false" in text
@@ -110,9 +135,7 @@ def test_publish_marks_draft_as_live(client, repo) -> None:
 def test_publish_draft_true_was_previously_rejected(client, repo) -> None:
     """Publish should no longer reject draft editions — it marks them live."""
     make_edition(repo, "my-ed", draft=True)
-    ok = (0, "", "")
-    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])):
-        r = client.post("/api/publish/my-ed")
+    r = client.post("/api/publish/my-ed")
     assert r.status_code == 200, "draft editions should now be publishable"
 
 
@@ -120,18 +143,59 @@ def test_publish_draft_true_was_previously_rejected(client, repo) -> None:
 
 
 def test_unpublish_marks_as_draft_and_pushes(client, repo) -> None:
-    """Unpublish should set draft: true and run git add/commit/push."""
     make_edition(repo, "my-ed", draft=False)
-    ok = (0, "", "")
-    with patch("subprocess.run", side_effect=make_run([ok, ok, ok])) as mock_run:
-        r = client.post("/api/unpublish/my-ed")
+    r = client.post("/api/unpublish/my-ed")
     assert r.status_code == 200
     text = (repo / "content" / "newsletter" / "my-ed" / "index.md").read_text()
     assert "draft: true" in text
-    cmds = [c.args[0] for c in mock_run.call_args_list]
-    assert any("push" in cmd for cmd in cmds)
+    remote_subjects = run(["git", "log", "--format=%s", "origin/main"], cwd=repo).stdout
+    assert "Unpublish: Test Edition" in remote_subjects
 
 
 def test_unpublish_404_for_missing_edition(client, repo) -> None:
     r = client.post("/api/unpublish/no-such-edition")
     assert r.status_code == 404
+
+
+# Push failure (e.g. rebase conflict) is surfaced as an error, not silently
+# swallowed — Publish/Unpublish are explicit user actions, unlike Send.
+
+
+def test_publish_reports_error_on_rebase_conflict(client, repo, tmp_path) -> None:
+    other = tmp_path / "other"
+    other.mkdir()
+    run(["git", "init", str(other)], cwd=other)
+    run(["git", "config", "user.email", "other@example.com"], cwd=other)
+    run(["git", "config", "user.name", "Other"], cwd=other)
+    run(["git", "remote", "add", "origin", str(tmp_path / "remote.git")], cwd=other)
+    run(["git", "fetch", "origin"], cwd=other)
+    # Explicit fetch + checkout onto a branch tracking origin/main, rather
+    # than `git clone` — a plain clone's default branch depends on git's
+    # (OS-dependent) init.defaultBranch, which can differ from the "main"
+    # this repo actually uses, silently committing onto an unrelated branch.
+    run(["git", "checkout", "-B", "main", "origin/main"], cwd=other)
+    d = other / "content" / "newsletter" / "my-ed"
+    d.mkdir(parents=True)
+    (d / "index.md").write_text("conflicting remote content")
+    run(["git", "add", "-A"], cwd=other)
+    run(["git", "commit", "-m", "remote wip"], cwd=other)
+    run(["git", "push", "origin", "HEAD:main"], cwd=other)
+
+    make_edition(repo, "my-ed", draft=True)
+    (repo / "content" / "newsletter" / "my-ed" / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: Test Edition
+        date: 2024-01-01
+        draft: true
+        ---
+
+        Conflicting local content.
+    """)
+    )
+    run(["git", "add", "content/newsletter/my-ed"], cwd=repo)
+    run(["git", "commit", "-m", "wip: Test Edition"], cwd=repo)
+
+    r = client.post("/api/publish/my-ed")
+    assert r.status_code == 500
+    assert "resolve manually" in r.get_json()["error"]
