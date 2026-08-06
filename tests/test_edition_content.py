@@ -312,6 +312,49 @@ def test_upload_image_deduplicates_filename(client, repo) -> None:
     assert path.endswith(".jpg")
 
 
+def test_upload_image_slugifies_filename_with_spaces_and_mixed_case(
+    client, repo
+) -> None:
+    """Regression: an uploaded filename like "Map of living room.PNG" must
+    become a clean slug — spaces, mixed case, and mixed-case extensions on
+    disk are exactly what broke an external pre-commit image-compression
+    hook (pngquant's --ext .png treats "name.PNG" -> "name.png" as a
+    *different* filename, case-sensitively, silently leaving a stray
+    untracked sibling file behind on every commit)."""
+    data = {"file": (_make_image_bytes(100, 100), "Map of Living Room.PNG")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] == "map-of-living-room.jpg"
+
+
+def test_upload_image_slugifies_special_characters(client, repo) -> None:
+    data = {"file": (_make_image_bytes(100, 100), "photo (final)! v2.png")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] == "photo-final-v2.jpg"
+
+
+def test_upload_image_falls_back_to_image_when_filename_slugifies_to_empty(
+    client, repo
+) -> None:
+    data = {"file": (_make_image_bytes(100, 100), "!!!.png")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] == "image.jpg"
+
+
 def test_upload_image_404(client) -> None:
     data = {"file": (io.BytesIO(b"data"), "photo.png")}
     r = client.post(
