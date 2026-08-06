@@ -1,6 +1,7 @@
 """Tests for send_all draft guard and test_send behaviour."""
 
 import json
+import subprocess
 import textwrap
 from unittest.mock import MagicMock, patch
 
@@ -232,6 +233,157 @@ def test_send_all_without_base_url_returns_400(client, repo) -> None:
     r = client.post("/api/send/my-ed")
     assert r.status_code == 400
     assert "baseurl" in r.get_json()["error"].lower()
+
+
+# send_all — email-only mode pushes to git after sending (see git_sync.py).
+# Send is the important activity here — a git problem must never block or
+# roll back the send itself, only surface a non-fatal warning.
+
+
+def run(args, cwd, check=True):
+    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=False)
+    if check:
+        assert r.returncode == 0, r.stderr
+    return r
+
+
+@pytest.fixture
+def git_client(tmp_path, monkeypatch):
+    remote = tmp_path / "remote.git"
+    local = tmp_path / "local"
+    run(["git", "init", "--bare", str(remote)], cwd=tmp_path)
+    (local / "content" / "newsletter").mkdir(parents=True)
+    run(["git", "init", str(local)], cwd=local)
+    run(["git", "config", "user.email", "test@example.com"], cwd=local)
+    run(["git", "config", "user.name", "Test"], cwd=local)
+    run(["git", "remote", "add", "origin", str(remote)], cwd=local)
+    run(["git", "add", "-A"], cwd=local)
+    run(["git", "commit", "--allow-empty", "-m", "init"], cwd=local)
+    run(["git", "branch", "-M", "main"], cwd=local)
+    run(["git", "push", "-u", "origin", "main"], cwd=local)
+
+    monkeypatch.setattr(state, "REPO_ROOT", local)
+    monkeypatch.setattr(state, "CONTENT_DIR", local / "content" / "newsletter")
+    server.app.config["TESTING"] = True
+    server.app.config["PORT"] = 5000
+    with server.app.test_client() as c:
+        yield c, local
+
+
+def _do_send(client, extra_config=None):
+    config = {"name": "My Letter", "sheet_id": "sheet123", "email_only": True}
+    config.update(extra_config or {})
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch("patr.server.send_email"),
+        patch("patr.server.log_sent"),
+        patch(
+            "patr.server.fetch_contacts",
+            return_value=[{"name": "Alice", "email": "alice@example.com"}],
+        ),
+        patch("patr.server.get_already_sent", return_value=set()),
+        patch("patr.server.load_newsletter_config", return_value=config),
+        patch("patr.server.time") as mock_time,
+    ):
+        mock_time.sleep = MagicMock()
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com",
+            "name": "Me",
+        }
+        r = client.post("/api/send/my-ed")
+    return r
+
+
+def test_send_all_pushes_in_email_only_mode(git_client) -> None:
+    client, local = git_client
+    make_edition(local, "my-ed", draft=True)
+    run(["git", "add", "-A"], cwd=local)
+    run(["git", "commit", "-m", "wip: Test Edition"], cwd=local)
+
+    r = _do_send(client)
+
+    events = _parse_sse(r.data)
+    done = next(e for e in events if e["type"] == "done")
+    assert done["sent"] == 1
+    assert "git_warning" not in done
+
+    remote_subjects = run(
+        ["git", "log", "--format=%s", "origin/main"], cwd=local
+    ).stdout
+    assert "Send: Test Edition" in remote_subjects
+
+
+def test_send_all_reports_git_warning_without_blocking_send(
+    git_client, tmp_path
+) -> None:
+    """A git push failure (here: unresolvable rebase conflict) must not
+    affect the send result — emails already went out."""
+    client, local = git_client
+
+    other = tmp_path / "other"
+    other.mkdir()
+    run(["git", "init", str(other)], cwd=other)
+    run(["git", "config", "user.email", "other@example.com"], cwd=other)
+    run(["git", "config", "user.name", "Other"], cwd=other)
+    run(["git", "remote", "add", "origin", str(tmp_path / "remote.git")], cwd=other)
+    run(["git", "fetch", "origin"], cwd=other)
+    # Explicit fetch + checkout onto a branch tracking origin/main, rather
+    # than `git clone` — a plain clone's default branch depends on git's
+    # (OS-dependent) init.defaultBranch, which can differ from the "main"
+    # this repo actually uses, silently committing onto an unrelated branch.
+    run(["git", "checkout", "-B", "main", "origin/main"], cwd=other)
+    d = other / "content" / "newsletter" / "my-ed"
+    d.mkdir(parents=True)
+    (d / "index.md").write_text("conflicting remote content")
+    run(["git", "add", "-A"], cwd=other)
+    run(["git", "commit", "-m", "remote wip"], cwd=other)
+    run(["git", "push", "origin", "HEAD:main"], cwd=other)
+
+    make_edition(local, "my-ed", draft=True)
+    (local / "content" / "newsletter" / "my-ed" / "index.md").write_text(
+        textwrap.dedent("""\
+        ---
+        title: Test Edition
+        date: 2024-01-01
+        draft: true
+        ---
+
+        Conflicting local content.
+    """)
+    )
+    run(["git", "add", "-A"], cwd=local)
+    run(["git", "commit", "-m", "wip: Test Edition"], cwd=local)
+
+    r = _do_send(client)
+
+    events = _parse_sse(r.data)
+    done = next(e for e in events if e["type"] == "done")
+    assert done["sent"] == 1  # send succeeded regardless
+    assert "git_warning" in done
+    assert "resolve manually" in done["git_warning"]
+
+
+def test_send_all_does_not_push_when_not_email_only(git_client) -> None:
+    client, local = git_client
+    (local / "hugo.toml").write_text(
+        'baseURL = "https://real-newsletter.com"\n[params]\n'
+    )
+    make_edition(local, "my-ed", draft=False)
+    run(["git", "add", "-A"], cwd=local)
+    run(["git", "commit", "-m", "wip: Test Edition"], cwd=local)
+
+    r = _do_send(client, extra_config={"email_only": False})
+
+    events = _parse_sse(r.data)
+    done = next(e for e in events if e["type"] == "done")
+    assert done["sent"] == 1
+    assert "git_warning" not in done
+
+    remote_subjects = run(
+        ["git", "log", "--format=%s", "origin/main"], cwd=local
+    ).stdout
+    assert "Send: Test Edition" not in remote_subjects
 
 
 # test_send — no sheet_id configured
