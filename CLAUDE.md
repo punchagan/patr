@@ -340,8 +340,15 @@ non-matching commits back on in order (safe/conflict-free since their diffs
 are path-disjoint from the edition being squashed), then checkout the
 edition's original-HEAD content on top and commit. No-ops (returns `False`,
 original history untouched) when there's no upstream tracking branch, the
-working tree isn't clean, or fewer than two local commits touch that
-edition. `git_sync.fetch_rebase_and_push()` then fetches and rebases onto
+working tree isn't clean, or fewer than two local commits *exclusively*
+touch that edition. A commit that touches this edition *and* something else
+(e.g. a manual `git add -A` spanning two editions — Patr's own auto-commit
+never produces one, since it always `git add`s exactly one edition's
+directory) blocks squashing that edition outright, rather than either
+dropping its other-edition changes or replaying it onto a pre-image it
+never actually had (both of which a naive "exclude it from the squashed
+commit, replay it as-is" fix would risk) — see `_classify_commits()`.
+`git_sync.fetch_rebase_and_push()` then fetches and rebases onto
 the upstream branch before pushing (explicit refspec — some environments
 set `push.default = nothing`, which breaks a bare `git push`); on a rebase
 conflict it aborts the rebase and returns an error rather than leaving the

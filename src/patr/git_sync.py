@@ -80,43 +80,76 @@ def _touched_paths_by_commit() -> dict[str, list[str]]:
     return result
 
 
-def _commits_touching(edition_relpath: str, commits: list[str]) -> list[str]:
+def _classify_commits(
+    edition_relpath: str, commits: list[str]
+) -> tuple[list[str], list[str]]:
+    """Split commits into (exclusive, mixed) relative to edition_relpath —
+    "exclusive" touches only paths under edition_relpath, "mixed" touches
+    edition_relpath *and* at least one path outside it (e.g. a manual
+    `git add -A` commit spanning two editions — never produced by Patr's own
+    auto-commit, which always `git add`s exactly one edition's directory,
+    but possible in a repo's pre-existing history). Commits touching neither
+    are omitted entirely.
+
+    Mixed commits are deliberately never candidates for squashing (see
+    squash_edition_commits) — cherry-picking one onto the merge-base would
+    apply its edition_relpath-touching hunk against a pre-image that never
+    existed there (the intervening "exclusive" commits it actually depended
+    on for that path were skipped), which can conflict or, worse, silently
+    resolve toward the wrong content instead of failing loudly.
+    """
     touched_map = _touched_paths_by_commit()
     prefix = edition_relpath + "/"
-    return [
-        sha
-        for sha in commits
-        if any(
-            p == edition_relpath or p.startswith(prefix)
-            for p in touched_map.get(sha, [])
-        )
-    ]
+
+    def matches(p: str) -> bool:
+        return p == edition_relpath or p.startswith(prefix)
+
+    exclusive, mixed = [], []
+    for sha in commits:
+        paths = touched_map.get(sha, [])
+        touches_this = any(matches(p) for p in paths)
+        if not touches_this:
+            continue
+        if all(matches(p) for p in paths):
+            exclusive.append(sha)
+        else:
+            mixed.append(sha)
+    return exclusive, mixed
 
 
 def squashable_commit_count(edition_relpath: str) -> int:
-    """Read-only preview: how many local-only commits touch edition_relpath.
+    """Read-only preview: how many local-only commits exclusively touch
+    edition_relpath and would be folded together.
 
-    Doesn't mutate anything — safe to call for a dry-run report. A count of
-    0 or 1 means squash_edition_commits() would no-op (nothing to squash).
+    Doesn't mutate anything — safe to call for a dry-run report. Returns 0
+    when squash_edition_commits() would refuse to squash at all — including
+    when a commit touching edition_relpath also touches something else (see
+    _classify_commits) — not just when there's nothing to squash.
     """
-    return len(_commits_touching(edition_relpath, _local_only_commits()))
+    exclusive, mixed = _classify_commits(edition_relpath, _local_only_commits())
+    if mixed:
+        return 0
+    return len(exclusive)
 
 
 def squash_edition_commits(edition_relpath: str) -> bool:
-    """Squash local-only (not-yet-pushed) commits touching edition_relpath
-    into a single commit, keeping the most recent matching commit's message.
-    Commits touching other paths (e.g. other editions) are replayed
-    unchanged, in their original relative order; the squashed commit itself
-    always lands at the new tip (after all replayed commits) — appropriate
-    since this runs right before a push.
+    """Squash local-only (not-yet-pushed) commits that *exclusively* touch
+    edition_relpath into a single commit, keeping the most recent matching
+    commit's message. Commits touching other paths only (e.g. other
+    editions) are replayed unchanged, in their original relative order; the
+    squashed commit itself always lands at the new tip (after all replayed
+    commits) — appropriate since this runs right before a push.
 
     edition_relpath is relative to REPO_ROOT (e.g. "content/newsletter/foo").
     Returns True if a squash was performed, False on any no-op or failure:
-    no upstream configured, dirty working tree, fewer than two matching
-    commits, a cherry-pick/commit step failing, or the matching commits
-    netting to zero diff from the upstream base (e.g. an edition created and
-    deleted again before ever being pushed — nothing to commit). On any
-    False, the original history is left exactly as it was.
+    no upstream configured, dirty working tree, fewer than two exclusively
+    matching commits, a commit touching edition_relpath *and* something else
+    (see _classify_commits — refuses outright rather than risk a cherry-pick
+    conflict or silently wrong content), a cherry-pick/commit step failing,
+    or the matching commits netting to zero diff from the upstream base
+    (e.g. an edition created and deleted again before ever being pushed —
+    nothing to commit). On any False, the original history is left exactly
+    as it was.
     """
     upstream = upstream_ref()
     if upstream is None:
@@ -129,7 +162,9 @@ def squash_edition_commits(edition_relpath: str) -> bool:
         return False
     original_head = commits[-1]
 
-    mine = _commits_touching(edition_relpath, commits)
+    mine, mixed = _classify_commits(edition_relpath, commits)
+    if mixed:
+        return False
     others = [c for c in commits if c not in mine]
 
     if len(mine) < 2:
