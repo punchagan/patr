@@ -696,7 +696,7 @@ def commit_edition(slug):
 
     if should_amend:
         result = subprocess.run(
-            ["git", "commit", "--amend", "--no-edit"],
+            ["git", "commit", "--amend", "--no-edit", "--", str(edition_dir)],
             cwd=state.REPO_ROOT,
             capture_output=True,
             text=True,
@@ -704,7 +704,7 @@ def commit_edition(slug):
         )
     else:
         result = subprocess.run(
-            ["git", "commit", "-m", f"wip: {title}"],
+            ["git", "commit", "-m", f"wip: {title}", "--", str(edition_dir)],
             cwd=state.REPO_ROOT,
             capture_output=True,
             text=True,
