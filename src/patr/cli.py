@@ -429,11 +429,18 @@ def cmd_squash_drafts(args) -> None:
             )
             break
 
-        if squash_edition_commits(edition_relpath):
+        ok, error = squash_edition_commits(edition_relpath)
+        if ok:
             print(f"  squashed  {slug}")
             squashed += 1
-        else:
+        elif error == "fewer than two local-only commits touch this edition":
             print(f"  skip      {slug} (nothing to squash)")
+            skipped += 1
+        else:
+            # A real failure (cherry-pick conflict, git error, ...) —
+            # reported distinctly rather than folded into the same "skip"
+            # line as a genuine no-op, which would hide it entirely.
+            print(f"  error     {slug}: {error}")
             skipped += 1
 
     verb = "Would squash" if dry_run else "Squashed"

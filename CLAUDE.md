@@ -342,10 +342,15 @@ the most recent matching commit's message; commits touching other paths
 Implementation: reset to the merge-base with upstream, cherry-pick the
 non-matching commits back on in order (safe/conflict-free since their diffs
 are path-disjoint from the edition being squashed), then checkout the
-edition's original-HEAD content on top and commit. No-ops (returns `False`,
-original history untouched) when there's no upstream tracking branch, the
-working tree isn't clean, or fewer than two local commits *exclusively*
-touch that edition. A commit that touches this edition *and* something else
+edition's original-HEAD content on top and commit. Returns `(ok, error)` —
+not a bare bool — so a genuine failure (a cherry-pick conflict, a merge
+commit needing `-m`, an unexpected git error) is distinguishable from an
+ordinary no-op instead of collapsing into the same result; `cmd_squash_drafts`
+reports these as `error <slug>: <reason>` rather than folding them into the
+same "nothing to squash" line as a real no-op. No-ops (`ok=False`, original
+history untouched) when there's no upstream tracking branch, the working
+tree isn't clean, or fewer than two local commits *exclusively* touch that
+edition. A commit that touches this edition *and* something else
 (e.g. a manual `git add -A` spanning two editions — Patr's own auto-commit
 never produces one, since it always `git add`s exactly one edition's
 directory) blocks squashing that edition outright, rather than either

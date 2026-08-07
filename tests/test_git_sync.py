@@ -96,7 +96,7 @@ def test_squash_collapses_one_editions_commits(repo) -> None:
     commit_edition(repo, "b", "v2", "wip: B")
     commit_edition(repo, "a", "v3", "Publish: A")
 
-    assert squash_edition_commits("content/newsletter/a") is True
+    assert squash_edition_commits("content/newsletter/a")[0] is True
 
     assert log_subjects(repo) == ["init", "wip: B", "wip: B", "Publish: A"]
     assert (repo / "content" / "newsletter" / "a" / "index.md").read_text() == "v3"
@@ -107,7 +107,7 @@ def test_squash_keeps_final_matching_commits_message(repo) -> None:
     commit_edition(repo, "a", "v1", "wip: A")
     commit_edition(repo, "a", "v2", "wip: A checkpoint 2")
 
-    assert squash_edition_commits("content/newsletter/a") is True
+    assert squash_edition_commits("content/newsletter/a")[0] is True
     assert log_subjects(repo) == ["init", "wip: A checkpoint 2"]
 
 
@@ -116,7 +116,7 @@ def test_squash_noop_without_upstream(tmp_path, remote, monkeypatch) -> None:
     commit_edition(local, "a", "v1", "wip: A")
     commit_edition(local, "a", "v2", "wip: A")
 
-    assert squash_edition_commits("content/newsletter/a") is False
+    assert squash_edition_commits("content/newsletter/a")[0] is False
     assert len(log_subjects(local)) == 3  # nothing collapsed
 
 
@@ -124,7 +124,7 @@ def test_squash_noop_with_fewer_than_two_matching_commits(repo) -> None:
     commit_edition(repo, "a", "v1", "wip: A")
     commit_edition(repo, "b", "v1", "wip: B")
 
-    assert squash_edition_commits("content/newsletter/a") is False
+    assert squash_edition_commits("content/newsletter/a")[0] is False
     assert len(log_subjects(repo)) == 3
 
 
@@ -133,7 +133,7 @@ def test_squash_noop_with_dirty_working_tree(repo) -> None:
     commit_edition(repo, "a", "v2", "wip: A")
     (repo / "content" / "newsletter" / "a" / "index.md").write_text("uncommitted")
 
-    assert squash_edition_commits("content/newsletter/a") is False
+    assert squash_edition_commits("content/newsletter/a")[0] is False
     assert len(log_subjects(repo)) == 3
 
 
@@ -148,7 +148,7 @@ def test_squash_noop_when_edition_created_and_deleted_before_ever_pushed(repo) -
     run(["git", "rm", "-r", "content/newsletter/a"], cwd=repo)
     run(["git", "commit", "-m", "Delete A"], cwd=repo)
 
-    assert squash_edition_commits("content/newsletter/a") is False
+    assert squash_edition_commits("content/newsletter/a")[0] is False
     assert len(log_subjects(repo)) == 4  # original history untouched
 
 
@@ -164,7 +164,7 @@ def test_squash_refuses_when_a_commit_touches_multiple_editions(repo) -> None:
     )
     commit_edition(repo, "a", "v3", "wip: A")
 
-    assert squash_edition_commits("content/newsletter/a") is False
+    assert squash_edition_commits("content/newsletter/a")[0] is False
     # Nothing rewritten — including B's content, which a naive "exclude
     # mixed commits from mine, replay as others" fix would have corrupted.
     assert len(log_subjects(repo)) == 4
@@ -182,10 +182,81 @@ def test_squash_still_works_for_editions_the_mixed_commit_does_not_touch(repo) -
     commit_edition(repo, "c", "c-v1", "wip: C")
     commit_edition(repo, "c", "c-v2", "wip: C")
 
-    assert squash_edition_commits("content/newsletter/c") is True
+    assert squash_edition_commits("content/newsletter/c")[0] is True
     subjects = log_subjects(repo)
     assert "wip: touches a and b" in subjects  # untouched
     assert subjects.count("wip: C") == 1
+
+
+# squash_edition_commits — error messages distinguish real failures from a
+# genuine no-op, rather than collapsing everything into a bare False (the
+# CLI used to report every one of these identically as "nothing to squash").
+
+
+def test_squash_reports_distinct_reason_for_each_kind_of_noop(repo) -> None:
+    commit_edition(repo, "a", "v1", "wip: A")
+    ok, error = squash_edition_commits("content/newsletter/a")
+    assert ok is False
+    assert error == "fewer than two local-only commits touch this edition"
+
+    (repo / "content" / "newsletter" / "a" / "index.md").write_text("uncommitted")
+    ok, error = squash_edition_commits("content/newsletter/a")
+    assert ok is False
+    assert "uncommitted changes" in error
+
+
+def test_squash_reports_upstream_and_mixed_commit_reasons(
+    tmp_path, remote, monkeypatch
+) -> None:
+    local = _init_local(tmp_path / "local", remote, monkeypatch, push_upstream=False)
+    commit_edition(local, "a", "v1", "wip: A")
+    ok, error = squash_edition_commits("content/newsletter/a")
+    assert ok is False
+    assert "no upstream" in error
+
+
+def test_squash_reports_mixed_commit_reason(repo) -> None:
+    commit_edition(repo, "a", "v1", "wip: A")
+    commit_multiple_editions(
+        repo, [("a", "v2-shared"), ("b", "b-v1")], "wip: touches a and b"
+    )
+    commit_edition(repo, "a", "v3", "wip: A")
+
+    ok, error = squash_edition_commits("content/newsletter/a")
+    assert ok is False
+    assert "touch" in error and "split" in error
+
+
+def test_squash_reports_real_cherry_pick_failure_distinctly(repo) -> None:
+    """A merge commit among the *other* editions' local-only history fails
+    `git cherry-pick` outright (it needs -m <parent>, which squash never
+    passes, deliberately — merges in local-only history aren't expected in
+    Patr's own workflow). This must surface as a specific error, not get
+    reported the same way as "fewer than two commits" or any other no-op."""
+    commit_edition(repo, "a", "v1", "wip: A")
+    commit_edition(repo, "a", "v2", "wip: A")
+
+    commit_edition(repo, "b", "b-base", "wip: B base")
+    run(["git", "checkout", "-b", "side"], cwd=repo)
+    (repo / "content" / "newsletter" / "b" / "index.md").write_text("b-side")
+    run(["git", "add", "content/newsletter/b"], cwd=repo)
+    run(["git", "commit", "-m", "wip: B side"], cwd=repo)
+    run(["git", "checkout", "main"], cwd=repo)
+    (repo / "content" / "newsletter" / "b" / "index.md").write_text("b-main")
+    run(["git", "add", "content/newsletter/b"], cwd=repo)
+    run(["git", "commit", "-m", "wip: B main"], cwd=repo)
+    run(
+        ["git", "merge", "side", "-m", "merge: B", "-X", "ours"],
+        cwd=repo,
+    )
+    run(["git", "branch", "-d", "side"], cwd=repo)
+
+    ok, error = squash_edition_commits("content/newsletter/a")
+    assert ok is False
+    assert "cherry-pick" in error
+    assert working_tree_clean()  # restored, nothing left half-done
+    # Original history untouched — "a"'s two commits are both still there.
+    assert log_subjects(repo).count("wip: A") == 2
 
 
 def test_squashing_second_edition_preserves_its_image_files(repo) -> None:
@@ -199,9 +270,9 @@ def test_squashing_second_edition_preserves_its_image_files(repo) -> None:
     commit_edition_with_image(repo, "b", "b-v1", "photo-b.png", b"b1", "wip: B")
     commit_edition_with_image(repo, "b", "b-v2", "photo-b.png", b"b2", "wip: B")
 
-    assert squash_edition_commits("content/newsletter/a") is True
+    assert squash_edition_commits("content/newsletter/a")[0] is True
     assert working_tree_clean()
-    assert squash_edition_commits("content/newsletter/b") is True
+    assert squash_edition_commits("content/newsletter/b")[0] is True
     assert working_tree_clean()
 
     assert (repo / "content" / "newsletter" / "b" / "photo-b.png").read_bytes() == b"b2"
@@ -221,7 +292,7 @@ def test_squashing_three_editions_in_sequence_preserves_all_images(repo) -> None
     commit_edition_with_image(repo, "c", "c-v2", "photo-c.png", b"c2", "wip: C")
 
     for slug in ("a", "b", "c"):
-        assert squash_edition_commits(f"content/newsletter/{slug}") is True, slug
+        assert squash_edition_commits(f"content/newsletter/{slug}")[0] is True, slug
         assert working_tree_clean(), slug
 
     for slug in ("a", "b", "c"):
@@ -272,9 +343,9 @@ def test_split_then_squash_multiple_editions_preserves_images(repo) -> None:
 
     # Squash a different edition first, same as the real run (iii before
     # ii) — iii's squashed commit becomes ii's original_head.
-    assert squash_edition_commits("content/newsletter/iii") is True
+    assert squash_edition_commits("content/newsletter/iii")[0] is True
     assert working_tree_clean()
-    assert squash_edition_commits("content/newsletter/ii") is True
+    assert squash_edition_commits("content/newsletter/ii")[0] is True
     assert working_tree_clean()
 
     assert (
@@ -311,7 +382,7 @@ def test_squash_final_commit_does_not_trigger_repo_hooks(repo) -> None:
         stray.unlink()  # clean up the setup commit's own (expected) hook side effect
     assert working_tree_clean()
 
-    assert squash_edition_commits("content/newsletter/a") is True
+    assert squash_edition_commits("content/newsletter/a")[0] is True
     assert working_tree_clean()
     assert not stray.exists()
 
@@ -330,7 +401,7 @@ def test_squash_cherry_pick_does_not_trigger_repo_hooks(repo) -> None:
         stray.unlink()
     assert working_tree_clean()
 
-    assert squash_edition_commits("content/newsletter/a") is True
+    assert squash_edition_commits("content/newsletter/a")[0] is True
     assert working_tree_clean()
     assert not stray.exists()
 
@@ -429,7 +500,7 @@ def test_split_separates_into_one_commit_per_edition(repo) -> None:
 
     # And now unblocked — squashing a proceeds normally.
     assert blocking_commits(["content/newsletter/a", "content/newsletter/b"]) == []
-    assert squash_edition_commits("content/newsletter/a") is True
+    assert squash_edition_commits("content/newsletter/a")[0] is True
 
 
 def test_split_groups_unrecognized_paths_as_other(repo) -> None:

@@ -333,7 +333,7 @@ def squashable_commit_count(edition_relpath: str) -> int:
     return len(exclusive)
 
 
-def squash_edition_commits(edition_relpath: str) -> bool:
+def squash_edition_commits(edition_relpath: str) -> tuple[bool, str]:
     """Squash local-only (not-yet-pushed) commits that *exclusively* touch
     edition_relpath into a single commit, keeping the most recent matching
     commit's message. Commits touching other paths only (e.g. other
@@ -342,53 +342,68 @@ def squash_edition_commits(edition_relpath: str) -> bool:
     commits) — appropriate since this runs right before a push.
 
     edition_relpath is relative to REPO_ROOT (e.g. "content/newsletter/foo").
-    Returns True if a squash was performed, False on any no-op or failure:
-    no upstream configured, dirty working tree, fewer than two exclusively
-    matching commits, a commit touching edition_relpath *and* something else
-    (see _classify_commits — refuses outright rather than risk a cherry-pick
+    Returns (ok, error) — mirrors split_commit()/fetch_rebase_and_push()
+    rather than a bare bool, so a genuine failure (a cherry-pick conflict, a
+    merge commit needing -m, an unexpected git error) is distinguishable
+    from an ordinary no-op instead of collapsing into the same `False` —
+    the CLI previously reported both identically as "nothing to squash",
+    which was misleading for anything that wasn't actually a no-op.
+
+    ok is False, with an explanatory error, on: no upstream configured,
+    dirty working tree, fewer than two exclusively matching commits, a
+    commit touching edition_relpath *and* something else (see
+    _classify_commits — refuses outright rather than risk a cherry-pick
     conflict or silently wrong content), a cherry-pick/commit step failing,
     or the matching commits netting to zero diff from the upstream base
     (e.g. an edition created and deleted again before ever being pushed —
-    nothing to commit). On any False, the original history is left exactly
-    as it was.
+    nothing to commit). On any ok=False, the original history is left
+    exactly as it was.
     """
     upstream = upstream_ref()
     if upstream is None:
-        return False
+        return False, "no upstream tracking branch configured"
     if not working_tree_clean():
-        return False
+        return False, "working tree has uncommitted changes"
 
     commits = _local_only_commits()
     if not commits:
-        return False
+        return False, "no local-only (unpushed) commits"
     original_head = commits[-1]
 
     mine, mixed = _classify_commits(edition_relpath, commits)
     if mixed:
-        return False
+        return False, (
+            f"{len(mixed)} local-only commit(s) touch {edition_relpath} and "
+            "something else — split them first (see split_commit)"
+        )
     others = [c for c in commits if c not in mine]
 
     if len(mine) < 2:
-        return False
+        return False, "fewer than two local-only commits touch this edition"
 
     final_message = _run(["git", "log", "-1", "--format=%B", mine[-1]]).stdout
 
     base = _run(["git", "merge-base", upstream, "HEAD"]).stdout.strip()
     if not base:
-        return False
+        return False, "could not compute merge-base with upstream"
 
     def _restore() -> None:
         _run(["git", "reset", "--hard", original_head])
 
     if _run(["git", "reset", "--hard", base]).returncode != 0:
         _restore()
-        return False
+        return False, "failed to reset to the merge-base"
 
     for sha in others:
-        if _run(["git", *_no_hooks(), "cherry-pick", sha]).returncode != 0:
+        cherry_pick = _run(["git", *_no_hooks(), "cherry-pick", sha])
+        if cherry_pick.returncode != 0:
             _run(["git", "cherry-pick", "--abort"])
             _restore()
-            return False
+            return False, (
+                f"cherry-pick of {sha} failed (e.g. a real conflict, or a merge "
+                "commit needing -m) — resolve manually or re-run to retry: "
+                f"{(cherry_pick.stderr or cherry_pick.stdout).strip()}"
+            )
 
     edition_path = state.REPO_ROOT / edition_relpath
     exists_at_head = (
@@ -396,20 +411,22 @@ def squash_edition_commits(edition_relpath: str) -> bool:
         == 0
     )
     if exists_at_head:
-        if (
-            _run(["git", "checkout", original_head, "--", edition_relpath]).returncode
-            != 0
-        ):
+        checkout = _run(["git", "checkout", original_head, "--", edition_relpath])
+        if checkout.returncode != 0:
             _restore()
-            return False
+            return False, (
+                f"failed to check out {edition_relpath} from {original_head}: "
+                f"{(checkout.stderr or checkout.stdout).strip()}"
+            )
         _run(["git", "add", edition_relpath])
     elif edition_path.exists():
         _run(["git", "rm", "-r", "-q", edition_relpath])
 
-    if _run(["git", *_no_hooks(), "commit", "-m", final_message]).returncode != 0:
+    commit = _run(["git", *_no_hooks(), "commit", "-m", final_message])
+    if commit.returncode != 0:
         _restore()
-        return False
-    return True
+        return False, (f"failed to commit: {(commit.stderr or commit.stdout).strip()}")
+    return True, ""
 
 
 def fetch_rebase_and_push() -> tuple[bool, str]:
