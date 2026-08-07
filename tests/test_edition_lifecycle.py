@@ -29,41 +29,6 @@ def edition_file(repo, slug):
     return repo / "content" / "newsletter" / slug / "index.md"
 
 
-# get_editions — flat .md files in hugo-free mode
-
-
-def test_get_editions_picks_up_flat_md_in_hugo_free_mode(tmp_path) -> None:
-    """Flat slug.md files must appear as editions when CONTENT_DIR == REPO_ROOT."""
-    state.REPO_ROOT = tmp_path
-    state.CONTENT_DIR = tmp_path
-    (tmp_path / "my-edition.md").write_text(
-        "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
-    )
-    from patr.content import get_editions
-
-    editions = get_editions()
-    assert len(editions) == 1
-    assert editions[0]["slug"] == "my-edition"
-    assert editions[0]["title"] == "My Edition"
-
-
-# load_edition — flat .md files in hugo-free mode
-
-
-def test_load_edition_finds_flat_md_in_hugo_free_mode(tmp_path) -> None:
-    """load_edition must find slug.md when no bundle exists in hugo-free mode."""
-    state.REPO_ROOT = tmp_path
-    state.CONTENT_DIR = tmp_path
-    (tmp_path / "my-edition.md").write_text(
-        "---\ntitle: My Edition\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
-    )
-    from patr.content import load_edition
-
-    f, post = load_edition("my-edition")
-    assert f is not None
-    assert post["title"] == "My Edition"
-
-
 # get_editions — sent status
 
 
@@ -144,27 +109,29 @@ def hugo_free_client(tmp_path):
 # /api/editions warnings — hugo-free mode
 
 
-def test_no_flat_md_warning_in_hugo_free_mode(hugo_free_client, tmp_path) -> None:
-    """A README.md in REPO_ROOT must not trigger the flat-file migration warning."""
+def test_flat_md_warning_in_hugo_free_mode(hugo_free_client, tmp_path) -> None:
+    """A flat slug.md in hugo-free mode should still trigger the migration warning
+    (bundles-only applies in both Hugo and hugo-free mode)."""
     (tmp_path / "README.md").write_text("# hello\n")
+    (tmp_path / "my-post.md").write_text("---\ntitle: T\n---\nBody.\n")
     r = hugo_free_client.get("/api/editions")
     assert r.status_code == 200
-    assert r.get_json()["warnings"] == []
+    assert any("my-post.md" in w for w in r.get_json()["warnings"])
 
 
-# check-images — flat .md in hugo-free mode
+# check-images — bundle in hugo-free mode
 
 
-def test_check_images_finds_image_in_sibling_dir_for_flat_edition(
+def test_check_images_finds_image_in_bundle_dir_in_hugo_free_mode(
     hugo_free_client, tmp_path
 ) -> None:
-    """Images referenced from a flat edition must be found in the sibling slug/ dir."""
-    (tmp_path / "my-post.md").write_text(
+    """Images referenced from a page-bundle edition must be found alongside index.md."""
+    bundle = tmp_path / "my-post"
+    bundle.mkdir()
+    (bundle / "index.md").write_text(
         "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\n![alt](photo.jpg)\n"
     )
-    sibling = tmp_path / "my-post"
-    sibling.mkdir()
-    (sibling / "photo.jpg").write_bytes(b"img")
+    (bundle / "photo.jpg").write_bytes(b"img")
     r = hugo_free_client.get("/api/edition/my-post/check-images")
     assert r.status_code == 200
     assert r.get_json()["missing"] == []

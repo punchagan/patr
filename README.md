@@ -76,7 +76,16 @@ Point Patr at any directory of markdown files and start writing:
 patr serve --repo /path/to/any-directory
 ```
 
-No installation step needed. New editions are created as page bundles (`slug/index.md`) inside that directory. Flat `.md` files already in the directory are also recognised as editions.
+No installation step needed. New editions are created as page bundles (`slug/index.md`) inside that directory.
+
+**Already have a directory of markdown files?** Patr only recognizes page bundles (`slug/index.md`), not flat `slug.md` files — this keeps images co-located with their edition instead of scattered in a shared folder. If you're starting from existing flat `.md` files, convert them first:
+
+```bash
+patr migrate --repo /path/to/any-directory          # dry run
+patr migrate --repo /path/to/any-directory --apply  # apply
+```
+
+`patr serve` refuses to start if it finds flat `.md` files in the content directory, and points you at this command.
 
 ### Hugo site mode
 
@@ -88,7 +97,7 @@ patr install --repo /path/to/hugo-site
 
 This copies Hugo templates and CSS into the site, creates `content/newsletter/` stubs, and optionally adds a nav menu entry. To customise the newsletter's appearance, edit `assets/newsletter.css` in your Hugo site after installing.
 
-If you have existing flat `.md` newsletter editions in `content/newsletter/`, migrate them to page bundles first:
+`patr install` refuses to run if it finds existing flat `.md` newsletter editions in `content/newsletter/` — migrate them to page bundles first:
 
 ```bash
 patr migrate --repo /path/to/hugo-site          # dry run
