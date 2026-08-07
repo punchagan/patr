@@ -225,7 +225,21 @@ def new_edition():
 
 @app.route("/newsletter/<slug>/<path:filename>")
 def edition_resource(slug, filename):
-    return send_from_directory(state.CONTENT_DIR / slug, filename)
+    """Serve an edition's own resources (images referenced in its markdown).
+
+    send_from_directory()'s safe_join() only sanitizes the filename
+    argument against ".." — the directory argument (built from slug here)
+    gets no such protection. slug=".." would otherwise resolve to
+    CONTENT_DIR's parent, letting filename (still real paths, just no "..")
+    read anything downward from there — e.g. sibling repos in hugo-free
+    mode, where CONTENT_DIR == REPO_ROOT. Resolving and checking
+    is_relative_to() closes this regardless of the OS or how many "../" a
+    request manages to smuggle through.
+    """
+    edition_dir = (state.CONTENT_DIR / slug).resolve()
+    if not edition_dir.is_relative_to(state.CONTENT_DIR.resolve()):
+        return "Not found", 404
+    return send_from_directory(edition_dir, filename)
 
 
 @app.route("/api/edition/<slug>/content", methods=["GET"])
