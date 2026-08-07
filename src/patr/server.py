@@ -179,7 +179,7 @@ def api_editions():
     """Return all editions plus any warnings about the content directory."""
     editions = get_editions()
     warnings = []
-    if hugo_mode() and state.CONTENT_DIR.exists():
+    if state.CONTENT_DIR.exists():
         flat = [
             f.name
             for f in state.CONTENT_DIR.iterdir()
@@ -303,7 +303,7 @@ def save_edition_content(slug):
 
 @app.route("/api/edition/<slug>", methods=["DELETE"])
 def delete_edition(slug):
-    """Delete an edition by removing its directory (bundle) or file (flat).
+    """Delete an edition by removing its page-bundle directory.
 
     Backups in ~/.local/share/patr/backups/ are left intact and can be used
     for manual recovery after deletion.
@@ -311,13 +311,7 @@ def delete_edition(slug):
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
-    if f.parent != state.CONTENT_DIR:
-        shutil.rmtree(f.parent)
-    else:
-        f.unlink()
-        image_dir = edition_dir_for(f)
-        if image_dir.exists():
-            shutil.rmtree(image_dir)
+    shutil.rmtree(f.parent)
     return jsonify({"ok": True})
 
 

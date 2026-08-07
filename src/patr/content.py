@@ -11,7 +11,6 @@ import markdown
 import yaml
 from bs4 import BeautifulSoup
 from patr import state
-from patr.config import hugo_mode
 from PIL import Image, UnidentifiedImageError
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
@@ -48,9 +47,9 @@ def write_edition_frontmatter(f: Path, post) -> None:
 def get_editions():
     """Return all editions as a list of dicts, sorted by date descending.
 
-    In Hugo mode, only page bundles (directories with index.md) are returned.
-    In hugo-free mode, flat .md files are also returned alongside bundles.
-    Returns an empty list if CONTENT_DIR does not exist.
+    Only page bundles (directories containing index.md) are returned — flat
+    .md files are not recognized as editions (see patr migrate). Returns an
+    empty list if CONTENT_DIR does not exist.
     """
     if not state.CONTENT_DIR.exists():
         return []
@@ -63,9 +62,6 @@ def get_editions():
                 f = entry / "index.md"
                 if f.exists():
                     yield entry.name, f
-            elif not hugo_mode() and entry.is_file() and entry.suffix == ".md":
-                if entry.stem not in _SKIP_NAMES:
-                    yield entry.stem, entry
 
     posts = []
     for slug, f in _candidate_files():
@@ -100,30 +96,21 @@ def get_editions():
 def load_edition(slug):
     """Load an edition by slug, returning (path, post) or (None, None) if not found.
 
-    Checks for a page bundle (slug/index.md) first, then a flat file (slug.md)
-    in hugo-free mode.
+    Only a page bundle (slug/index.md) is recognized.
     """
     bundle = state.CONTENT_DIR / slug / "index.md"
-    flat = state.CONTENT_DIR / f"{slug}.md"
-    if bundle.exists():
-        f = bundle
-    elif not hugo_mode() and flat.exists():
-        f = flat
-    else:
+    if not bundle.exists():
         return None, None
     try:
-        return f, frontmatter.load(f)
+        return bundle, frontmatter.load(bundle)
     except Exception as e:
         raise ValueError(f"Frontmatter parse error in {slug}: {e}") from e
 
 
 def edition_dir_for(f):
-    """Return the directory used to store an edition's resources (e.g. images).
-
-    For a page bundle (slug/index.md) this is f.parent (slug/).
-    For a flat file (slug.md) this is a sibling directory with the same stem (slug/).
-    """
-    return f.parent if f.parent != state.CONTENT_DIR else f.with_suffix("")
+    """Return the directory used to store an edition's resources (e.g.
+    images) — f.parent, the page bundle directory."""
+    return f.parent
 
 
 def repo_slug():

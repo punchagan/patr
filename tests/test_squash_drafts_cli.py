@@ -248,44 +248,6 @@ def test_apply_stops_loudly_if_tree_becomes_dirty_mid_run(repo, capsys) -> None:
     assert subjects.count("wip: B") == 2  # b was never touched
 
 
-def test_apply_skips_flat_file_editions(tmp_path, monkeypatch, capsys) -> None:
-    remote = tmp_path / "remote.git"
-    local = tmp_path / "local"
-    run(["git", "init", "--bare", str(remote)], cwd=tmp_path)
-    local.mkdir()
-    run(["git", "init", str(local)], cwd=local)
-    run(["git", "config", "user.email", "test@example.com"], cwd=local)
-    run(["git", "config", "user.name", "Test"], cwd=local)
-    run(["git", "remote", "add", "origin", str(remote)], cwd=local)
-    run(["git", "commit", "--allow-empty", "-m", "init"], cwd=local)
-    run(["git", "branch", "-M", "main"], cwd=local)
-    run(["git", "push", "-u", "origin", "main"], cwd=local)
-
-    (local / "my-ed.md").write_text(
-        textwrap.dedent("""\
-        ---
-        title: Test Edition
-        date: 2024-01-01
-        draft: true
-        ---
-
-        Body.
-    """)
-    )
-    run(["git", "add", "-A"], cwd=local)
-    run(["git", "commit", "-m", "wip: my-ed"], cwd=local)
-
-    monkeypatch.setattr(state, "REPO_ROOT", local)
-    monkeypatch.setattr(state, "CONTENT_DIR", local)
-
-    args = argparse.Namespace(repo=str(local), apply=True)
-    cli.cmd_squash_drafts(args)
-
-    assert len(log_subjects(local)) == 2  # untouched
-    out = capsys.readouterr().out
-    assert "flat .md edition" in out
-
-
 def test_no_editions_prints_message(repo, capsys) -> None:
     args = argparse.Namespace(repo=str(repo), apply=True)
     cli.cmd_squash_drafts(args)

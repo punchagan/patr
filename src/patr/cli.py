@@ -36,6 +36,16 @@ from patr.git_sync import (
 )
 
 
+def _find_flat_editions(content_dir: Path) -> list[Path]:
+    """Flat .md files directly in content_dir — not page bundles, and (see
+    get_editions()) never recognized as editions. Used by both cmd_install
+    (Hugo mode, at setup time) and cmd_serve (either mode, at startup) to
+    refuse and point at `patr migrate` rather than silently ignoring them."""
+    if not content_dir.exists():
+        return []
+    return sorted(f for f in content_dir.glob("*.md") if f.name != "_index.md")
+
+
 def cmd_install(args) -> None:
     repo = Path(args.repo).resolve()
     state.REPO_ROOT = repo
@@ -61,11 +71,7 @@ def cmd_install(args) -> None:
     # Check for flat .md editions — patr requires page bundles
     content_dst = repo / "content" / "newsletter"
     if content_dst.exists():
-        flat_editions = [
-            f
-            for f in content_dst.glob("*.md")
-            if f.name not in ("_index.md", "footer.md")
-        ]
+        flat_editions = _find_flat_editions(content_dst)
         if flat_editions:
             print(f"Error: flat edition files found in {content_dst}:")
             for f in flat_editions:
@@ -143,8 +149,19 @@ def cmd_install(args) -> None:
 
 
 def cmd_migrate(args) -> None:
+    """Convert flat .md editions to page bundles (slug/index.md).
+
+    Works in both Hugo mode (content/newsletter/*.md, rewriting
+    /images/newsletter/foo.jpg references and moving those files in from
+    static/images/newsletter/) and hugo-free mode (flat .md files directly
+    in the repo root, images left as-is — hugo-free flat editions already
+    keep any images in a sibling slug/ directory rather than a shared
+    static/ tree, so that directory is reused as the new bundle dir rather
+    than treated as a pre-existing bundle to skip).
+    """
     repo = Path(args.repo).resolve()
-    content_dir = repo / "content" / "newsletter"
+    is_hugo = (repo / "hugo.toml").exists()
+    content_dir = repo / "content" / "newsletter" if is_hugo else repo
     static_images_dir = repo / "static" / "images" / "newsletter"
     dry_run = not args.apply
 
@@ -162,30 +179,35 @@ def cmd_migrate(args) -> None:
             continue
         slug = f.stem
         bundle_dir = content_dir / slug
-        if bundle_dir.exists():
+        if (bundle_dir / "index.md").exists():
             print(f"  skip  {f.name} (bundle already exists)")
             skipped += 1
             continue
 
         text = f.read_text()
 
-        # Find /images/newsletter/foo.jpg references (not footer images)
-        image_refs = re.findall(r'/images/newsletter/([^\s)"\']+)', text)
-        images_to_move = []
-        for img in image_refs:
-            src = static_images_dir / img
-            if src.exists():
-                images_to_move.append(img)
+        if is_hugo:
+            # Find /images/newsletter/foo.jpg references (not footer images)
+            image_refs = re.findall(r'/images/newsletter/([^\s)"\']+)', text)
+            images_to_move = [
+                img for img in image_refs if (static_images_dir / img).exists()
+            ]
+            new_text = re.sub(r'/images/newsletter/([^\s)"\']+)', r"\1", text)
+        else:
+            # hugo-free: images already live in a sibling slug/ dir with
+            # relative references — nothing to rewrite or move separately.
+            images_to_move = []
+            new_text = text
 
         verb = "move" if not dry_run else "would move"
         print(f"  {verb}  {f.name} → {slug}/index.md")
+        if bundle_dir.exists():
+            print(f"          (existing {slug}/ directory will be reused)")
         for img in images_to_move:
             print(f"          static/images/newsletter/{img} → {slug}/{img}")
 
         if not dry_run:
-            bundle_dir.mkdir()
-            # Rewrite image paths before writing index.md
-            new_text = re.sub(r'/images/newsletter/([^\s)"\']+)', r"\1", text)
+            bundle_dir.mkdir(exist_ok=True)
             (bundle_dir / "index.md").write_text(new_text)
             f.unlink()
             for img in images_to_move:
@@ -309,11 +331,6 @@ def cmd_squash_drafts(args) -> None:
     itself does (safe to no-op silently when called automatically from
     publish/send, but unhelpful for a command a human is staring at).
 
-    Only page-bundle editions (content/newsletter/<slug>/index.md) are
-    handled — flat .md editions (hugo-free/email-only mode) share a parent
-    directory across all editions, so there's no single-edition path to
-    scope the squash to; those are skipped with a note.
-
     Dry run by default (just reports how many commits each edition would
     collapse to); pass --apply to actually rewrite history.
 
@@ -352,18 +369,11 @@ def cmd_squash_drafts(args) -> None:
         print("No editions found.")
         return
 
-    # Page-bundle editions only — flat .md editions (hugo-free/email-only
-    # mode) share a parent directory across all editions, so there's no
-    # single-edition path to scope a squash or split to.
     edition_relpaths = {}
-    flat_slugs = []
     for edition in editions:
         slug = edition["slug"]
         f, _ = load_edition(slug)
-        if f.parent == state.CONTENT_DIR:
-            flat_slugs.append(slug)
-        else:
-            edition_relpaths[slug] = f.parent.relative_to(state.REPO_ROOT).as_posix()
+        edition_relpaths[slug] = f.parent.relative_to(state.REPO_ROOT).as_posix()
 
     split_sha = getattr(args, "split", None)
     if split_sha:
@@ -383,10 +393,6 @@ def cmd_squash_drafts(args) -> None:
     if dry_run:
         print("Dry run — pass --apply to squash.\n")
 
-    flat_skipped = len(flat_slugs)
-    for slug in flat_slugs:
-        print(f"  skip      {slug} (flat .md edition, not a page bundle)")
-
     blocking = blocking_commits(list(edition_relpaths.values()))
     if blocking:
         print(f"{len(blocking)} commit(s) touch more than one edition (or an")
@@ -401,7 +407,7 @@ def cmd_squash_drafts(args) -> None:
         )
 
     squashed = 0
-    skipped = flat_skipped
+    skipped = 0
     for slug, edition_relpath in edition_relpaths.items():
         if dry_run:
             count = squashable_commit_count(edition_relpath)
@@ -461,6 +467,20 @@ def cmd_serve(args) -> None:
             raise SystemExit(1)
     else:
         state.CONTENT_DIR = state.REPO_ROOT
+
+    flat_editions = _find_flat_editions(state.CONTENT_DIR)
+    if flat_editions:
+        names = ", ".join(f.name for f in flat_editions[:5])
+        if len(flat_editions) > 5:
+            names += ", …"
+        print(f"Error: flat .md edition files found in {state.CONTENT_DIR}:")
+        print(f"  {names}")
+        print(
+            "\nPatr only recognizes page bundles (slug/index.md). Convert them first:"
+        )
+        print(f"  patr migrate --repo {state.REPO_ROOT}          # dry run")
+        print(f"  patr migrate --repo {state.REPO_ROOT} --apply  # apply")
+        raise SystemExit(1)
 
     # Import server after state is configured
     from patr.server import app

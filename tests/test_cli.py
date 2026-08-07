@@ -52,6 +52,37 @@ def test_cmd_serve_hugo_mode_requires_layouts(tmp_path):
     assert exc.value.code == 1
 
 
+def test_cmd_serve_hugo_free_refuses_flat_md_files(tmp_path, capsys):
+    """Patr only recognizes page bundles — flat .md files in a hugo-free repo
+    must make cmd_serve refuse to start and point at `patr migrate`."""
+    (tmp_path / "my-edition.md").write_text(
+        "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
+    )
+    with pytest.raises(SystemExit) as exc:
+        cmd_serve(serve_args(tmp_path))
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "my-edition.md" in out
+    assert "patr migrate" in out
+
+
+def test_cmd_serve_hugo_mode_refuses_flat_md_files(tmp_path, capsys):
+    """Same refusal in Hugo mode, for flat .md files directly in content/newsletter/."""
+    (tmp_path / "hugo.toml").write_text("[params]\n")
+    (tmp_path / "layouts" / "newsletter").mkdir(parents=True)
+    content_dir = tmp_path / "content" / "newsletter"
+    content_dir.mkdir(parents=True)
+    (content_dir / "my-edition.md").write_text(
+        "---\ntitle: T\ndate: 2024-01-01\ndraft: false\n---\nBody\n"
+    )
+    with pytest.raises(SystemExit) as exc:
+        cmd_serve(serve_args(tmp_path))
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "my-edition.md" in out
+    assert "patr migrate" in out
+
+
 # --- _require_pythonutf8_on_windows ---
 
 

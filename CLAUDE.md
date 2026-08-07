@@ -166,9 +166,12 @@ Fails if flat `.md` edition files exist in `content/newsletter/` — run `patr m
 
 ### Migrate Command
 
-`patr migrate --repo <path>` (dry run) / `--apply` (execute):
+`patr migrate --repo <path>` (dry run) / `--apply` (execute) — works in both
+Hugo and hugo-free mode (see [Onboarding from an existing directory of
+markdown files](#onboarding-from-an-existing-directory-of-markdown-files)
+below):
 - Moves each `slug.md` → `slug/index.md` (page bundle)
-- Finds `/images/newsletter/foo.jpg` references in each edition, moves those image files into the bundle, rewrites paths to relative (`foo.jpg`)
+- Hugo mode only: finds `/images/newsletter/foo.jpg` references in each edition, moves those image files into the bundle, rewrites paths to relative (`foo.jpg`)
 - Footer images in `static/images/newsletter/` are left alone (shared, referenced via absolute path)
 
 ### Flask App
@@ -429,18 +432,42 @@ Hugo is detected via `hugo_mode()` (checks for `hugo.toml` in `REPO_ROOT`).
 - `patr install` — prints a friendly message and exits early in hugo-free mode.
 - `CONTENT_DIR` — set to `REPO_ROOT` directly (no `content/newsletter/`
   subdirectory).
-- `get_editions()` — picks up both page bundles (`slug/index.md`) and flat
-  `.md` files in hugo-free mode. Hugo mode is bundles only.
-- `load_edition()` — falls back to `slug.md` when no bundle exists in
-  hugo-free mode.
-- `edition_dir_for(f)` — resolves image directory: `f.parent` for bundles,
-  `f.with_suffix('')` (sibling dir) for flat files.
 - `/preview/<slug>/web` — returns 501 in hugo-free mode.
 - `/preview/<slug>/email` — omits "View in browser" link in hugo-free mode.
-- Flat-file warning in `/api/editions` — only shown in Hugo mode (flat files
-  are valid editions in hugo-free mode).
-- Images for flat file editions — stored in a sibling `slug/` directory,
-  served via the existing `/newsletter/<slug>/<filename>` route.
+
+**Page bundles only, in both modes:** `get_editions()` and `load_edition()`
+only recognize page bundles (`slug/index.md`) — flat `slug.md` files are never
+treated as editions, in Hugo mode or hugo-free mode. `edition_dir_for(f)`
+always returns `f.parent`. This was previously dual-mode (hugo-free mode also
+picked up flat files, storing their images in a sibling `slug/` directory),
+but that added a second content representation to support throughout the app
+for what is fundamentally a one-time onboarding need. It's now a one-time
+explicit conversion step instead — see `patr migrate` below — mirroring how
+Hugo mode has always worked.
+
+`/api/editions`'s warning about flat `.md` files (pointing at `patr migrate`)
+fires in both modes now. `cmd_serve` (`cli.py`) additionally refuses to start
+if it finds flat `.md` files in `CONTENT_DIR`, in either mode — previously
+this refusal only existed for Hugo mode, indirectly, via `patr install`'s
+own check; hugo-free mode has no install step, so it needed an explicit
+guard at `serve` time instead. Both checks (and `patr install`'s) share
+`cli._find_flat_editions()`.
+
+### Onboarding from an existing directory of markdown files
+
+`patr migrate --repo <path>` works in both modes:
+
+- **Hugo mode** (`content/newsletter/*.md`) — rewrites
+  `/images/newsletter/foo.jpg` references to relative paths and moves those
+  files in from `static/images/newsletter/`.
+- **Hugo-free mode** (flat `.md` files directly in the repo root) — images
+  are left as-is; if a flat edition's images already live in a sibling
+  `slug/` directory (the pre-existing flat-file convention), that directory
+  is reused as the new bundle dir rather than treated as an already-migrated
+  bundle to skip.
+
+Both dry run (default) and `--apply` are supported, matching the existing
+Hugo-mode behavior.
 
 ## Known gaps / things to build
 
