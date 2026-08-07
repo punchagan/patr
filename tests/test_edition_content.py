@@ -360,6 +360,17 @@ def test_upload_image_slugifies_special_characters(client, repo) -> None:
     assert r.get_json()["path"] == "photo-final-v2.jpg"
 
 
+def test_upload_image_transliterates_non_latin_filename(client, repo) -> None:
+    data = {"file": (_make_image_bytes(100, 100), "పత్రం.png")}
+    r = client.post(
+        "/api/edition/test-edition/upload-image",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    assert r.get_json()["path"] != "image.jpg"
+
+
 def test_upload_image_falls_back_to_image_when_filename_slugifies_to_empty(
     client, repo
 ) -> None:

@@ -212,6 +212,26 @@ def test_new_edition_empty_title_returns_400(client) -> None:
     assert r.status_code == 400
 
 
+def test_new_edition_transliterates_non_latin_title(client, repo) -> None:
+    """A non-Latin title must produce a readable transliterated slug, not an
+    empty one — Patr's own namesake (patr / pathram, Sanskrit/Telugu for
+    "letter") is exactly this case."""
+    r = client.post("/api/new-edition", json={"title": "పత్రం"})
+    assert r.status_code == 200
+    slug = r.get_json()["slug"]
+    assert slug != ""
+    assert edition_file(repo, slug).exists()
+
+
+def test_new_edition_falls_back_to_untitled_when_slug_is_empty(client, repo) -> None:
+    """A title with no transliterable characters at all (pure punctuation)
+    must still get a usable slug rather than an empty directory name."""
+    r = client.post("/api/new-edition", json={"title": "!!!"})
+    assert r.status_code == 200
+    assert r.get_json()["slug"] == "untitled"
+    assert edition_file(repo, "untitled").exists()
+
+
 # Content save edge cases
 
 
@@ -302,8 +322,11 @@ def test_upload_path_traversal_stays_in_edition_dir(client, repo, edition) -> No
 
 
 def test_unicode_title_round_trips(client, repo) -> None:
-    client.post("/api/new-edition", json={"title": "पत्र — Issue 1 🎉"})
-    post = fm.load(edition_file(repo, "issue-1"))
+    """The title itself must round-trip verbatim (including non-Latin
+    script) even though the slug is transliterated ASCII."""
+    r = client.post("/api/new-edition", json={"title": "पत्र — Issue 1 🎉"})
+    slug = r.get_json()["slug"]
+    post = fm.load(edition_file(repo, slug))
     assert post["title"] == "पत्र — Issue 1 🎉"
 
 
