@@ -71,6 +71,7 @@ from patr.git_sync import fetch_rebase_and_push, squash_edition_commits
 from patr.gmail import send_email
 from patr.updates import apply_update, check_for_update
 from playwright.sync_api import sync_playwright
+from unidecode import unidecode
 
 app = Flask(__name__)
 
@@ -195,11 +196,13 @@ def api_editions():
 
 
 def _slugify(text: str) -> str:
-    """Lowercase, hyphen-separated slug — strips anything that isn't
-    alphanumeric. Used for both edition slugs and uploaded image filenames,
-    so neither ever contains spaces or mixed-case extensions that trip up
+    """Lowercase, hyphen-separated slug — transliterates non-Latin text to
+    ASCII (so a Telugu/Devanagari/etc. title still produces a readable slug
+    instead of an empty one) then strips anything that isn't alphanumeric.
+    Used for both edition slugs and uploaded image filenames, so neither
+    ever contains spaces or mixed-case extensions that trip up
     case-sensitive tooling downstream (e.g. shell scripts, git hooks)."""
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", unidecode(text).lower()).strip("-")
 
 
 @app.route("/api/new-edition", methods=["POST"])
@@ -208,7 +211,7 @@ def new_edition():
     title = data.get("title", "").strip()
     if not title:
         return jsonify({"error": "Title is required"}), 400
-    slug = _slugify(title)
+    slug = _slugify(title) or "untitled"
     edition_dir = state.CONTENT_DIR / slug
     if edition_dir.exists():
         return jsonify({"error": f"Edition '{slug}' already exists"}), 400
