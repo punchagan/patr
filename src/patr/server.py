@@ -92,7 +92,7 @@ def index():
 
 @app.route("/api/auth-status")
 def api_auth_status():
-    connected, _ = auth_status()
+    connected = auth_status()
     needs_credentials = not state.CREDENTIALS_FILE.exists()
     sender_email = (
         state.SENDER_EMAIL_FILE.read_text().strip()

@@ -1,5 +1,3 @@
-import json
-
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
@@ -40,19 +38,18 @@ def get_auth():
     return creds
 
 
-def auth_status():
-    """Returns (connected: bool, email: str|None)"""
+def auth_status() -> bool:
+    """Whether Gmail/Sheets credentials exist and are (or can be refreshed
+    to be) valid. The connected account's email is read separately from
+    state.SENDER_EMAIL_FILE, written by the real userinfo API during the
+    OAuth callback — not derivable from the token file itself."""
     if not state.TOKEN_FILE.exists():
-        return False, None
+        return False
     try:
         creds = Credentials.from_authorized_user_file(state.TOKEN_FILE, state.SCOPES)
         if creds.expired and creds.refresh_token:
             creds.refresh(GoogleRequest())
             state.TOKEN_FILE.write_text(creds.to_json())
-        if creds.valid:
-            # Extract email from token file
-            data = json.loads(state.TOKEN_FILE.read_text())
-            return True, data.get("client_id", "").split("-")[0] or None
+        return creds.valid
     except Exception:
-        pass
-    return False, None
+        return False
