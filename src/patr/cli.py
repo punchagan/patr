@@ -36,6 +36,24 @@ from patr.git_sync import (
 )
 
 
+def _configure_repo(repo_arg) -> Path:
+    """Resolve --repo and point state at it: REPO_ROOT, plus the derived
+    CONTENT_DIR (content/newsletter in Hugo mode, REPO_ROOT itself in
+    hugo-free mode).
+
+    Called first thing by every cmd_* function — each is tested by calling
+    it directly with an argparse.Namespace (bypassing main()'s dispatch), so
+    the resolution can't live only in main(); it must be reachable from each
+    command on its own. REPO_ROOT must be set before hugo_mode() is called,
+    since hugo_mode() reads it.
+    """
+    state.REPO_ROOT = Path(repo_arg).resolve()
+    state.CONTENT_DIR = (
+        state.REPO_ROOT / "content" / "newsletter" if hugo_mode() else state.REPO_ROOT
+    )
+    return state.REPO_ROOT
+
+
 def _find_flat_editions(content_dir: Path) -> list[Path]:
     """Flat .md files directly in content_dir — not page bundles, and (see
     get_editions()) never recognized as editions. Used by both cmd_install
@@ -47,8 +65,7 @@ def _find_flat_editions(content_dir: Path) -> list[Path]:
 
 
 def cmd_install(args) -> None:
-    repo = Path(args.repo).resolve()
-    state.REPO_ROOT = repo
+    repo = _configure_repo(args.repo)
     if not hugo_mode():
         print("Hugo-free mode: no installation needed.")
         print(f"Run: patr serve --repo {repo}")
@@ -159,10 +176,10 @@ def cmd_migrate(args) -> None:
     static/ tree, so that directory is reused as the new bundle dir rather
     than treated as a pre-existing bundle to skip).
     """
-    repo = Path(args.repo).resolve()
-    is_hugo = (repo / "hugo.toml").exists()
-    content_dir = repo / "content" / "newsletter" if is_hugo else repo
-    static_images_dir = repo / "static" / "images" / "newsletter"
+    _configure_repo(args.repo)
+    is_hugo = hugo_mode()
+    content_dir = state.CONTENT_DIR
+    static_images_dir = state.REPO_ROOT / "static" / "images" / "newsletter"
     dry_run = not args.apply
 
     if not content_dir.exists():
@@ -231,10 +248,7 @@ def cmd_import_sent_log(args) -> None:
     Editions that already have a local sent status (e.g. "partial") are
     left untouched.
     """
-    state.REPO_ROOT = Path(args.repo).resolve()
-    state.CONTENT_DIR = (
-        state.REPO_ROOT / "content" / "newsletter" if hugo_mode() else state.REPO_ROOT
-    )
+    _configure_repo(args.repo)
     dry_run = not args.apply
 
     newsletter_config = load_newsletter_config()
@@ -286,7 +300,7 @@ def cmd_prune_backups(args) -> None:
     Idempotent: re-running after an --apply finds nothing left to prune,
     since only first/last and real checkpoints survive.
     """
-    state.REPO_ROOT = Path(args.repo).resolve()
+    _configure_repo(args.repo)
     dry_run = not args.apply
     backups_root = state.BACKUPS_DIR / repo_slug()
 
@@ -341,10 +355,7 @@ def cmd_squash_drafts(args) -> None:
     touches (plus one more for anything else), unblocking those editions'
     squashes — see git_sync.split_commit.
     """
-    state.REPO_ROOT = Path(args.repo).resolve()
-    state.CONTENT_DIR = (
-        state.REPO_ROOT / "content" / "newsletter" if hugo_mode() else state.REPO_ROOT
-    )
+    _configure_repo(args.repo)
     if not git_mode():
         print("Error: not a git repository.")
         return
@@ -458,15 +469,11 @@ def cmd_squash_drafts(args) -> None:
 
 
 def cmd_serve(args) -> None:
-    state.REPO_ROOT = Path(args.repo).resolve()
-    if hugo_mode():
-        state.CONTENT_DIR = state.REPO_ROOT / "content" / "newsletter"
-        if not (state.REPO_ROOT / "layouts" / "newsletter").exists():
-            print(f"Error: Patr layouts not found in {state.REPO_ROOT}.")
-            print(f"Run first: patr install --repo {state.REPO_ROOT}")
-            raise SystemExit(1)
-    else:
-        state.CONTENT_DIR = state.REPO_ROOT
+    _configure_repo(args.repo)
+    if hugo_mode() and not (state.REPO_ROOT / "layouts" / "newsletter").exists():
+        print(f"Error: Patr layouts not found in {state.REPO_ROOT}.")
+        print(f"Run first: patr install --repo {state.REPO_ROOT}")
+        raise SystemExit(1)
 
     flat_editions = _find_flat_editions(state.CONTENT_DIR)
     if flat_editions:
