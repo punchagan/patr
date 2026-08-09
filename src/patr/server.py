@@ -607,6 +607,12 @@ def write_backup(slug, content):
     backup is recent (< COMMIT_AGE_THRESHOLD seconds), mirroring git amend
     behaviour.  Otherwise writes a new timestamped file.  Backups accumulate
     indefinitely — no rotation.
+
+    Always-on regardless of git mode, but not a substitute for
+    commit_edition()'s git commits where git is available: an amended-away
+    backup file is really gone, while an amended-away git commit is still
+    reachable via reflog. This is the disk-only fallback for repos with no
+    git, not the primary recovery mechanism when git is present.
     """
     backup_dir = state.BACKUPS_DIR / repo_slug() / slug
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -647,6 +653,14 @@ def commit_edition(slug):
     Otherwise creates a new wip commit.  The author-date threshold ensures a
     new checkpoint is created roughly every 5 minutes of wall-clock time,
     giving recoverable history even during long uninterrupted writing sessions.
+
+    This runs alongside write_backup() rather than replacing it: a git commit
+    (even one later amended away) stays recoverable via reflog, unlike a
+    backup file overwrite. Git commits are for authored/version recoverability
+    while drafting; git_sync.py squashes this wip: trail away once something
+    actually gets pushed (Publish/Send), since nobody needs the drafting
+    churn in the shared history afterward — see CLAUDE.md's "Git History
+    Hygiene" section.
     """
     if not git_mode():
         return jsonify({"ok": True, "committed": False})

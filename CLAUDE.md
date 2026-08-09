@@ -321,6 +321,19 @@ re-running after an `--apply` finds nothing left to prune. Implemented in
 
 ### Git History Hygiene
 
+**Why auto-commit at all, instead of relying only on the backup files
+above?** A git commit lands in git's content-addressable object store; even
+when the next auto-commit amends it away, the superseded commit isn't
+deleted, it's reachable via reflog (~90 days) until GC. `write_backup()`'s
+equivalent amend case is a plain file overwrite with no recovery path. So
+during drafting — before anything is pushed, while the author may still want
+to recover an earlier version — git commits give real protection that disk
+backups alone don't. After Publish/Send, none of that intermediate history
+matters anymore; only the clean, pushed history does. That two-phase need
+(recoverability while drafting, cleanliness once shared) is why this system
+auto-commits constantly *and* squashes at defined points, rather than doing
+just one or the other.
+
 `server.commit_edition()`'s auto-commits (see above) are local-only —
 they're never pushed on their own. Left alone, a long editing session
 produces a trail of `wip:` commits that all land on the branch at once
