@@ -1,12 +1,25 @@
 """Tests for content rendering — render_md, absolutify_urls, build_email_html, build_email_plain."""
 
 import base64
+from pathlib import Path
 
 import frontmatter
+import pytest
+import yaml
 from bs4 import BeautifulSoup
-from patr.content import absolutify_urls, build_email_html, build_email_plain, render_md
+from patr.content import (
+    _parse_title_attrs,
+    absolutify_urls,
+    build_email_html,
+    build_email_plain,
+    render_md,
+)
 
 HUGO_CONFIG = {"baseURL": "https://example.com"}
+
+IMAGE_TITLE_ATTR_CASES = yaml.safe_load(
+    (Path(__file__).parent / "fixtures" / "image_title_attrs.yaml").read_text()
+)["cases"]
 
 FOOTER_MD = "Unsubscribe [here](https://example.com/unsubscribe)."
 
@@ -76,32 +89,16 @@ def test_render_md_plain_title_stays_as_title() -> None:
     assert "style" not in html
 
 
-def test_render_md_attr_block_style() -> None:
-    html = render_md("![A cat](photo.jpg \"Title {style='width:100px'}\")")
-    assert 'style="width:100px"' in html
-    assert 'title="Title"' in html
-
-
-def test_render_md_attr_block_width_and_height() -> None:
-    html = render_md("![A cat](photo.jpg \"Title {width='100' height='75'}\")")
-    assert 'width="100"' in html
-    assert 'height="75"' in html
-    assert 'title="Title"' in html
-
-
-def test_render_md_attr_block_only_no_title() -> None:
-    html = render_md("![A cat](photo.jpg \"{width='200'}\")")
-    assert 'width="200"' in html
-    assert "title=" not in html
-
-
-def test_render_md_attr_block_multiple_attrs() -> None:
-    html = render_md(
-        "![A cat](photo.jpg \"Title {width='100' style='border: 1px solid red;'}\")"
-    )
-    assert 'width="100"' in html
-    assert "border: 1px solid red" in html
-    assert 'title="Title"' in html
+@pytest.mark.parametrize(
+    "case", IMAGE_TITLE_ATTR_CASES, ids=[c["title"] for c in IMAGE_TITLE_ATTR_CASES]
+)
+def test_parse_title_attrs_matches_fixture(case) -> None:
+    """_parse_title_attrs() must match the shared fixture — see
+    tests/fixtures/image_title_attrs.yaml for why this file exists and what
+    else must stay in sync with it (the Hugo/Go template equivalent)."""
+    clean_title, attrs = _parse_title_attrs(case["title"])
+    assert clean_title == case["clean_title"]
+    assert attrs == case["attrs"]
 
 
 def test_render_md_empty_and_none() -> None:

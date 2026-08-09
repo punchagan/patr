@@ -1,9 +1,19 @@
+{{/* Attribute block must be anchored to the end of the title (\s*$) — an
+  earlier, unanchored version of this regex stripped the FIRST {...} found
+  anywhere in the title, so a title with unrelated curly braces mid-sentence
+  (e.g. "Notes on {curly braces} mid-sentence") got silently mangled. Must
+  stay in sync with patr.content._parse_title_attrs() — see
+  tests/fixtures/image_title_attrs.yaml and tests/test_render_image_parity.py
+  for the shared test cases (that test can't execute this template directly,
+  since Hugo isn't available in this repo's test environment — it only
+  proves the two regex specs agree, so re-verify by hand after editing
+  either side). */}}
 {{ $cleanTitle := .Title }}
 {{ $imgStyle := "" }}
 {{ $imgWidth := "" }}
 {{ $imgHeight := "" }}
-{{ with findRE `\{[^}]*\}` .Title }}
-  {{ $block := replaceRE `^\{|\}$` "" (index . 0) }}
+{{ with findRE `\{[^}]*\}\s*$` .Title }}
+  {{ $block := replaceRE `^\{|\}\s*$` "" (index . 0) }}
   {{ with findRE `style='[^']*'` $block }}
     {{ $imgStyle = replaceRE `^style='|'$` "" (index . 0) }}
   {{ end }}
@@ -13,7 +23,7 @@
   {{ with findRE `height='[^']*'` $block }}
     {{ $imgHeight = replaceRE `^height='|'$` "" (index . 0) }}
   {{ end }}
-  {{ $cleanTitle = trim (replaceRE `\s*\{[^}]*\}` "" $.Title) " " }}
+  {{ $cleanTitle = trim (replaceRE `\s*\{[^}]*\}\s*$` "" $.Title) " " }}
 {{ end }}
 {{ $styleAttr := $imgStyle }}
 {{ if $imgWidth }}{{ $styleAttr = printf "width:%spx;%s" $imgWidth $styleAttr | strings.TrimRight ";" }}{{ end }}

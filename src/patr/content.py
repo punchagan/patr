@@ -219,6 +219,16 @@ def load_footer():
     return frontmatter.load(footer_file).content
 
 
+# Must be kept in sync with the equivalent regex chain in
+# src/patr/data/layouts/_markup/render-image.html (the Hugo/Go template
+# equivalent, which can't share this code — different language/runtime).
+# tests/fixtures/image_title_attrs.yaml has the shared test cases;
+# tests/test_render_image_parity.py checks a Python port of the Go template
+# against this function using that fixture. One deliberate difference: this
+# function accepts any key='val' pair, while the Hugo template only
+# recognizes style/width/height by name — an unrecognized key silently does
+# nothing on the web side. That's intentional scope, not something to
+# "fix" into matching.
 _TITLE_BLOCK_RE = re.compile(r"\{([^}]*)\}\s*$")
 _ATTR_PAIR_RE = re.compile(r"([\w-]+)='([^']*)'")
 

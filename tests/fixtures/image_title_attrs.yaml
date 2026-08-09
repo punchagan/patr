@@ -1,0 +1,42 @@
+# Canonical test cases for the "{key='val'}" trailing image-title attribute
+# convention (see CLAUDE.md's regex discussion / commit c83397a).
+#
+# This convention is parsed in two places that must agree, but can't share
+# code (one's Python, the other's a Hugo/Go template):
+#   - patr.content._parse_title_attrs()
+#   - src/patr/data/layouts/_markup/render-image.html
+#
+# tests/test_content_rendering.py drives _parse_title_attrs() from this file
+# directly. tests/test_render_image_parity.py drives a Python port of the Go
+# template's regex chain from the same file — it cannot execute the real
+# template (no Hugo in this environment/CI), so it only proves the two
+# regex *specs* agree, not that render-image.html itself is bug-free. If you
+# change either implementation's behavior, update this file and both tests.
+cases:
+  - title: "A cute cat"
+    clean_title: "A cute cat"
+    attrs: {}
+
+  - title: "Title {style='width:100px'}"
+    clean_title: "Title"
+    attrs: {style: "width:100px"}
+
+  - title: "Title {width='100' height='75'}"
+    clean_title: "Title"
+    attrs: {width: "100", height: "75"}
+
+  - title: "{width='200'}"
+    clean_title: ""
+    attrs: {width: "200"}
+
+  - title: "Title {width='100' style='border: 1px solid red;'}"
+    clean_title: "Title"
+    attrs: {width: "100", style: "border: 1px solid red;"}
+
+  - title: "No attrs here"
+    clean_title: "No attrs here"
+    attrs: {}
+
+  - title: "Notes on {curly braces} mid-sentence, not an attr block"
+    clean_title: "Notes on {curly braces} mid-sentence, not an attr block"
+    attrs: {}
