@@ -81,14 +81,22 @@ const dimMarksPlugin = ViewPlugin.fromClass(
  * change, scrolls the cursor position to the middle of the editor viewport
  * via a requestAnimationFrame so the dispatch doesn't happen inside an
  * ongoing update cycle.
+ *
+ * The cursor position is re-read inside the rAF callback rather than
+ * captured at dispatch time: if the selection moves (e.g. an arrow-key
+ * press) between the triggering doc change and the rAF firing, scrolling to
+ * the stale, pre-capture position would jump the view to wherever the
+ * cursor used to be rather than where it is now. This showed up as
+ * "scrolling jumps to random places" on Windows Firefox, where rAF/keydown
+ * timing makes that race window wider than on Linux.
  */
 const typewriterPlugin = ViewPlugin.fromClass(
   class {
     update(update) {
       if (!update.docChanged) return;
-      const head = update.state.selection.main.head;
       requestAnimationFrame(() => {
         if (!update.view.dom.isConnected) return;
+        const head = update.view.state.selection.main.head;
         update.view.dispatch({
           effects: EditorView.scrollIntoView(head, { y: "center" }),
         });
