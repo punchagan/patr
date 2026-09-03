@@ -256,6 +256,7 @@ The UI is a React app (built with Vite, output committed to `static/dist/`). The
 - To rebuild the frontend: `npm run build` in the repo root (requires Node + npm, one-time dev setup)
 - To run frontend tests: `npm run test` (Vitest + jsdom + React Testing Library; config at `vitest.config.js`)
 - CodeMirror's `extensions` prop must be a referentially-stable array (module-level constant, not an inline literal) — `@uiw/react-codemirror` fully reconfigures the editor state whenever that array's identity changes, which is expensive on every re-render and was the cause of patr#4 ("Memory leak in the UI?")
+- `vite.config.js` uses Vite's default content-hashed output filenames (`build.manifest: true`, no fixed `entryFileNames`/`assetFileNames`) rather than fixed `app.js`/`main.css` names — every `npm run build` produces new URLs, so a browser holding an old cached copy under the old URL simply never requests it again; no separate cache-busting query string needed. `server._frontend_assets()` reads the current filenames from `src/patr/static/dist/.vite/manifest.json` on every request to `/` and passes them to `index.html` as `app_js_url`/`main_css_url`. Before this, fixed filenames meant a browser that cached `app.js` kept serving it after a rebuild — a fixed bug could appear to still be present after a deploy until a hard refresh.
 
 ### Hugo Templates
 

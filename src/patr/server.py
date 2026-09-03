@@ -81,13 +81,39 @@ def static_images(filename):
     return send_from_directory(state.REPO_ROOT / "static" / "images", filename)
 
 
+def _frontend_assets() -> dict[str, str]:
+    """Resolve the current build's hashed JS/CSS URLs from Vite's manifest.
+
+    vite.config.js enables `build.manifest` and uses Vite's default
+    content-hashed output filenames (rather than the fixed `app.js`/
+    `main.css` this used to hardcode), so every `npm run build` produces
+    new URLs. A browser holding an old cached copy under the old URL
+    simply never requests it again — no separate cache-busting query
+    string needed. The manifest (src/patr/static/dist/.vite/manifest.json)
+    is a few hundred bytes, cheap enough to read fresh on every request
+    so a rebuild takes effect without restarting the server.
+    """
+    manifest_path = state.PATR_ROOT / "static" / "dist" / ".vite" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    entry = manifest["main.jsx"]
+    return {
+        "app_js_url": f"/static/dist/{entry['file']}",
+        "main_css_url": f"/static/dist/{entry['css'][0]}",
+    }
+
+
 @app.route("/")
 def index():
     cfg = load_newsletter_config()
     unconfigured = not cfg.get("name", "").strip()
     name = cfg.get("name", "").strip()
     title = f"{name} — Patr" if name else "Patr"
-    return render_template("index.html", unconfigured=unconfigured, title=title)
+    return render_template(
+        "index.html",
+        unconfigured=unconfigured,
+        title=title,
+        **_frontend_assets(),
+    )
 
 
 @app.route("/api/auth-status")

@@ -34,7 +34,7 @@ markers = [
 addopts = "-m 'not screenshots'"
 
 [tool.setuptools.package-data]
-patr = ["data/**/*", "templates/*", "static/dist/**/*"]
+patr = ["data/**/*", "templates/*", "static/dist/**/*", "static/dist/.vite/*"]
 
 [dependency-groups]
 dev = [
