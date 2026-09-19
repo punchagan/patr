@@ -40,7 +40,24 @@ export default function ConfirmModal({ slug, title, onClose, onConfirm }) {
 
   const warnings = [];
   if (deployment && !emailOnly) {
-    if (subscribersOnly) warnings.push(SUBSCRIBERS_ONLY_NOTE);
+    if (subscribersOnly)
+      warnings.push(
+        <>
+          {SUBSCRIBERS_ONLY_NOTE}
+          {deployment.url && (
+            <>
+              {" "}
+              <a
+                href={deployment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open the page ↗
+              </a>
+            </>
+          )}
+        </>,
+      );
     else if (gitAvailable && !deployment.live)
       warnings.push(
         `The edition isn't live yet${

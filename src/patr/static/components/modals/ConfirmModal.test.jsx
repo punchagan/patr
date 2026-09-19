@@ -71,6 +71,21 @@ describe("ConfirmModal deployment warnings", () => {
     expect(screen.getByText(/confirm|manual/i)).toBeInTheDocument();
   });
 
+  it("subscribers-only: the reminder links to the edition's page", async () => {
+    mockFetch({
+      live: null,
+      subscribers_only: true,
+      git_available: true,
+      uncommitted: false,
+      unpushed: false,
+      url: "https://x/newsletter/a/",
+    });
+    renderModal();
+    const link = await screen.findByRole("link", { name: /open|view/i });
+    expect(link).toHaveAttribute("href", "https://x/newsletter/a/");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
   it("subscribers-only: still blocks on unpushed changes", async () => {
     mockFetch({
       live: null,

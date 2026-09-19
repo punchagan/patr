@@ -563,6 +563,11 @@ body.dark .btn-danger:hover:not(:disabled) {
   border-radius: 4px;
 }
 
+.status-msg a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .status-msg.ok {
   background: #d1e7dd;
   color: #0a5c36;

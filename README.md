@@ -173,7 +173,7 @@ Hover over an edition in the sidebar and click the **✎** pencil icon to edit i
 
 ### Publish to the web
 
-When your edition is ready, click **Publish**. This marks the edition as live and pushes it to your website. To retract it, click **Unpublish**.
+When your edition is ready, click **Publish**. This marks the edition as live and pushes it to your website. To retract it, click **Unpublish**. Once an edition is live (or Patr can't tell, on a subscribers-only site), the status bar shows a **View page ↗** link to it, so you can go and check the published page.
 
 ### Configure newsletter name and mailing list
 

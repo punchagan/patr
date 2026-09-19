@@ -459,6 +459,10 @@ URLs. The difference is everything else:
   a "confirm the deploy yourself" note instead of "Not published", keeps Send
   All enabled, and `ConfirmModal` swaps its blocking "isn't live yet" check
   for that reminder (unsaved/unpushed changes still block).
+  Status objects can carry an `href` (the edition's page url, from
+  `check-deployment`'s `url`) — `StatusMessage.jsx` renders it as a "View
+  page ↗" link in the action bar, shown when the edition is live, after
+  Publish, and in the subscribers-only reminder (also in the confirm modal).
 
 ### Hugo-free mode
 

@@ -4,9 +4,11 @@ import ConfirmModal from "./modals/ConfirmModal";
 import HistoryModal from "./modals/HistoryModal";
 import DeleteEditionModal from "./modals/DeleteEditionModal";
 import EditorPanel from "./EditorPanel";
+import StatusMessage from "./StatusMessage";
 import {
   deployStateFromCheck,
   canSend as canSendEdition,
+  publishedStatus,
 } from "./deployStatus";
 
 /** Ask for notification permission in response to a user gesture. */
@@ -27,6 +29,7 @@ function useDeployStatus(edition) {
   const [deploymentLive, setDeploymentLive] = useState(false);
   const [emailOnly, setEmailOnly] = useState(false);
   const [subscribersOnly, setSubscribersOnly] = useState(false);
+  const [siteUrl, setSiteUrl] = useState(null);
   const [gitAvailable, setGitAvailable] = useState(true);
   const [status, setStatus] = useState(null);
 
@@ -36,6 +39,7 @@ function useDeployStatus(edition) {
       setDeploymentLive(false);
       setEmailOnly(false);
       setSubscribersOnly(false);
+      setSiteUrl(null);
       return;
     }
     setStatus({ cls: "info", text: "Checking…" });
@@ -47,6 +51,7 @@ function useDeployStatus(edition) {
         setSubscribersOnly(state.subscribersOnly);
         setDeploymentLive(state.deploymentLive);
         setGitAvailable(state.gitAvailable);
+        setSiteUrl(state.siteUrl);
         setStatus(state.status);
       });
   }, [edition?.slug]);
@@ -55,6 +60,7 @@ function useDeployStatus(edition) {
     deploymentLive,
     emailOnly,
     subscribersOnly,
+    siteUrl,
     gitAvailable,
     status,
     setStatus,
@@ -209,6 +215,7 @@ export default function MainPanel({
     deploymentLive,
     emailOnly,
     subscribersOnly,
+    siteUrl,
     gitAvailable,
     status,
     setStatus,
@@ -235,8 +242,8 @@ export default function MainPanel({
       editorMode === "split"
         ? "/split"
         : editorMode === "preview"
-        ? `/${viewMode}`
-        : "";
+          ? `/${viewMode}`
+          : "";
     history.replaceState(null, "", `#${edition.slug}${suffix}`);
   }, [edition?.slug, editorMode, viewMode]);
 
@@ -247,7 +254,7 @@ export default function MainPanel({
       .then((d) => {
         if (d.ok) {
           setDraft(false);
-          setStatus({ cls: "ok", text: "Published ✓" });
+          setStatus(publishedStatus(siteUrl));
           setDeploymentLive(true);
           onEditionUpdated(edition.slug);
         } else setStatus({ cls: "err", text: `Publish failed: ${d.error}` });
@@ -316,8 +323,8 @@ export default function MainPanel({
           {editingFooter
             ? "Footer"
             : edition
-            ? edition.title
-            : "Select an edition"}
+              ? edition.title
+              : "Select an edition"}
         </span>
         {edition && (
           <>
@@ -467,9 +474,7 @@ export default function MainPanel({
             <span className="action-bar-savestatus">{editorSaveStatus}</span>
           )}
           <div className="spacer" />
-          {status && (
-            <span className={`status-msg ${status.cls}`}>{status.text}</span>
-          )}
+          <StatusMessage status={status} />
           {!emailOnly &&
             gitAvailable &&
             (draft ? (
@@ -501,8 +506,8 @@ export default function MainPanel({
               !gmailConnected
                 ? "Connect Gmail in ⚙ Settings to enable sending"
                 : !hasSheetId
-                ? "Add a contacts sheet ID in ⚙ Settings to enable sending"
-                : undefined
+                  ? "Add a contacts sheet ID in ⚙ Settings to enable sending"
+                  : undefined
             }
           >
             Send All
