@@ -352,6 +352,73 @@ def test_preview_html_root_relative_image_uses_localhost() -> None:
     assert "http://127.0.0.1:5000/images/logo.png" in html
 
 
+# build_email_html — subscribers_only mode (embedded images, keeps view-in-browser)
+
+
+def test_subscribers_only_embeds_relative_image_as_data_uri(tmp_path) -> None:
+    """The site is gated, so an emailed image URL would 401 for the mail
+    client; embed the image in the email like email_only does."""
+    img_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
+    (tmp_path / "photo.png").write_bytes(img_bytes)
+    post = make_post(body="![A photo](photo.png)")
+    html = build_email_html(
+        "test-ed",
+        post,
+        FOOTER_MD,
+        HUGO_CONFIG,
+        subscribers_only=True,
+        edition_dir=tmp_path,
+    )
+    expected = "data:image/png;base64," + base64.b64encode(img_bytes).decode()
+    assert expected in html
+    assert "https://example.com/newsletter/test-ed/photo.png" not in html
+
+
+def test_subscribers_only_embeds_root_relative_image_from_static(tmp_path) -> None:
+    from patr import state
+
+    state.REPO_ROOT = tmp_path
+    static_img = tmp_path / "static" / "images"
+    static_img.mkdir(parents=True)
+    (static_img / "logo.png").write_bytes(b"PNGDATA")
+    post = make_post(body="![logo](/images/logo.png)")
+    html = build_email_html(
+        "test-ed",
+        post,
+        FOOTER_MD,
+        HUGO_CONFIG,
+        subscribers_only=True,
+        edition_dir=tmp_path,
+    )
+    assert "data:image/png;base64," + base64.b64encode(b"PNGDATA").decode() in html
+
+
+def test_subscribers_only_keeps_view_in_browser(tmp_path) -> None:
+    """The edition is still published (behind a login), so the link stays."""
+    post = make_post()
+    html = build_email_html(
+        "test-ed",
+        post,
+        FOOTER_MD,
+        HUGO_CONFIG,
+        subscribers_only=True,
+        edition_dir=tmp_path,
+    )
+    assert "View in browser" in html
+    assert "https://example.com/newsletter/test-ed/" in html
+
+
+def test_subscribers_only_default_off_still_links_images(tmp_path) -> None:
+    """Without the setting, images stay absolute URLs (public site)."""
+    (tmp_path / "photo.png").write_bytes(b"PNG")
+    post = make_post(body="![A photo](photo.png)")
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, edition_dir=tmp_path
+    )
+    assert "https://example.com/newsletter/test-ed/photo.png" in html
+    assert "data:image" not in html
+
+
 # build_email_html — email_only mode (embedded images, no view-in-browser)
 
 

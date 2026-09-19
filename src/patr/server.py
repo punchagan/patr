@@ -1089,6 +1089,7 @@ def test_send(slug):
     newsletter_config = load_newsletter_config()
     newsletter_name = newsletter_config.get("name", "Newsletter")
     email_only = bool(newsletter_config.get("email_only", False))
+    subscribers_only = bool(newsletter_config.get("subscribers_only", False))
     edition_dir = edition_dir_for(f)
     data = request.json or {}
     recipients = data.get("recipients")  # list of {name, email} or None = just self
@@ -1114,6 +1115,7 @@ def test_send(slug):
                 hugo_config,
                 recipient_name=r["name"],
                 email_only=email_only,
+                subscribers_only=subscribers_only,
                 edition_dir=edition_dir,
             )
             plain = build_email_plain(
@@ -1153,6 +1155,7 @@ def send_all(slug):
     hugo_config = load_hugo_config()
     newsletter_config = load_newsletter_config()
     email_only = bool(newsletter_config.get("email_only", False))
+    subscribers_only = bool(newsletter_config.get("subscribers_only", False))
     # "draft" means "not live on the site yet" — a web-publish concept that
     # doesn't apply once email_only is on, and there's no UI path to ever
     # un-draft an edition in that mode (Publish/Unpublish are hidden).
@@ -1210,6 +1213,7 @@ def send_all(slug):
                     hugo_config,
                     recipient_name=contact["name"],
                     email_only=email_only,
+                    subscribers_only=subscribers_only,
                     edition_dir=edition_dir,
                 )
                 plain = build_email_plain(

@@ -181,6 +181,8 @@ Open the **⚙ Settings** panel to set your newsletter name and connect Gmail. T
 
 To skip web publishing, enable **Email-only newsletter** in Settings. In this mode, images are embedded directly in the email as base64, the **Publish** button is hidden, and **Send All** is available immediately.
 
+If your published site sits behind a login (subscribers only), set `subscribers_only = true` under `[params.patr]` in `hugo.toml`. Mail clients fetch emailed images without a login, so images linked from a gated site would break; in this mode Patr embeds them in the email as base64 (like email-only mode), while still publishing the edition and keeping the "View in browser" link. Patr doesn't set up the login itself, and this isn't in the Settings panel yet — edit `hugo.toml` directly. It applies to the whole site: marking individual editions private isn't supported yet.
+
 ### Send
 
 Use **Test Send** to send yourself a copy first. When you're happy with it, **Send All** sends to your full mailing list. It's only available once the edition is live on the web (or email-only mode is enabled).
@@ -195,7 +197,7 @@ Open the **⋯** menu in the action bar and click **Delete** to delete an editio
 
 | Location (Linux/macOS) | Location (Windows) | Contents |
 |---|---|---|
-| `{hugo-site}/hugo.toml` → `[params.patr]` | same | `name`, `email_only` — used in Hugo mode |
+| `{hugo-site}/hugo.toml` → `[params.patr]` | same | `name`, `email_only`, `subscribers_only` — used in Hugo mode |
 | `{dir}/patr.toml` | same | `name`, `email_only` — used in hugo-free mode (no `hugo.toml`) |
 | `~/.config/patr/config.toml` | `%LOCALAPPDATA%\patr\config\config.toml` | `sheet_id` — Google Sheets contacts sheet |
 | `~/.config/patr/credentials.json` | `%LOCALAPPDATA%\patr\config\credentials.json` | GCP OAuth client credentials (Desktop app) |

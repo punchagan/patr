@@ -437,6 +437,22 @@ derivative files behind after squashing succeeded. `--no-verify` doesn't
 cover this: `git cherry-pick` has no such flag at all, and `--no-verify`
 never disables `post-commit` hooks regardless of command.
 
+### Emailed images: `email_only` vs `subscribers_only`
+
+Both `[params.patr]` settings make `build_email_html` embed images as base64
+data URIs (via `embed_images`, needs `edition_dir`) instead of absolute site
+URLs. The difference is everything else:
+
+- `email_only` — edition isn't published: no "View in browser" link, no
+  Publish button, Send All available while still a draft.
+- `subscribers_only` — the published site is behind a login (e.g. a Netlify
+  Identity role rule). Mail clients fetch images anonymously, so absolute
+  image URLs under the gated path would 401; embed them instead, but keep the
+  normal publish flow and the "View in browser" link. Only `build_email_html`
+  changes; draft/baseURL checks and the Publish button still follow
+  `email_only`. Read directly from `hugo.toml` for now (no Settings UI or
+  `/api/settings` support yet).
+
 ### Hugo-free mode
 
 Patr can run against any plain directory — no `hugo.toml`, no Hugo installed.
@@ -496,3 +512,5 @@ Features not yet in the UI that users currently have to do by editing files dire
 - **Scheduled sending** — send at a future time; the Gmail API has no scheduled send support (long-standing open feature request), so this would require a local background scheduler (e.g. APScheduler) running inside Patr
 - **Unsubscribe handling** — emails have no unsubscribe mechanism; could add a mailto: link or plain instruction at the bottom of every edition; recipients would still need to be removed from the sheet manually
 - **SMTP + local CSV as alternative backend** — for non-Gmail users; SMTP (via app password) replaces OAuth, local CSV replaces Google Sheets; CSV contacts would need a simple UI inside Patr and auto-backups
+- **Settings UI for `subscribers_only`** — the checkbox and `/api/settings` get/set, next to the existing `email_only` one
+- **Per-edition private posts** — `subscribers_only` is site-wide. To gate only some editions, the newsletter as a whole would have to be public, with the private editions' paths gated, and gating is by URL path (e.g. Netlify `[[redirects]]` with a `Role` condition, or `_redirects`). That needs Patr to keep private editions under their own path (a `private/` sub-directory of `content/newsletter/`, say), or to rewrite the host site's redirect rules when an edition's visibility changes. Embedding images in emails would then apply per edition too, instead of per site

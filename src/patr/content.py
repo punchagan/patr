@@ -300,7 +300,9 @@ def render_md(text, hard_wraps=False):
 
 
 def embed_images(html: str, edition_dir: Path) -> str:
-    """Replace image src with base64 data URIs for email-only mode.
+    """Replace image src with base64 data URIs, for emails that can't link to
+    images on the site (email_only, or subscribers_only where the site is
+    behind a login mail clients can't pass).
 
     edition_dir is the directory where relative image paths are resolved —
     either a page bundle dir (slug/index.md → slug/) or a flat file's sibling
@@ -351,8 +353,19 @@ def build_email_html(
     recipient_name=None,
     absolute_urls=True,
     email_only=False,
+    subscribers_only=False,
     edition_dir=None,
 ):
+    """Build the HTML email for an edition.
+
+    email_only: the edition isn't published, so drop the "View in browser"
+    link and embed images.
+    subscribers_only: the published site is behind a login, which mail clients
+    can't pass, so images linked from the site would break; embed them too,
+    but keep the "View in browser" link (readers can sign in).
+    Embedding needs edition_dir (where relative image paths resolve); without
+    it, image URLs are made absolute instead.
+    """
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
     name = (recipient_name or "").strip()
@@ -396,7 +409,7 @@ def build_email_html(
   </table>
 </body>
 </html>"""
-    if email_only and edition_dir is not None:
+    if (email_only or subscribers_only) and edition_dir is not None:
         return css_inline.inline(embed_images(html, edition_dir))
     html = absolutify_urls(html, base_url, page_url) if absolute_urls else html
     return css_inline.inline(html)

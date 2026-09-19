@@ -516,3 +516,55 @@ def test_test_send_self_recipient_resolves_to_sender_email(client, repo) -> None
         )
 
     assert captured["to"] == "You <me@example.com>"
+
+
+def test_send_all_embeds_images_when_subscribers_only(client, repo) -> None:
+    """A gated site can't serve emailed images (mail clients fetch them
+    without a login), so send_all must embed them, while keeping the
+    view-in-browser link since the edition is still published."""
+    make_edition(repo, "my-ed", draft=False)
+    ed = repo / "content" / "newsletter" / "my-ed"
+    (ed / "photo.png").write_bytes(b"PNGDATA")
+    (ed / "index.md").write_text(
+        (ed / "index.md").read_text().replace("Body.", "![A photo](photo.png)")
+    )
+    (repo / "hugo.toml").write_text('baseURL = "https://example.com"\n[params]\n')
+    sent = []
+
+    with (
+        patch("patr.server.get_auth", return_value=MagicMock()),
+        patch("patr.server.build") as mock_build,
+        patch(
+            "patr.server.send_email",
+            side_effect=lambda g, sender, to, subject, html, plain: sent.append(html),
+        ),
+        patch("patr.server.log_sent"),
+        patch(
+            "patr.server.fetch_contacts",
+            return_value=[{"name": "Alice", "email": "alice@example.com"}],
+        ),
+        patch("patr.server.get_already_sent", return_value=set()),
+        patch(
+            "patr.server.load_newsletter_config",
+            return_value={
+                "name": "My Letter",
+                "sheet_id": "sheet123",
+                "subscribers_only": True,
+            },
+        ),
+        patch(
+            "patr.server.load_hugo_config",
+            return_value={"baseURL": "https://real-newsletter.com"},
+        ),
+        patch("patr.server.time") as mock_time,
+    ):
+        mock_time.sleep = MagicMock()
+        mock_build.return_value.userinfo().get().execute.return_value = {
+            "email": "me@example.com",
+            "name": "Me",
+        }
+        client.post("/api/send/my-ed")
+
+    assert len(sent) == 1
+    assert "data:image/png;base64," in sent[0]
+    assert "View in browser" in sent[0]
