@@ -144,6 +144,10 @@ Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar,
 
 The **Intro** field is optional. It appears in an italicised, bordered style above the body — good for a short summary or personal note.
 
+#### Linking to other editions
+
+Hover an edition in the sidebar and click **🔗** to copy a Markdown link to it, like `[Spring Art Gallery](/newsletter/spring-art/)`, then paste it into the intro, body or footer of another edition (works for drafts too, though the link is dead until that edition is published). The link deliberately has no domain: on the site it keeps working if your domain ever changes. When an email is built, Patr turns links like this into full URLs using your site's `baseURL`, in both the HTML and plain-text versions. Links that already start with `https://`, `mailto:` or `#` are left alone. Sent emails keep whichever address was current when they went out. On a subscribers-only site, readers are asked to sign in when they open a linked edition.
+
 #### Images
 
 Paste or drag images directly into the editor, or use the 🖼 toolbar button to upload. Images are stored alongside the edition and referenced with a relative path. Uploads are automatically resized (max 800px wide) and re-encoded as JPEG to keep newsletters light; GIFs are left untouched so animation still works.

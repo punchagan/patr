@@ -368,3 +368,77 @@ describe("Sidebar self-update button", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("Sidebar copy-link button", () => {
+  let writeText;
+
+  beforeEach(() => {
+    writeText = vi.fn(() => Promise.resolve());
+    Object.assign(navigator, { clipboard: { writeText } });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const copyButtonFor = (title) =>
+    screen
+      .getByText(title)
+      .closest(".edition-item")
+      .querySelector(".edition-copy-btn");
+
+  it("copies a root-relative markdown link to the edition", async () => {
+    render(<Sidebar {...baseProps} editions={sampleEditions} />);
+    await act(async () => {
+      fireEvent.click(copyButtonFor("Spring Art Gallery"));
+    });
+    expect(writeText).toHaveBeenCalledWith(
+      "[Spring Art Gallery](/newsletter/spring-art/)",
+    );
+  });
+
+  it("is available for drafts too", async () => {
+    render(<Sidebar {...baseProps} editions={sampleEditions} />);
+    await act(async () => {
+      fireEvent.click(copyButtonFor("Winter Plans"));
+    });
+    expect(writeText).toHaveBeenCalledWith(
+      "[Winter Plans](/newsletter/winter-plans/)",
+    );
+  });
+
+  it("doesn't select the edition when clicked", async () => {
+    const onSelect = vi.fn();
+    render(
+      <Sidebar {...baseProps} editions={sampleEditions} onSelect={onSelect} />,
+    );
+    await act(async () => {
+      fireEvent.click(copyButtonFor("Summer Notes"));
+    });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("confirms with a check mark, then goes back", async () => {
+    vi.useFakeTimers();
+    render(<Sidebar {...baseProps} editions={sampleEditions} />);
+    const button = copyButtonFor("Spring Art Gallery");
+    expect(button).not.toHaveTextContent("✓");
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(button).toHaveTextContent("✓");
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(button).not.toHaveTextContent("✓");
+  });
+
+  it("describes itself for screen readers and tooltips", () => {
+    render(<Sidebar {...baseProps} editions={sampleEditions} />);
+    expect(copyButtonFor("Spring Art Gallery")).toHaveAttribute(
+      "title",
+      expect.stringMatching(/copy link/i),
+    );
+    expect(copyButtonFor("Spring Art Gallery")).toHaveAttribute("aria-label");
+  });
+});

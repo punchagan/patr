@@ -274,7 +274,8 @@ body {
   color: var(--text-muted);
 }
 
-.edition-edit-btn {
+.edition-edit-btn,
+.edition-copy-btn {
   display: none;
   background: none;
   border: none;
@@ -285,17 +286,27 @@ body {
   margin-left: auto;
   line-height: 1;
 }
+/* The copy button takes the auto margin, so the pair sits together on the right. */
+.edition-copy-btn + .edition-edit-btn {
+  margin-left: 0;
+}
 .edition-item:hover .edition-edit-btn,
-.edition-item.active .edition-edit-btn {
+.edition-item.active .edition-edit-btn,
+.edition-item:hover .edition-copy-btn,
+.edition-item.active .edition-copy-btn,
+.edition-copy-btn.copied {
   display: inline;
 }
-.edition-edit-btn:hover {
+.edition-edit-btn:hover,
+.edition-copy-btn:hover {
   color: var(--text);
 }
-body.dark .edition-edit-btn {
+body.dark .edition-edit-btn,
+body.dark .edition-copy-btn {
   color: var(--text-secondary);
 }
-body.dark .edition-edit-btn:hover {
+body.dark .edition-edit-btn:hover,
+body.dark .edition-copy-btn:hover {
   color: var(--text);
 }
 

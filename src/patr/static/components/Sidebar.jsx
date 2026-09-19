@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import SentLogModal from "./modals/SentLogModal";
+import { editionLinkMarkdown } from "./editionLink";
 
 const SIDEBAR_WIDTH_KEY = "patr-sidebar-width";
 const MIN_WIDTH = 160;
@@ -7,6 +8,7 @@ const MAX_WIDTH = 500;
 const UPDATE_POLL_INITIAL_DELAY_MS = 2000;
 const UPDATE_POLL_INTERVAL_MS = 1000;
 const UPDATE_POLL_MAX_ATTEMPTS = 8;
+const COPIED_FEEDBACK_MS = 1500;
 
 function EditionItem({
   e,
@@ -16,6 +18,7 @@ function EditionItem({
   onViewSentLog,
 }) {
   const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
   const titleRef = useRef(null);
@@ -31,6 +34,16 @@ function EditionItem({
   useEffect(() => {
     if (editing) titleRef.current?.focus();
   }, [editing]);
+
+  // Copy a markdown link to this edition, ready to paste into another
+  // edition's intro or body.
+  const copyLink = (ev) => {
+    ev.stopPropagation();
+    navigator.clipboard.writeText(editionLinkMarkdown(e)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+    });
+  };
 
   const save = () => {
     const patch = {};
@@ -119,6 +132,14 @@ function EditionItem({
             Partially sent
           </span>
         )}
+        <button
+          className={`edition-copy-btn${copied ? " copied" : ""}`}
+          onClick={copyLink}
+          title="Copy link to this edition (Markdown)"
+          aria-label="Copy link to this edition"
+        >
+          {copied ? "✓" : "🔗"}
+        </button>
         <button
           className="edition-edit-btn"
           onClick={startEdit}

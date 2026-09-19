@@ -464,6 +464,20 @@ URLs. The difference is everything else:
   page ↗" link in the action bar, shown when the edition is live, after
   Publish, and in the subscribers-only reminder (also in the confirm modal).
 
+### Links between editions
+
+Editions link to each other with root-relative Markdown links
+(`[Title](/newsletter/<slug>/)`), never with the domain: the site renders them
+as-is, so a domain change doesn't break the archive. `build_email_html` /
+`build_email_plain` make root-relative links absolute from `baseURL` at build
+time (`absolutify_links`, `absolutify_markdown_links`), in every mode — the
+image-embedding path (`email_only`/`subscribers_only`) must not return before
+this runs. Only a single leading `/` is rewritten (`//host`, `https:`,
+`mailto:`, `#x` are left alone), and it's a no-op without a `baseURL` or with
+`absolute_urls=False`. The sidebar's 🔗 button (`Sidebar.jsx`,
+`editionLink.js`) copies the link; there's deliberately no paste-time
+rewriting hook, so what's pasted is exactly what's stored.
+
 ### Hugo-free mode
 
 Patr can run against any plain directory — no `hugo.toml`, no Hugo installed.
