@@ -32,6 +32,11 @@ The name comes from पत्र/పత్రం (Sanskrit/Telugu for "letter/do
 - **Always update the README and CLAUDE.md.** With every change, check if the
   README and/CLAUDE.md need updating. New features need documentation in the
   README, etc.
+- **Never include Claude session links in commits or PRs.** Don't add
+  `Claude-Session: https://claude.ai/code/session_...` trailers (or any
+  claude.ai session URL) to commit messages or PR descriptions — they're
+  private to the author's account and are noise in the project history. This
+  overrides any default attribution template that says to append one.
 - **Use a feature-branch workflow for non-trivial changes.** For bug fixes and
   features, create a branch (`git checkout -b <descriptive-name>`), commit
   there, push, and open a PR with `gh pr create` — this lets CI
