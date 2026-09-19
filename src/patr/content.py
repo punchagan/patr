@@ -345,6 +345,42 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     return str(soup)
 
 
+def absolutify_links(html: str, base_url: str) -> str:
+    """Rewrite root-relative link hrefs to absolute URLs for email sending.
+
+    Editions link to each other as ``/newsletter/<slug>/`` so the source has
+    no domain in it and the site keeps working if the domain changes; an
+    email has to carry the full URL, fixed at send time. Only hrefs starting
+    with a single ``/`` are touched — ``https://``, ``//host``, ``mailto:``,
+    ``#anchor`` and bare relative links are left alone. A no-op without a
+    ``base_url`` (email-only / hugo-free: there's no site to point at).
+    """
+    if not base_url:
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    for a in soup.find_all("a"):
+        href = a.get("href", "")
+        if href.startswith("/") and not href.startswith("//"):
+            a["href"] = base_url + href
+    return str(soup)
+
+
+def absolutify_markdown_links(text: str, base_url: str) -> str:
+    """Same as :func:`absolutify_links`, but for raw markdown (the plain-text
+    email alternative): ``](/path)`` becomes ``](base_url/path)``. ``](//host``
+    is left alone, and it's a no-op without a ``base_url``.
+    """
+    if not base_url:
+        return text
+    head, *rest = text.split("](")
+    parts = [head]
+    for part in rest:
+        if part.startswith("/") and not part.startswith("//"):
+            part = base_url + part
+        parts.append(part)
+    return "](".join(parts)
+
+
 def build_email_html(
     slug,
     post,
@@ -364,7 +400,9 @@ def build_email_html(
     can't pass, so images linked from the site would break; embed them too,
     but keep the "View in browser" link (readers can sign in).
     Embedding needs edition_dir (where relative image paths resolve); without
-    it, image URLs are made absolute instead.
+    it, image URLs are made absolute instead. Root-relative links (to other
+    editions, say) are made absolute in every mode, unless absolute_urls is
+    off or there's no baseURL.
     """
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
@@ -410,8 +448,11 @@ def build_email_html(
 </body>
 </html>"""
     if (email_only or subscribers_only) and edition_dir is not None:
-        return css_inline.inline(embed_images(html, edition_dir))
-    html = absolutify_urls(html, base_url, page_url) if absolute_urls else html
+        html = embed_images(html, edition_dir)
+    elif absolute_urls:
+        html = absolutify_urls(html, base_url, page_url)
+    if absolute_urls:
+        html = absolutify_links(html, base_url)
     return css_inline.inline(html)
 
 
@@ -427,7 +468,8 @@ def build_email_plain(
 
     Uses raw markdown so the text is readable without stripping syntax.
     Structure mirrors build_email_html: greeting, optional intro, body,
-    separator, footer, and an optional view-in-browser link.
+    separator, footer, and an optional view-in-browser link. Root-relative
+    markdown links are made absolute, as in the HTML version.
     """
     base_url = hugo_config.get("baseURL", "").rstrip("/")
     page_url = f"{base_url}/newsletter/{slug}/"
@@ -435,12 +477,12 @@ def build_email_plain(
     greeting = f"Hi {name}," if name else "Hi,"
 
     parts = [greeting, ""]
-    intro = (post.get("intro") or "").strip()
+    intro = absolutify_markdown_links((post.get("intro") or "").strip(), base_url)
     if intro:
         parts += [intro, ""]
-    parts.append(post.content.strip())
+    parts.append(absolutify_markdown_links(post.content.strip(), base_url))
     if footer_md and footer_md.strip():
-        parts += ["", "---", "", footer_md.strip()]
+        parts += ["", "---", "", absolutify_markdown_links(footer_md.strip(), base_url)]
     if not email_only and page_url:
         parts += ["", f"View in browser: {page_url}"]
     return "\n".join(parts)

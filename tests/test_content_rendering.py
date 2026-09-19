@@ -618,3 +618,113 @@ def test_build_email_plain_contains_intro() -> None:
     post = make_post(intro="A brief intro.")
     text = build_email_plain("test-ed", post, FOOTER_MD, HUGO_CONFIG)
     assert "A brief intro." in text
+
+
+# Root-relative links — written without a domain in the source (so the site
+# survives a domain change), resolved to absolute URLs when the email is built
+
+
+def _hrefs(html):
+    return [a.get("href") for a in BeautifulSoup(html, "html.parser").find_all("a")]
+
+
+def test_email_absolutifies_root_relative_link_in_body() -> None:
+    post = make_post(body="Read [the old one](/newsletter/old-ed/).")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "https://example.com/newsletter/old-ed/" in _hrefs(html)
+
+
+def test_email_absolutifies_root_relative_link_in_intro() -> None:
+    post = make_post(intro="Last time: [old one](/newsletter/old-ed/)")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert "https://example.com/newsletter/old-ed/" in _hrefs(html)
+
+
+def test_email_absolutifies_root_relative_link_in_footer() -> None:
+    html = build_email_html(
+        "test-ed", make_post(), "[Archive](/newsletter/)", HUGO_CONFIG
+    )
+    assert "https://example.com/newsletter/" in _hrefs(html)
+
+
+def test_email_absolutifies_links_in_subscribers_only_mode(tmp_path) -> None:
+    """subscribers_only embeds images and used to return before any URL
+    rewriting, which would leave relative links broken in the email."""
+    post = make_post(body="[old](/newsletter/old-ed/)")
+    html = build_email_html(
+        "test-ed",
+        post,
+        FOOTER_MD,
+        HUGO_CONFIG,
+        subscribers_only=True,
+        edition_dir=tmp_path,
+    )
+    assert "https://example.com/newsletter/old-ed/" in _hrefs(html)
+
+
+def test_email_absolutifies_links_with_a_subpath_base_url() -> None:
+    post = make_post(body="[old](/newsletter/old-ed/)")
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, {"baseURL": "https://example.com/blog/"}
+    )
+    assert "https://example.com/blog/newsletter/old-ed/" in _hrefs(html)
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "https://other.example/x",
+        "http://other.example/x",
+        "//cdn.example/x",
+        "mailto:a@example.com",
+        "#section",
+        "sibling-page",
+    ],
+)
+def test_email_leaves_other_links_alone(href) -> None:
+    post = make_post(body=f"[link]({href})")
+    html = build_email_html("test-ed", post, FOOTER_MD, HUGO_CONFIG)
+    assert href in _hrefs(html)
+
+
+def test_email_leaves_root_relative_links_without_a_base_url(tmp_path) -> None:
+    """email_only / hugo-free: there's no site to point at."""
+    post = make_post(body="[old](/newsletter/old-ed/)")
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, {}, email_only=True, edition_dir=tmp_path
+    )
+    assert "/newsletter/old-ed/" in _hrefs(html)
+
+
+def test_web_preview_mode_keeps_relative_links() -> None:
+    """absolute_urls=False (used for the local preview) rewrites nothing."""
+    post = make_post(body="[old](/newsletter/old-ed/)")
+    html = build_email_html(
+        "test-ed", post, FOOTER_MD, HUGO_CONFIG, absolute_urls=False
+    )
+    assert "/newsletter/old-ed/" in _hrefs(html)
+
+
+# build_email_plain — the plain-text alternative is raw markdown
+
+
+def test_plain_text_absolutifies_root_relative_links() -> None:
+    post = make_post(intro="[a](/newsletter/a/)", body="See [b](/newsletter/b/).")
+    text = build_email_plain("test-ed", post, "[c](/newsletter/c/)", HUGO_CONFIG)
+    assert "[a](https://example.com/newsletter/a/)" in text
+    assert "[b](https://example.com/newsletter/b/)" in text
+    assert "[c](https://example.com/newsletter/c/)" in text
+
+
+def test_plain_text_leaves_other_links_alone() -> None:
+    post = make_post(body="[x](https://o.example/) [y](//cdn.example/) [z](#top)")
+    text = build_email_plain("test-ed", post, "", HUGO_CONFIG)
+    assert "[x](https://o.example/)" in text
+    assert "[y](//cdn.example/)" in text
+    assert "[z](#top)" in text
+
+
+def test_plain_text_without_base_url_keeps_relative_links() -> None:
+    post = make_post(body="[b](/newsletter/b/)")
+    text = build_email_plain("test-ed", post, "", {}, email_only=True)
+    assert "[b](/newsletter/b/)" in text
