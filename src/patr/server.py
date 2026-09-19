@@ -889,6 +889,17 @@ def edition_sent_log(slug):
 
 @app.route("/api/check-deployment/<slug>")
 def check_deployment(slug):
+    """Report whether an edition is live on the site and whether it has
+    unsaved or unpushed local changes.
+
+    Liveness is an anonymous fetch of the edition's URL. With
+    ``subscribers_only`` the site is behind a login, so that fetch would only
+    ever see a 401 and can't tell us anything: skip it and return
+    ``live: None`` with ``subscribers_only: True``, leaving the user to
+    confirm the deploy themselves. The uncommitted/unpushed git checks don't
+    depend on the fetch, so they still run. ``email_only`` (no site at all)
+    takes precedence over both.
+    """
     f, post = load_edition(slug)
     if f is None or post is None:
         return jsonify({"error": "Not found"}), 404
@@ -938,6 +949,17 @@ def check_deployment(slug):
 
     # Live check — always done via URL fetch, independent of git
     url = f"{base_url}/newsletter/{slug}/"
+    if newsletter_config.get("subscribers_only"):
+        return jsonify(
+            {
+                "live": None,
+                "subscribers_only": True,
+                "uncommitted": uncommitted,
+                "unpushed": unpushed,
+                "git_available": git_available,
+                "url": url,
+            }
+        )
     try:
         req = urllib.request.urlopen(url, timeout=5)
         live = req.status == 200

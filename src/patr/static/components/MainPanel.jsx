@@ -4,6 +4,10 @@ import ConfirmModal from "./modals/ConfirmModal";
 import HistoryModal from "./modals/HistoryModal";
 import DeleteEditionModal from "./modals/DeleteEditionModal";
 import EditorPanel from "./EditorPanel";
+import {
+  deployStateFromCheck,
+  canSend as canSendEdition,
+} from "./deployStatus";
 
 /** Ask for notification permission in response to a user gesture. */
 function requestNotificationPermission() {
@@ -22,6 +26,7 @@ function showNotification(title, body) {
 function useDeployStatus(edition) {
   const [deploymentLive, setDeploymentLive] = useState(false);
   const [emailOnly, setEmailOnly] = useState(false);
+  const [subscribersOnly, setSubscribersOnly] = useState(false);
   const [gitAvailable, setGitAvailable] = useState(true);
   const [status, setStatus] = useState(null);
 
@@ -30,36 +35,26 @@ function useDeployStatus(edition) {
       setStatus(null);
       setDeploymentLive(false);
       setEmailOnly(false);
+      setSubscribersOnly(false);
       return;
     }
     setStatus({ cls: "info", text: "Checking…" });
     fetch(`/api/check-deployment/${edition.slug}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.email_only) {
-          setEmailOnly(true);
-          setDeploymentLive(false);
-          setGitAvailable(d.git_available ?? true);
-          setStatus(null);
-        } else {
-          setEmailOnly(false);
-          setDeploymentLive(d.live);
-          setGitAvailable(d.git_available ?? true);
-          if (!d.live)
-            setStatus({
-              cls: "warn",
-              text: d.reason
-                ? `Not published: ${d.reason}`
-                : "Not published yet",
-            });
-          else setStatus(null);
-        }
+        const state = deployStateFromCheck(d);
+        setEmailOnly(state.emailOnly);
+        setSubscribersOnly(state.subscribersOnly);
+        setDeploymentLive(state.deploymentLive);
+        setGitAvailable(state.gitAvailable);
+        setStatus(state.status);
       });
   }, [edition?.slug]);
 
   return {
     deploymentLive,
     emailOnly,
+    subscribersOnly,
     gitAvailable,
     status,
     setStatus,
@@ -213,6 +208,7 @@ export default function MainPanel({
   const {
     deploymentLive,
     emailOnly,
+    subscribersOnly,
     gitAvailable,
     status,
     setStatus,
@@ -300,7 +296,13 @@ export default function MainPanel({
     onEditionUpdated(edition.slug);
   };
 
-  const canSend = (emailOnly || deploymentLive) && hasSheetId && gmailConnected;
+  const canSend = canSendEdition({
+    emailOnly,
+    subscribersOnly,
+    deploymentLive,
+    hasSheetId,
+    gmailConnected,
+  });
 
   const showEditor = editorMode === "write" || editorMode === "split";
   const showPreview = editorMode === "split" || editorMode === "preview";

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
+import { SUBSCRIBERS_ONLY_NOTE } from "../deployStatus";
 
 export default function ConfirmModal({ slug, title, onClose, onConfirm }) {
   const [count, setCount] = useState(null);
@@ -23,16 +24,24 @@ export default function ConfirmModal({ slug, title, onClose, onConfirm }) {
   const loading =
     count === null || missingImages === null || deployment === null;
   const emailOnly = deployment?.email_only;
+  // Behind a login, so the live check can't run; the user confirms manually.
+  const subscribersOnly = !emailOnly && deployment?.subscribers_only;
   const gitAvailable = deployment?.git_available ?? true;
   const hasMissingImages = missingImages?.length > 0;
-  const notLive = !emailOnly && gitAvailable && deployment && !deployment.live;
+  const notLive =
+    !emailOnly &&
+    !subscribersOnly &&
+    gitAvailable &&
+    deployment &&
+    !deployment.live;
   const hasUncommitted = !emailOnly && gitAvailable && deployment?.uncommitted;
   const hasUnpushed = !emailOnly && gitAvailable && deployment?.unpushed;
   const blocked = hasMissingImages || notLive || hasUncommitted || hasUnpushed;
 
   const warnings = [];
   if (deployment && !emailOnly) {
-    if (gitAvailable && !deployment.live)
+    if (subscribersOnly) warnings.push(SUBSCRIBERS_ONLY_NOTE);
+    else if (gitAvailable && !deployment.live)
       warnings.push(
         `The edition isn't live yet${
           deployment.url ? ` (checked ${deployment.url})` : ""

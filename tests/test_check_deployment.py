@@ -147,6 +147,72 @@ def test_live_url_unreachable(client, repo) -> None:
     assert d["live"] is False
 
 
+# subscribers_only — the site is behind a login, so an anonymous fetch would
+# only ever see a 401 and can't tell us whether the edition is live
+
+
+SUBSCRIBERS_ONLY_TOML = (
+    'baseURL = "https://myblog.com/"\n[params.patr]\nsubscribers_only = true\n'
+)
+
+
+def test_subscribers_only_skips_live_fetch(client, repo) -> None:
+    (repo / "hugo.toml").write_text(SUBSCRIBERS_ONLY_TOML)
+    make_edition(repo, "my-ed")
+    with (
+        patch("subprocess.run", git_run()),
+        patch("urllib.request.urlopen") as mock_urlopen,
+    ):
+        r = client.get("/api/check-deployment/my-ed")
+    mock_urlopen.assert_not_called()
+    d = r.get_json()
+    assert d["subscribers_only"] is True
+    assert d["live"] is None  # unknown, not "not live"
+    assert "reason" not in d
+    assert "myblog.com" in d["url"]
+
+
+def test_subscribers_only_still_reports_git_state(client, repo) -> None:
+    """Uncommitted/unpushed come from git, not the fetch, so they still work."""
+    (repo / "hugo.toml").write_text(SUBSCRIBERS_ONLY_TOML)
+    make_edition(repo, "my-ed")
+    with patch(
+        "subprocess.run",
+        git_run(uncommitted=" M content/newsletter/my-ed/index.md", ahead=True),
+    ):
+        r = client.get("/api/check-deployment/my-ed")
+    d = r.get_json()
+    assert d["uncommitted"] is True
+    assert d["unpushed"] is True
+
+
+def test_live_check_reports_no_subscribers_only_by_default(client, repo) -> None:
+    (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
+    make_edition(repo, "my-ed")
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    with (
+        patch("subprocess.run", git_run()),
+        patch("urllib.request.urlopen", return_value=mock_resp),
+    ):
+        r = client.get("/api/check-deployment/my-ed")
+    d = r.get_json()
+    assert d["live"] is True
+    assert not d.get("subscribers_only")
+
+
+def test_email_only_wins_over_subscribers_only(client, repo) -> None:
+    (repo / "hugo.toml").write_text(
+        'baseURL = "https://myblog.com/"\n'
+        "[params.patr]\nemail_only = true\nsubscribers_only = true\n"
+    )
+    make_edition(repo, "my-ed")
+    r = client.get("/api/check-deployment/my-ed")
+    d = r.get_json()
+    assert d["email_only"] is True
+    assert d["live"] is None
+
+
 def test_check_deployment_404(client, repo) -> None:
     (repo / "hugo.toml").write_text('baseURL = "https://myblog.com/"\n')
     r = client.get("/api/check-deployment/no-such-edition")

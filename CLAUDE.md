@@ -449,9 +449,16 @@ URLs. The difference is everything else:
   Identity role rule). Mail clients fetch images anonymously, so absolute
   image URLs under the gated path would 401; embed them instead, but keep the
   normal publish flow and the "View in browser" link. Only `build_email_html`
-  changes; draft/baseURL checks and the Publish button still follow
-  `email_only`. Read directly from `hugo.toml` for now (no Settings UI or
-  `/api/settings` support yet).
+  changes for emails; the Publish button still follows `email_only`. Read
+  directly from `hugo.toml` for now (no Settings UI or `/api/settings`
+  support yet).
+  `/api/check-deployment` can't verify liveness behind a login (its anonymous
+  fetch would only see a 401), so with `subscribers_only` it skips the fetch
+  and returns `live: null, subscribers_only: true` (git uncommitted/unpushed
+  checks still run). The UI (`static/components/deployStatus.js`) then shows
+  a "confirm the deploy yourself" note instead of "Not published", keeps Send
+  All enabled, and `ConfirmModal` swaps its blocking "isn't live yet" check
+  for that reminder (unsaved/unpushed changes still block).
 
 ### Hugo-free mode
 
