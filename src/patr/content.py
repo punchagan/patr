@@ -11,7 +11,7 @@ import markdown
 import yaml
 from bs4 import BeautifulSoup
 from patr import state
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 
@@ -189,12 +189,18 @@ def compress_image(src: Path, dest: Path) -> bool:
     share this single compressed copy, so there's no separate
     full-resolution version.
 
+    The EXIF Orientation tag is applied to the pixels before re-encoding.
+    Cameras often store raw sensor pixels plus a tag saying how to rotate
+    them for display; viewers honor it, but the re-encode below drops all
+    EXIF, so without baking it in first the saved copy shows sideways.
+
     Returns True on success. Returns False (leaving dest untouched) if src
     isn't a decodable image — callers should fall back to saving the
     original bytes as-is.
     """
     try:
-        with Image.open(src) as img:
+        with Image.open(src) as opened:
+            img = ImageOps.exif_transpose(opened)
             if img.mode in ("RGBA", "LA", "P"):
                 img = img.convert("RGBA")
                 background = Image.new("RGB", img.size, (255, 255, 255))
