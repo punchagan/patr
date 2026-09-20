@@ -54,3 +54,29 @@ figcaption {
   color: #777;
   margin-top: 0.5rem;
 }
+/* Markdown tables are borderless, so give the cells room to breathe. Scoped
+   to the edition's own content: the email shell is built from tables too, and
+   its cells (.email-body) must keep their own padding. Collapsing the borders
+   drops the default 2px inset, so the outer cells sit flush with the text. */
+.content table,
+.footer table {
+  border-collapse: collapse;
+}
+.content th,
+.content td,
+.footer th,
+.footer td {
+  padding: 0.25em 0.75em;
+}
+.content th:first-child,
+.content td:first-child,
+.footer th:first-child,
+.footer td:first-child {
+  padding-left: 0;
+}
+.content th:last-child,
+.content td:last-child,
+.footer th:last-child,
+.footer td:last-child {
+  padding-right: 0;
+}

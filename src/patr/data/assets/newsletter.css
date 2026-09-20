@@ -69,6 +69,34 @@
     font-style: italic;
 }
 
+/* Markdown tables are borderless, so give the cells room to breathe; the
+   outer cells sit flush with the text. */
+.newsletter-post-content table,
+.newsletter-footer-content table {
+    border-collapse: collapse;
+}
+
+.newsletter-post-content th,
+.newsletter-post-content td,
+.newsletter-footer-content th,
+.newsletter-footer-content td {
+    padding: 0.25em 0.75em;
+}
+
+.newsletter-post-content th:first-child,
+.newsletter-post-content td:first-child,
+.newsletter-footer-content th:first-child,
+.newsletter-footer-content td:first-child {
+    padding-left: 0;
+}
+
+.newsletter-post-content th:last-child,
+.newsletter-post-content td:last-child,
+.newsletter-footer-content th:last-child,
+.newsletter-footer-content td:last-child {
+    padding-right: 0;
+}
+
 .newsletter-post-footer {
     margin-top: var(--newsletter-space);
     padding-top: var(--newsletter-space);
