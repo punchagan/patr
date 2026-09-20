@@ -88,3 +88,9 @@ def test_intro_and_captions_use_the_muted_colour() -> None:
     soup = inlined()
     for el in (soup.find(class_="newsletter-intro"), soup.find("figcaption")):
         assert "var(--newsletter-muted)" in style_props(el).get("color", "")
+
+
+def test_divider_lines_follow_the_sites_text_colour_too() -> None:
+    """A fixed light grey rule is a harsh bright line on a dark site."""
+    border = style_props(inlined().find("html"))["--newsletter-border"]
+    assert "currentcolor" in border.lower()

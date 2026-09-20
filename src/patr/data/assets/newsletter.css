@@ -5,10 +5,11 @@
  */
 
 :root {
-    /* Derived from the surrounding text colour, so it stays readable on a dark
-       site as well as a light one. Set a fixed colour here to override. */
+    /* Both derive from the surrounding text colour, so they suit a dark site as
+       well as a light one (a fixed grey is faint on one and a harsh line on the
+       other). Set a fixed colour here to override. */
     --newsletter-muted: color-mix(in srgb, currentColor 70%, transparent);
-    --newsletter-border: #e0e0e0;
+    --newsletter-border: color-mix(in srgb, currentColor 35%, transparent);
     --newsletter-space: 1rem;
     /* Space either side of the text, so it never touches the edge of a phone. */
     --newsletter-gutter: 1.25rem;
