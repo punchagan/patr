@@ -5,7 +5,9 @@
  */
 
 :root {
-    --newsletter-muted: #666;
+    /* Derived from the surrounding text colour, so it stays readable on a dark
+       site as well as a light one. Set a fixed colour here to override. */
+    --newsletter-muted: color-mix(in srgb, currentColor 70%, transparent);
     --newsletter-border: #e0e0e0;
     --newsletter-space: 1rem;
     /* Space either side of the text, so it never touches the edge of a phone. */

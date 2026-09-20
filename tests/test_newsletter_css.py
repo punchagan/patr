@@ -17,6 +17,7 @@ PAGE = """
   <div class="newsletter-intro"><p>Intro one</p><p>Intro two</p></div>
   <div class="newsletter-post-content"><p>First</p><p>Second</p></div>
   <div class="newsletter-footer-content"><p>Footer</p></div>
+  <figure class="newsletter-figure"><figcaption>Caption</figcaption></figure>
 </article>
 """
 
@@ -74,3 +75,16 @@ def test_paragraphs_are_spaced_apart_like_in_the_email() -> None:
         first = soup.find(class_=cls).find("p")
         margin = style_props(first).get("margin-bottom")
         assert margin and not is_zero(margin), cls
+
+
+def test_muted_text_follows_the_sites_text_colour_not_a_fixed_grey() -> None:
+    """A fixed grey made for a light page is hard to read on a dark site, so
+    the muted colour must be derived from the text colour it sits next to."""
+    muted = style_props(inlined().find("html"))["--newsletter-muted"]
+    assert "currentcolor" in muted.lower()
+
+
+def test_intro_and_captions_use_the_muted_colour() -> None:
+    soup = inlined()
+    for el in (soup.find(class_="newsletter-intro"), soup.find("figcaption")):
+        assert "var(--newsletter-muted)" in style_props(el).get("color", "")
