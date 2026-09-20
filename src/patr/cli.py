@@ -23,6 +23,7 @@ from patr.content import (
     get_editions,
     load_edition,
     plan_backup_pruning,
+    plan_image_pruning,
     repo_slug,
     write_edition_frontmatter,
 )
@@ -330,6 +331,60 @@ def cmd_prune_backups(args) -> None:
         print("Run with --apply to delete.")
 
 
+def _save_pruned_image(source: Path, destination: Path) -> None:
+    """Move a pruned image to ``destination``, keeping any copy already there:
+    a second image with the same path gets a timestamp before its extension."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%dT%H%M%S")
+    candidate, count = destination, 0
+    while candidate.exists():
+        count += 1
+        suffix = f".{stamp}" + (f"-{count}" if count > 1 else "")
+        candidate = destination.with_name(
+            f"{destination.stem}{suffix}{destination.suffix}"
+        )
+    shutil.move(str(source), str(candidate))
+
+
+def cmd_prune_images(args) -> None:
+    """Remove images from edition page bundles that nothing in the edition
+    refers to (see content.plan_image_pruning for what counts).
+
+    Dry run by default. With --apply the files are *moved* into the backups
+    folder (``<backups>/<repo>/<edition>/pruned-images/``), not deleted:
+    images aren't backed up otherwise, and one that was never committed
+    couldn't be recovered from git. Unsent drafts are left alone. Idempotent:
+    a second run finds nothing left to prune.
+    """
+    _configure_repo(args.repo)
+    dry_run = not args.apply
+    plan, skipped = plan_image_pruning()
+    saved_root = state.BACKUPS_DIR / repo_slug()
+    total = sum(len(paths) for paths in plan.values())
+
+    if dry_run:
+        print("Dry run — pass --apply to move files.\n")
+
+    for slug, paths in plan.items():
+        verb = "would move" if dry_run else "moving"
+        print(f"  {slug}: {verb} {len(paths)} unreferenced image(s)")
+        for path in paths:
+            relative = path.relative_to(state.CONTENT_DIR / slug)
+            print(f"    {relative.as_posix()}")
+            if not dry_run:
+                _save_pruned_image(path, saved_root / slug / "pruned-images" / relative)
+
+    if skipped:
+        print(f"\nLeft alone (unsent drafts, or unreadable): {', '.join(skipped)}")
+    if not total:
+        print("\nNothing to prune.")
+        return
+    if dry_run:
+        print(f"\nWould move {total} image(s). Run with --apply to do it.")
+    else:
+        print(f"\nMoved {total} image(s) to {saved_root}/<edition>/pruned-images/.")
+
+
 def cmd_squash_drafts(args) -> None:
     """Squash each edition's local-only "wip:" checkpoint commits into one.
 
@@ -605,6 +660,18 @@ def main() -> None:
         "--apply", action="store_true", help="Actually delete files (default: dry run)"
     )
 
+    # prune-images
+    prune_images_parser = sub.add_parser(
+        "prune-images",
+        help="Move images no longer referenced by sent/published editions to backups",
+    )
+    prune_images_parser.add_argument(
+        "--repo", required=True, help="Path to Hugo site root"
+    )
+    prune_images_parser.add_argument(
+        "--apply", action="store_true", help="Actually move files (default: dry run)"
+    )
+
     # squash-drafts
     squash_drafts_parser = sub.add_parser(
         "squash-drafts",
@@ -635,6 +702,8 @@ def main() -> None:
         cmd_import_sent_log(args)
     elif args.command == "prune-backups":
         cmd_prune_backups(args)
+    elif args.command == "prune-images":
+        cmd_prune_images(args)
     elif args.command == "squash-drafts":
         cmd_squash_drafts(args)
     elif args.command == "serve":

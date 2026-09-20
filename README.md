@@ -156,6 +156,8 @@ Hover an edition in the sidebar and click **🔗** to copy a Markdown link to it
 
 Paste or drag images directly into the editor, or use the 🖼 toolbar button to upload. Images are stored alongside the edition and referenced with a relative path. Uploads are automatically resized (max 800px wide) and re-encoded as JPEG to keep newsletters light; GIFs are left untouched so animation still works.
 
+Images you stop using stay in the edition's folder, and so do the originals left beside a resized copy. To clean these up, run `patr prune-images --repo /path/to/your-site`: it lists images that nothing in the edition refers to (a dry run), and adding `--apply` moves them into Patr's backups folder (`~/.local/share/patr/backups/`, `%LOCALAPPDATA%\patr\backups\` on Windows) rather than deleting them. Only sent or published editions are looked at; drafts are left alone, since an image you haven't used yet may still be on its way.
+
 To control display size, add a title with an attribute block:
 
 ```

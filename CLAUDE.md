@@ -93,6 +93,10 @@ patr migrate --repo /path/to/hugo-site --apply
 patr prune-backups --repo /path/to/hugo-site
 patr prune-backups --repo /path/to/hugo-site --apply
 
+# Move images nothing refers to out of sent/published editions (dry run first)
+patr prune-images --repo /path/to/hugo-site
+patr prune-images --repo /path/to/hugo-site --apply
+
 # Squash each edition's local-only wip: commits into one (dry run first)
 patr squash-drafts --repo /path/to/hugo-site
 patr squash-drafts --repo /path/to/hugo-site --apply
@@ -324,6 +328,24 @@ edits would accumulate real drift while every single step still looks
 "small" pairwise, and the whole run would get wrongly discarded. Idempotent:
 re-running after an `--apply` finds nothing left to prune. Implemented in
 `content.plan_backup_pruning()` / `cli.cmd_prune_backups()`.
+
+`patr prune-images --repo <path> [--apply]` (dry run by default) cleans up
+images left behind in page bundles once nothing refers to them — chiefly the
+originals Patr leaves next to the compressed, hash-suffixed copy it makes on
+upload (`photo.jpg` beside `photo-1a2b3c4d.jpg`), and images deleted from the
+text. Only editions that are **sent** (`sent: full|partial`) or **published**
+(`draft: false`) are judged; an unsent draft is work in progress, so an image
+that isn't referenced *yet* is left alone (in email-only mode `draft` never
+changes, so `sent` is the only signal there). "Referenced" is a deliberately
+conservative substring test of the whole `index.md` — body, intro and other
+front matter, plain or URL-encoded, ignoring case — so links to an image, raw
+HTML and `cover:`-style front matter all protect it; it may wrongly keep a
+file, never wrongly drop one. Only image files (`IMAGE_EXTENSIONS`) are
+candidates. `--apply` *moves* files to
+`<backups>/<repo>/<edition>/pruned-images/` instead of deleting them (images
+aren't otherwise backed up, and an uncommitted one couldn't come back from
+git); a name clash there gets a timestamp rather than overwriting. Idempotent.
+Implemented in `content.plan_image_pruning()` / `cli.cmd_prune_images()`.
 
 ### Git History Hygiene
 

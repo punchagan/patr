@@ -4,6 +4,7 @@ import mimetypes
 import re
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import css_inline
 import frontmatter
@@ -18,6 +19,11 @@ _EMAIL_CSS_PATH = Path(__file__).parent / "data" / "assets" / "email.css"
 IMAGE_MAX_DIMENSION = 800  # bounds both width and height, whichever is larger
 IMAGE_JPEG_QUALITY = 85
 COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit / backup
+
+# Directories in the newsletter folder that aren't editions.
+NON_EDITION_DIRS = {"footer", "_index"}
+# Files in an edition's page bundle that image pruning may consider.
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"}
 
 # The email ornament that replaces a markdown thematic break: thin lines either
 # side of a florette. Built from a table with inline styles only, as mail
@@ -79,11 +85,9 @@ def get_editions():
     if not state.CONTENT_DIR.exists():
         return []
 
-    _SKIP_NAMES = {"footer", "_index"}
-
     def _candidate_files():
         for entry in sorted(state.CONTENT_DIR.iterdir()):
-            if entry.is_dir() and entry.name not in _SKIP_NAMES:
+            if entry.is_dir() and entry.name not in NON_EDITION_DIRS:
                 f = entry / "index.md"
                 if f.exists():
                     yield entry.name, f
@@ -136,6 +140,61 @@ def edition_dir_for(f):
     """Return the directory used to store an edition's resources (e.g.
     images) — f.parent, the page bundle directory."""
     return f.parent
+
+
+def _image_is_referenced(relative_path: str, index_text: str) -> bool:
+    """Whether an edition's index.md text (lower-cased) mentions an image's
+    path relative to its bundle, plain or URL-encoded (``my%20photo.png``).
+
+    A plain substring search of the whole file, on purpose: markdown images,
+    links to an image, raw HTML, the intro and other front matter all count.
+    It can wrongly keep a file whose name merely appears in prose, but it
+    never wrongly drops a referenced one.
+    """
+    path = relative_path.lower()
+    return path in index_text or quote(path).lower() in index_text
+
+
+def plan_image_pruning():
+    """Plan removal of images in edition page bundles that nothing refers to.
+
+    Only editions that are sent (``sent: full|partial``) or published (not a
+    draft) are judged: an unsent draft is work in progress, so an image with
+    no reference yet may just not be used yet. An edition whose front matter
+    can't be parsed is left alone too.
+
+    Returns ``(plan, skipped)``: ``plan`` is ``{slug: [image paths]}`` for
+    editions with something to prune (a dry-run-friendly plan; nothing is
+    touched here), ``skipped`` the slugs that weren't judged.
+    """
+    plan, skipped = {}, []
+    if not state.CONTENT_DIR.exists():
+        return plan, skipped
+    for bundle in sorted(state.CONTENT_DIR.iterdir()):
+        index = bundle / "index.md"
+        if not bundle.is_dir() or bundle.name in NON_EDITION_DIRS:
+            continue
+        if not index.exists():
+            continue
+        try:
+            post = frontmatter.load(index)
+        except Exception:
+            skipped.append(bundle.name)
+            continue
+        if post.get("draft", True) and post.get("sent") not in ("full", "partial"):
+            skipped.append(bundle.name)
+            continue
+        text = index.read_text(encoding="utf-8").lower()
+        unused = [
+            path
+            for path in sorted(bundle.rglob("*"))
+            if path.is_file()
+            and path.suffix.lower() in IMAGE_EXTENSIONS
+            and not _image_is_referenced(path.relative_to(bundle).as_posix(), text)
+        ]
+        if unused:
+            plan[bundle.name] = unused
+    return plan, skipped
 
 
 def repo_slug():
