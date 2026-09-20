@@ -19,6 +19,31 @@ IMAGE_MAX_DIMENSION = 800  # bounds both width and height, whichever is larger
 IMAGE_JPEG_QUALITY = 85
 COMMIT_DIFF_THRESHOLD = 500  # bytes; below this amends the last wip commit / backup
 
+# The email ornament that replaces a markdown thematic break: thin lines either
+# side of a florette. Built from a table with inline styles only, as mail
+# clients strip SVG, images, masks and pseudo-elements.
+DIVIDER_LINE_COLOR = "#d9cccc"
+DIVIDER_GLYPH_COLOR = "#b48f8f"
+DIVIDER_GLYPH = "\u273f"  # ✿
+DIVIDER_GLYPH_FONTS = (
+    "'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols',Arial,sans-serif"
+)
+DIVIDER_HTML = (
+    '<table class="divider" role="presentation" align="center" width="220" '
+    'cellpadding="0" cellspacing="0" border="0" style="margin:2.2em auto;width:220px">'
+    "<tr>"
+    '<td width="40%" style="vertical-align:middle;padding:0">'
+    '<div style="height:1px;line-height:1px;font-size:1px;'
+    f'background:{DIVIDER_LINE_COLOR}">&nbsp;</div></td>'
+    '<td width="20%" align="center" style="text-align:center;vertical-align:middle;'
+    f"padding:0;color:{DIVIDER_GLYPH_COLOR};font-size:18px;line-height:1;"
+    f'font-family:{DIVIDER_GLYPH_FONTS}">{DIVIDER_GLYPH}</td>'
+    '<td width="40%" style="vertical-align:middle;padding:0">'
+    '<div style="height:1px;line-height:1px;font-size:1px;'
+    f'background:{DIVIDER_LINE_COLOR}">&nbsp;</div></td>'
+    "</tr></table>"
+)
+
 
 class PatrYamlDumper(yaml.SafeDumper):
     """YAML dumper for edition frontmatter — preserves key order (via
@@ -345,6 +370,22 @@ def absolutify_urls(html: str, base_url: str, page_url: str) -> str:
     return str(soup)
 
 
+def ornament_dividers(html: str) -> str:
+    """Replace each horizontal rule (a markdown ``* * *`` or ``---``) with the
+    email ornament, :data:`DIVIDER_HTML`.
+
+    A bare ``<hr>`` renders as a hard line edge to edge in mail clients. The
+    rule Hugo/markdown puts above footnotes (inside ``div.footnote``) is left
+    as a rule - email.css softens it - since a florette there would be too much.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for hr in soup.find_all("hr"):
+        if hr.find_parent(class_="footnote"):
+            continue
+        hr.replace_with(BeautifulSoup(DIVIDER_HTML, "html.parser"))
+    return str(soup)
+
+
 def absolutify_links(html: str, base_url: str) -> str:
     """Rewrite root-relative link hrefs to absolute URLs for email sending.
 
@@ -447,6 +488,7 @@ def build_email_html(
   </table>
 </body>
 </html>"""
+    html = ornament_dividers(html)
     if (email_only or subscribers_only) and edition_dir is not None:
         html = embed_images(html, edition_dir)
     elif absolute_urls:

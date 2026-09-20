@@ -144,6 +144,10 @@ Press **⛶** in the top-right (or hit `f`) to enter focus mode — the sidebar,
 
 The **Intro** field is optional. It appears in an italicised, bordered style above the body — good for a short summary or personal note.
 
+#### Section dividers
+
+To separate sections, put `* * *` on a line by itself with a blank line above and below (`---` works the same way *if* it has blank lines around it; directly under a line of text it makes that text a heading instead, and the web and email versions disagree about it, so prefer `* * *`). In the email it becomes a soft centred ornament (thin lines either side of a ✿) instead of a hard line edge to edge. On the web it's a plain `<hr>`, which your site's CSS styles: the default is a harsh line, so give `hr` a nicer look there.
+
 #### Linking to other editions
 
 Hover an edition in the sidebar and click **🔗** to copy a Markdown link to it, like `[Spring Art Gallery](/newsletter/spring-art/)`, then paste it into the intro, body or footer of another edition (works for drafts too, though the link is dead until that edition is published). The link deliberately has no domain: on the site it keeps working if your domain ever changes. When an email is built, Patr turns links like this into full URLs using your site's `baseURL`, in both the HTML and plain-text versions. Links that already start with `https://`, `mailto:` or `#` are left alone. Sent emails keep whichever address was current when they went out. On a subscribers-only site, readers are asked to sign in when they open a linked edition.

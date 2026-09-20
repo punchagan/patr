@@ -80,3 +80,10 @@ figcaption {
 .footer td:last-child {
   padding-right: 0;
 }
+/* Thematic breaks become an ornament (see ornament_dividers); the rule above
+   footnotes stays a rule, so keep it a quiet hairline, not the default line. */
+.footnote hr {
+  border: 0;
+  border-top: 1px solid #e8e8e8;
+  margin: 2em 0 1em;
+}

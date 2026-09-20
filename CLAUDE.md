@@ -479,6 +479,20 @@ URLs. The difference is everything else:
   page ↗" link in the action bar, shown when the edition is live, after
   Publish, and in the subscribers-only reminder (also in the confirm modal).
 
+### Section dividers in emails
+
+A markdown thematic break (`* * *`, or `---` with blank lines around it)
+renders as `<hr>`, a hard full-width line in mail clients. `ornament_dividers`
+(`content.py`, called from `build_email_html` in every mode) replaces each one
+with `DIVIDER_HTML`: a centred table of two 1px lines around a ✿, using inline
+styles only — mail clients strip SVG, masks, pseudo-elements and images
+(blocked, or 401 behind a login). The `<hr>` above footnotes (`div.footnote`) is
+left alone and softened in `email.css`. The plain-text alternative keeps the
+`* * *` as written. `---` directly under text is a setext heading in Goldmark
+(web) but a paragraph + rule in Python-Markdown (email) — a parity trap; docs
+tell writers to use `* * *`. Web styling of `<hr>` is the host site's CSS, not
+Patr's `newsletter.css`.
+
 ### Links between editions
 
 Editions link to each other with root-relative Markdown links
