@@ -33,6 +33,13 @@
     overflow-wrap: anywhere;
 }
 
+/* As in the email, set the footer apart from the edition with a divider. */
+.newsletter-footer-content {
+    border-top: 1px solid var(--newsletter-border);
+    margin-top: calc(2 * var(--newsletter-space));
+    padding-top: var(--newsletter-space);
+}
+
 /* Some sites reset paragraph margins globally; keep the email's spacing. */
 .newsletter-post-content p,
 .newsletter-footer-content p {

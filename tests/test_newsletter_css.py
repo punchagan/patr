@@ -94,3 +94,12 @@ def test_divider_lines_follow_the_sites_text_colour_too() -> None:
     """A fixed light grey rule is a harsh bright line on a dark site."""
     border = style_props(inlined().find("html"))["--newsletter-border"]
     assert "currentcolor" in border.lower()
+
+
+def test_footer_is_set_apart_from_the_edition_like_in_the_email() -> None:
+    """The email's footer has a divider above it; on the web it just ran on
+    from the edition, with nothing to say it was the footer."""
+    props = style_props(inlined().find(class_="newsletter-footer-content"))
+    assert "var(--newsletter-border)" in props.get("border-top", "")
+    assert not is_zero(props.get("margin-top", "0"))
+    assert not is_zero(props.get("padding-top", "0"))
