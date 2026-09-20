@@ -1,19 +1,39 @@
 /*
  * Newsletter styles — copied to assets/newsletter.css in your Hugo site by `patr install`.
  * Edit that file to customise the look of your newsletter pages.
- * The three variables below are the easiest place to start.
+ * The variables below are the easiest place to start.
  */
 
 :root {
     --newsletter-muted: #666;
     --newsletter-border: #e0e0e0;
     --newsletter-space: 1rem;
+    /* Space either side of the text, so it never touches the edge of a phone. */
+    --newsletter-gutter: 1.25rem;
 }
 
 .newsletter-archive,
 .newsletter-post {
-    max-width: 640px;
+    /* The text column stays 640px wide: border-box makes the gutters part of
+       max-width, so add them, whatever box-sizing the host site sets. */
+    box-sizing: border-box;
+    max-width: calc(640px + 2 * var(--newsletter-gutter));
     margin: 0 auto;
+    padding-left: var(--newsletter-gutter);
+    padding-right: var(--newsletter-gutter);
+}
+
+/* Break long URLs and words rather than overflowing the screen. */
+.newsletter-intro,
+.newsletter-post-content,
+.newsletter-footer-content {
+    overflow-wrap: anywhere;
+}
+
+/* Some sites reset paragraph margins globally; keep the email's spacing. */
+.newsletter-post-content p,
+.newsletter-footer-content p {
+    margin-bottom: 1.2em;
 }
 
 .newsletter-list {
