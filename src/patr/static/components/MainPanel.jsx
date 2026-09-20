@@ -5,6 +5,9 @@ import HistoryModal from "./modals/HistoryModal";
 import DeleteEditionModal from "./modals/DeleteEditionModal";
 import EditorPanel from "./EditorPanel";
 import StatusMessage from "./StatusMessage";
+import PreviewFrame from "./PreviewFrame";
+import PreviewControls from "./PreviewControls";
+import { loadPreviewDevice, savePreviewDevice } from "./previewDevices";
 import {
   deployStateFromCheck,
   canSend as canSendEdition,
@@ -66,16 +69,6 @@ function useDeployStatus(edition) {
     setStatus,
     setDeploymentLive,
   };
-}
-
-function PreviewFrame({ slug, viewMode, previewKey }) {
-  return (
-    <iframe
-      key={`${slug}-${viewMode}-${previewKey}`}
-      className="preview-frame"
-      src={`/preview/${slug}/${viewMode}`}
-    />
-  );
 }
 
 function PdfDownloadButton({ slug }) {
@@ -205,6 +198,11 @@ export default function MainPanel({
   const [viewMode, setViewMode] = useState(initialViewMode);
   const [previewKey, setPreviewKey] = useState(0);
   const [showTestSend, setShowTestSend] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState(loadPreviewDevice);
+  const changePreviewDevice = (device) => {
+    setPreviewDevice(device);
+    savePreviewDevice(device);
+  };
   const [showConfirm, setShowConfirm] = useState(false);
   const [editorSaveStatus, setEditorSaveStatus] = useState("");
   const [wordCount, setWordCount] = useState(0);
@@ -430,32 +428,38 @@ export default function MainPanel({
                 editorMode === "split" ? "split-preview" : "full-preview"
               }
             >
-              {editorMode === "split" && (
-                <div className="split-preview-bar">
-                  {!emailOnly && (
-                    <ViewToggle
-                      viewMode={viewMode}
-                      onViewModeChange={setViewMode}
-                    />
+              <div className="split-preview-bar">
+                {editorMode === "split" && !emailOnly && (
+                  <ViewToggle
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                  />
+                )}
+                <PreviewControls
+                  slug={edition.slug}
+                  viewMode={viewMode}
+                  device={previewDevice}
+                  onDeviceChange={changePreviewDevice}
+                />
+                <div className="preview-bar-end">
+                  {editorMode === "preview" && viewMode === "email" && (
+                    <PdfDownloadButton slug={edition.slug} />
                   )}
-                  <button
-                    className="btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => setPreviewKey((k) => k + 1)}
-                  >
-                    ↺ Refresh
-                  </button>
+                  {editorMode === "split" && (
+                    <button
+                      className="btn"
+                      onClick={() => setPreviewKey((k) => k + 1)}
+                    >
+                      ↺ Refresh
+                    </button>
+                  )}
                 </div>
-              )}
-              {editorMode === "preview" && viewMode === "email" && (
-                <div className="split-preview-bar">
-                  <PdfDownloadButton slug={edition.slug} />
-                </div>
-              )}
+              </div>
               <PreviewFrame
                 slug={edition.slug}
                 viewMode={viewMode}
                 previewKey={previewKey}
+                device={previewDevice}
               />
             </div>
           )}

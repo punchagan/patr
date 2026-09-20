@@ -468,6 +468,65 @@ def test_mode_switch_preview_email(page, edition) -> None:
     assert page.locator("button", has_text="Download PDF").is_visible()
 
 
+def test_preview_width_toggle_resizes_the_frame(page, edition) -> None:
+    """Phone/Tablet make the preview a fixed-width frame (so the site renders
+    its mobile layout); Desktop fills the pane again."""
+    page.locator("button.btn-toggle", has_text="Split").click()
+    page.wait_for_selector(".preview-frame")
+    full = page.locator(".preview-frame").bounding_box()["width"]
+    try:
+        page.get_by_role("button", name="Phone").click()
+        assert page.locator(".preview-frame").bounding_box()["width"] == 390
+        page.get_by_role("button", name="Tablet").click()
+        assert page.locator(".preview-frame").bounding_box()["width"] == 768
+        page.get_by_role("button", name="Desktop").click()
+        width = page.locator(".preview-frame").bounding_box()["width"]
+        assert width == pytest.approx(full, abs=1)
+    finally:
+        page.evaluate("localStorage.removeItem('patr-preview-device')")
+
+
+def test_preview_width_is_remembered(page, edition) -> None:
+    page.locator("button.btn-toggle", has_text="Split").click()
+    page.wait_for_selector(".preview-frame")
+    try:
+        page.get_by_role("button", name="Phone").click()
+        page.reload()
+        page.wait_for_selector(".preview-frame")
+        phone = page.get_by_role("button", name="Phone")
+        assert phone.get_attribute("aria-pressed") == "true"
+        assert page.locator(".preview-frame").bounding_box()["width"] == 390
+    finally:
+        page.evaluate("localStorage.removeItem('patr-preview-device')")
+
+
+def test_preview_can_be_opened_in_a_new_tab(page, edition) -> None:
+    page.locator("button.btn-toggle", has_text="Split").click()
+    link = page.get_by_role("link", name="Open")
+    assert link.get_attribute("target") == "_blank"
+    assert f"/preview/{edition}/" in link.get_attribute("href")
+
+
+def test_active_toggle_keeps_its_colour_while_hovered(page, edition) -> None:
+    """The mouse is still over a toggle right after clicking it; its active
+    (accent) background must survive the generic .btn:hover style, or its
+    white text ends up on a pale background."""
+    page.locator("button.btn-toggle", has_text="Split").click()
+    page.wait_for_selector(".preview-frame")
+    phone = page.get_by_role("button", name="Phone", exact=True)
+    email = page.get_by_role("button", name="Email", exact=True)  # active, unhovered
+    try:
+        phone.click()  # active, and the mouse stays over it
+        assert phone.evaluate("e => e.matches(':hover')")
+
+        def bg(button):
+            return button.evaluate("e => getComputedStyle(e).backgroundColor")
+
+        assert bg(phone) == bg(email)
+    finally:
+        page.evaluate("localStorage.removeItem('patr-preview-device')")
+
+
 def test_focus_mode(page, edition) -> None:
     # Enter focus mode
     page.locator("button[title*='Focus mode']").click()

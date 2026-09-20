@@ -444,6 +444,10 @@ body.dark .badge-sent-partial {
   border-color: var(--active-accent);
   color: #fff;
 }
+/* Beat .btn:hover, which would otherwise pale the background under the white text. */
+.btn-toggle.active:hover:not(:disabled) {
+  background: var(--active-accent);
+}
 
 .btn-danger {
   border-color: #c53030;
@@ -464,10 +468,41 @@ body.dark .btn-danger:hover:not(:disabled) {
   background: #3d5f8f;
 }
 
-.preview-frame {
+.preview-stage {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.preview-frame {
+  flex: none;
+  height: 100%;
   border: none;
   background: #fff;
+}
+
+/* At a fixed device width, set the frame apart from the pane behind it. */
+.preview-stage:has(.preview-frame.framed) {
+  background: var(--toolbar-bg);
+}
+.preview-frame.framed {
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.preview-device-toggle {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.preview-bar-end {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .content-area {
@@ -498,6 +533,7 @@ body.dark .btn-danger:hover:not(:disabled) {
 
 .split-preview-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   padding: 6px 10px;

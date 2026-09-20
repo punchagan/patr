@@ -437,6 +437,21 @@ derivative files behind after squashing succeeded. `--no-verify` doesn't
 cover this: `git cherry-pick` has no such flag at all, and `--no-verify`
 never disables `post-commit` hooks regardless of command.
 
+### Preview width
+
+The preview is an iframe (`PreviewFrame.jsx`) inside a `.preview-stage`. Its
+width is the preview pane's, so a site's mobile media queries only fire if the
+Patr window is narrow; `PreviewControls.jsx` therefore lets the writer pick
+Desktop (fills the pane) / Tablet (768px) / Phone (390px), which make the
+iframe a fixed-width, centred frame — the page inside then sees a real
+phone-sized viewport. The widths and the remembered choice (localStorage key
+`patr-preview-device`) live in `previewDevices.js`. "Open ↗" links to the same
+`/preview/<slug>/<view>` route with `target=_blank`, for the browser's own
+responsive mode. Web preview is the real site: `build_hugo` runs
+`hugo -D --baseURL=http://127.0.0.1:<port>/` into the repo's `public/`, and
+`serve_public` serves it — same HTML/CSS as deployed, except drafts are
+included and the build isn't minified.
+
 ### Emailed images: `email_only` vs `subscribers_only`
 
 Both `[params.patr]` settings make `build_email_html` embed images as base64

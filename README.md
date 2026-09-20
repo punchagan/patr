@@ -169,6 +169,8 @@ Click **Footer** at the bottom of the sidebar to edit the footer that appears in
 
 Switch to **Split** to write and see the email preview side by side. Use **Preview Email** or **Preview Web** for a full-screen read before sending.
 
+Above the preview, pick **Desktop**, **Tablet** or **Phone** to see it at that width: the preview becomes a fixed-width frame, so your site's own mobile styles apply, as they would on a real device (your choice is remembered). **Open ↗** shows the preview in a new browser tab, where you can use the browser's responsive mode and developer tools. The web preview is your real Hugo site, built locally including drafts.
+
 To share a draft for review, use **Preview Email** and click **⬇ Download PDF** — the PDF can be emailed or shared directly.
 
 ### Edit title or date
